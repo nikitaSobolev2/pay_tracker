@@ -1,6 +1,10 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+# postinstall runs `prisma generate`; schema + placeholder URL must exist.
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 RUN npm ci
 
 FROM node:22-alpine AS builder
