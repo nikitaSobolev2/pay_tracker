@@ -21,20 +21,20 @@ Services: `app` (Next.js), `postgres`, `fx-worker` (last 40 days on start + ever
 
 ## Production deploy (Ubuntu 22)
 
-Use `scripts/deploy-ubuntu.sh` with `docker-compose.prod.yml`. The script installs Docker, writes a production `.env`, and manages the stack. Postgres is not published to the host; the app listens on `APP_HOST:APP_PORT` (default `0.0.0.0:3000`).
+Use `scripts/deploy-ubuntu.sh` with `docker-compose.prod.yml`. The script detects preinstalled Docker (common on VPS images), installs Engine/Compose only if missing, writes a production `.env`, and manages the stack. Postgres is not published to the host; the app listens on `APP_HOST:APP_PORT` (default `0.0.0.0:3000`).
 
 ### First run
 
 ```bash
 chmod +x scripts/deploy-ubuntu.sh
-sudo ./scripts/deploy-ubuntu.sh install
+sudo ./scripts/deploy-ubuntu.sh install   # skips Docker reinstall if already present
 ./scripts/deploy-ubuntu.sh configure
 ./scripts/deploy-ubuntu.sh deploy
 ```
 
 Or run with no arguments for an interactive menu.
 
-After `install`, log out and back in (or run `newgrp docker`) so your user can use Docker without `sudo`.
+`install` reports Docker/Compose/daemon status, starts the daemon if needed, and only installs Compose if Docker is present without it. After `install`, log out and back in (or run `newgrp docker`) so your user can use Docker without `sudo`.
 
 ### What `configure` asks for
 

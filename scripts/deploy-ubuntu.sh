@@ -48,10 +48,82 @@ run_as_deploy_user() {
   fi
 }
 
+docker_bin_present() {
+  command -v docker >/dev/null 2>&1
+}
+
+# Compose v2 plugin: `docker compose`
+compose_plugin_present() {
+  docker_bin_present && docker compose version >/dev/null 2>&1
+}
+
+# Legacy standalone binary (some VPS images ship this instead of the plugin)
+compose_standalone_present() {
+  command -v docker-compose >/dev/null 2>&1
+}
+
+compose_available() {
+  compose_plugin_present || compose_standalone_present
+}
+
+docker_daemon_running() {
+  docker info >/dev/null 2>&1
+}
+
+start_docker_daemon() {
+  if docker_daemon_running; then
+    return 0
+  fi
+  if [[ "${EUID}" -ne 0 ]]; then
+    return 1
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl enable docker >/dev/null 2>&1 || true
+    systemctl start docker >/dev/null 2>&1 || true
+  elif command -v service >/dev/null 2>&1; then
+    service docker start >/dev/null 2>&1 || true
+  fi
+  docker_daemon_running
+}
+
+# Print what is already on the machine (preinstalled VPS images, etc.).
+report_docker_status() {
+  if ! docker_bin_present; then
+    warn "Docker binary: not found"
+    return 1
+  fi
+  ok "Docker binary: $(docker --version 2>/dev/null || echo present)"
+  if compose_plugin_present; then
+    ok "Compose plugin: $(docker compose version 2>/dev/null | head -n1)"
+  elif compose_standalone_present; then
+    ok "Compose standalone: $(docker-compose --version 2>/dev/null || echo present)"
+    warn "Using legacy docker-compose binary (plugin preferred but OK)."
+  else
+    warn "Compose: not found (need plugin or docker-compose)"
+  fi
+  if docker_daemon_running; then
+    ok "Docker daemon: running"
+  else
+    warn "Docker daemon: not running"
+  fi
+  return 0
+}
+
+refresh_compose_cmd() {
+  if compose_plugin_present; then
+    COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+  elif compose_standalone_present; then
+    COMPOSE=(docker-compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+  else
+    COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+  fi
+}
+
 compose() {
   if [[ ! -f "${ENV_FILE}" ]]; then
     die "Missing ${ENV_FILE}. Run: $0 configure"
   fi
+  refresh_compose_cmd
   if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
     # Prefer non-root docker group after install; fall back to root socket.
     if sudo -u "${SUDO_USER}" -H docker info >/dev/null 2>&1; then
@@ -148,7 +220,7 @@ cmd_help() {
 ${BOLD}PayTracker Ubuntu 22 production deploy${RESET}
 
 ${CYAN}Commands${RESET}
-  install     Install Docker Engine + Compose plugin (+ curl, ca-certificates)
+  install     Detect preinstalled Docker, or install Engine + Compose if missing
   configure   Interactive .env setup (secrets, URL, port, currencies)
   deploy      Build images and start the full stack (migrate on boot)
   update      git pull (if repo) + rebuild & restart
@@ -160,7 +232,7 @@ ${CYAN}Commands${RESET}
   help        Show this help
 
 ${CYAN}Typical first run${RESET}
-  sudo ./scripts/deploy-ubuntu.sh install
+  sudo ./scripts/deploy-ubuntu.sh install   # skips Docker if already present
   ./scripts/deploy-ubuntu.sh configure
   ./scripts/deploy-ubuntu.sh deploy
 
@@ -170,39 +242,101 @@ ${CYAN}Files${RESET}
 EOF
 }
 
+install_docker_engine() {
+  info "Installing Docker Engine from Docker's official apt repository..."
+  install -m 0755 -d /etc/apt/keyrings
+  if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+  fi
+
+  # shellcheck source=/dev/null
+  . /etc/os-release
+  local arch
+  arch="$(dpkg --print-architecture)"
+  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu %s stable\n' \
+    "${arch}" "${VERSION_CODENAME}" >/etc/apt/sources.list.d/docker.list
+
+  apt-get update -y
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  systemctl enable --now docker
+  ok "Docker installed: $(docker --version)"
+  ok "Compose: $(docker compose version)"
+}
+
+# If Docker is present but Compose is missing, try apt packages without
+# replacing a working preinstalled Engine.
+install_compose_only() {
+  info "Docker is present; installing Compose plugin only..."
+  if apt-get install -y docker-compose-plugin 2>/dev/null; then
+    if compose_plugin_present; then
+      ok "Compose plugin: $(docker compose version 2>/dev/null | head -n1)"
+      return 0
+    fi
+  fi
+  if apt-get install -y docker-compose-v2 2>/dev/null; then
+    if compose_plugin_present; then
+      ok "Compose plugin: $(docker compose version 2>/dev/null | head -n1)"
+      return 0
+    fi
+  fi
+  if apt-get install -y docker-compose 2>/dev/null; then
+    if compose_available; then
+      ok "Compose available after apt install"
+      return 0
+    fi
+  fi
+  return 1
+}
+
 cmd_install() {
   need_root_for_install
   require_ubuntu_22
 
-  info "Updating apt and installing prerequisites..."
+  info "Checking for preinstalled Docker..."
+  report_docker_status || true
+  log ""
+
   export DEBIAN_FRONTEND=noninteractive
+  info "Ensuring host packages (ca-certificates, curl, openssl)..."
   apt-get update -y
   apt-get install -y ca-certificates curl gnupg lsb-release openssl
 
-  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-    ok "Docker already installed: $(docker --version)"
-    ok "Compose: $(docker compose version)"
-  else
-    info "Installing Docker Engine from Docker's official apt repository..."
-    install -m 0755 -d /etc/apt/keyrings
-    if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-      chmod a+r /etc/apt/keyrings/docker.gpg
+  local docker_was_preinstalled=0
+  if docker_bin_present; then
+    docker_was_preinstalled=1
+    ok "Using preinstalled Docker — skipping Engine reinstall."
+    if ! start_docker_daemon; then
+      die "Docker is installed but the daemon failed to start. Check: systemctl status docker"
     fi
+    ok "Docker daemon: running"
 
-    # shellcheck source=/dev/null
-    . /etc/os-release
-    local arch
-    arch="$(dpkg --print-architecture)"
-    printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu %s stable\n' \
-      "${arch}" "${VERSION_CODENAME}" >/etc/apt/sources.list.d/docker.list
+    if ! compose_available; then
+      if ! install_compose_only; then
+        die "Docker is installed but Compose is missing. Install docker-compose-plugin, then re-run install."
+      fi
+    else
+      ok "Compose already available — nothing to install for Compose."
+    fi
+  else
+    info "No Docker binary found — installing Engine + Compose..."
+    install_docker_engine
+  fi
 
-    apt-get update -y
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    systemctl enable --now docker
-    ok "Docker installed: $(docker --version)"
-    ok "Compose: $(docker compose version)"
+  if ! docker_bin_present || ! compose_available; then
+    die "Docker/Compose still unavailable after install."
+  fi
+  if ! docker_daemon_running; then
+    die "Docker daemon is not running after install."
+  fi
+
+  refresh_compose_cmd
+  log ""
+  info "Final Docker check:"
+  report_docker_status
+  if [[ "${docker_was_preinstalled}" -eq 1 ]]; then
+    ok "Preinstalled Docker verified and ready."
   fi
 
   local deploy_user="${SUDO_USER:-}"
@@ -318,15 +452,23 @@ EOF
 }
 
 ensure_docker() {
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! docker_bin_present; then
     die "Docker not found. Run: sudo $0 install"
   fi
-  if ! docker compose version >/dev/null 2>&1; then
-    die "Docker Compose plugin missing. Run: sudo $0 install"
+  if ! compose_available; then
+    die "Docker Compose not found. Run: sudo $0 install"
+  fi
+  if ! docker_daemon_running; then
+    if [[ "${EUID}" -eq 0 ]] && start_docker_daemon; then
+      ok "Started Docker daemon."
+    else
+      die "Docker daemon is not running. Try: sudo systemctl start docker"
+    fi
   fi
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
     die "Missing ${COMPOSE_FILE}"
   fi
+  refresh_compose_cmd
 }
 
 cmd_deploy() {
@@ -396,7 +538,7 @@ print_menu() {
   cat <<EOF
 
 ${BOLD}PayTracker deploy${RESET}  ${CYAN}(Ubuntu 22)${RESET}
-  1) Install Docker & dependencies
+  1) Install / verify Docker (skip if preinstalled)
   2) Configure .env
   3) Deploy / rebuild
   4) Update (git pull + rebuild)
