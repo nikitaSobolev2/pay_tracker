@@ -33,7 +33,7 @@ function isPublicContentPage(pathname: string): boolean {
   return pathname === "/share" || pathname.startsWith("/share/");
 }
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
     pathname.startsWith("/api") ||
