@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: paytracker
+      POSTGRES_PASSWORD: paytracker
+      POSTGRES_DB: paytracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paytracker -d paytracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DEFAULT_CURRENCIES: ${NEXT_PUBLIC_DEFAULT_CURRENCIES:-RUB,USD,EUR}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://paytracker:paytracker@postgres:5432/paytracker
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-secret-change-me-please-32chars}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      DEFAULT_CURRENCIES: ${DEFAULT_CURRENCIES:-RUB,USD,EUR}
+      NEXT_PUBLIC_DEFAULT_CURRENCIES: ${NEXT_PUBLIC_DEFAULT_CURRENCIES:-RUB,USD,EUR}
+      DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-RUB}
+      DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-UTC}
+      FX_PROVIDER: frankfurter
+      FX_API_BASE_URL: https://api.frankfurter.dev
+      NEXT_PUBLIC_APP_NAME: PayTracker
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  fx-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgresql://paytracker:paytracker@postgres:5432/paytracker
+      DEFAULT_CURRENCIES: ${DEFAULT_CURRENCIES:-RUB,USD,EUR}
+      FX_API_BASE_URL: https://api.frankfurter.dev
+      FX_PROVIDER: frankfurter
+      FX_BACKFILL_DAYS: ${FX_BACKFILL_DAYS:-40}
+      FX_FETCH_CRON: ${FX_FETCH_CRON:-0 2 * * *}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backup:
+    image: postgres:16-alpine
+    environment:
+      DATABASE_URL: postgresql://paytracker:paytracker@postgres:5432/paytracker
+      BACKUP_DIR: /backups
+      BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
+      PGPASSWORD: paytracker
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup-entrypoint.sh:/backup-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/backup-entrypoint.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

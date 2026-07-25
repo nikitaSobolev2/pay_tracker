@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="PayTracker">
+  <!-- Soft coin disc -->
+  <circle cx="32" cy="32" r="28" fill="#171717" fill-opacity=".1"/>
+  <!-- Outer coin ring -->
+  <path
+    fill="#171717"
+    fill-rule="evenodd"
+    d="M32 8c13.255 0 24 10.745 24 24S45.255 56 32 56 8 45.255 8 32 18.745 8 32 8zm0 5C21.507 13 13 21.507 13 32s8.507 19 19 19 19-8.507 19-19S42.493 13 32 13z"
+  />
+  <!-- Inner coin ring -->
+  <path
+    fill="#171717"
+    fill-opacity=".4"
+    fill-rule="evenodd"
+    d="M32 15.5c9.113 0 16.5 7.387 16.5 16.5S41.113 48.5 32 48.5 15.5 41.113 15.5 32 22.887 15.5 32 15.5zm0 3C24.544 18.5 18.5 24.544 18.5 32S24.544 45.5 32 45.5 45.5 39.456 45.5 32 39.456 18.5 32 18.5z"
+  />
+  <!-- Rising balance track -->
+  <path
+    fill="none"
+    stroke="#171717"
+    stroke-width="3.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M18 41.5c4.2-1.8 7.1-6.2 10.4-6.2 3.6 0 5.2 5.4 9.1 5.4 3.2 0 6.3-4.8 9.8-11.2"
+  />
+  <!-- Track tip -->
+  <path
+    fill="none"
+    stroke="#171717"
+    stroke-width="3.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    d="M42.5 24.5h7.2v7.2"
+  />
+</svg>

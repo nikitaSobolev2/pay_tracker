@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  SPENDING
+  EARNING
+}
+
+enum TransactionDebtRole {
+  LEND
+  BORROW
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  emailVerified   Boolean  @default(false)
+  image           String?
+  username        String   @unique
+  displayUsername String?
+  locale          String   @default("en")
+  timezone        String   @default("UTC")
+  theme           String   @default("system")
+  defaultCurrency String   @default("RUB")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sessions       Session[]
+  accounts       Account[]
+  categories     UserCategory[]
+  counterparties UserCounterparty[]
+  transactions   Transaction[]
+  loginTransfers LoginTransfer[]
+  sharedCharts   SharedChart[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LoginTransfer {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code       String
+  token      String
+  codeHash   String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+  @@index([codeHash])
+}
+
+model UserCategory {
+  id               String          @id @default(cuid())
+  userId           String
+  title            String
+  type             TransactionType
+  parentCategoryId String?
+  createdAt        DateTime        @default(now())
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent           UserCategory?   @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  children         UserCategory[]  @relation("CategoryHierarchy")
+  transactions     TransactionCategory[]
+
+  @@index([userId, type, title])
+  @@index([userId, type, parentCategoryId])
+  @@index([parentCategoryId])
+}
+
+model UserCounterparty {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  createdAt    DateTime      @default(now())
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name])
+  @@index([userId, name])
+}
+
+model Transaction {
+  id             String               @id @default(cuid())
+  userId         String
+  type           TransactionType
+  amount         Decimal              @db.Decimal(18, 4)
+  inputCurrency  String
+  originalAmount Decimal              @db.Decimal(18, 4)
+  rateToRub      Decimal              @db.Decimal(18, 8)
+  fxRateDate     DateTime             @db.Date
+  title          String?
+  occurredAt     DateTime
+  debtRole       TransactionDebtRole?
+  counterpartyId String?
+  idempotencyKey String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counterparty   UserCounterparty?    @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
+  categories     TransactionCategory[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, occurredAt])
+  @@index([userId, type, occurredAt])
+  @@index([userId, debtRole, counterpartyId])
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  currency  String
+  rateToRub Decimal  @db.Decimal(18, 8)
+  rateDate  DateTime @db.Date
+  fetchedAt DateTime @default(now())
+  source    String   @default("frankfurter")
+
+  @@unique([currency, rateDate])
+  @@index([rateDate])
+}
+
+model TransactionCategory {
+  transactionId String
+  categoryId    String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category      UserCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, categoryId])
+  @@index([categoryId])
+}
+
+model SharedChart {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  chartType String
+  payload   Json
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isPublic])
+}
