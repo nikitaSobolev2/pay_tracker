@@ -50,7 +50,7 @@ Or run with no arguments for an interactive menu.
 | Command | Purpose |
 |---------|---------|
 | `./scripts/deploy-ubuntu.sh deploy` | Build images and start the stack (migrations run on app boot) |
-| `./scripts/deploy-ubuntu.sh update` | `git pull` + rebuild & restart |
+| `./scripts/deploy-ubuntu.sh redeploy` | `git pull` + rebuild & restart (alias: `update`) |
 | `./scripts/deploy-ubuntu.sh up` / `down` | Start / stop containers |
 | `./scripts/deploy-ubuntu.sh status` | Container status |
 | `./scripts/deploy-ubuntu.sh logs` | Follow app logs |

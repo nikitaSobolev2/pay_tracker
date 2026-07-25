@@ -224,6 +224,7 @@ ${CYAN}Commands${RESET}
   configure   Interactive .env setup (secrets, URL, port, currencies)
   deploy      Build images and start the full stack (migrate on boot)
   update      git pull (if repo) + rebuild & restart
+  redeploy    Same as update (git pull + redeploy)
   up          Start existing containers
   down        Stop containers
   status      Container status + recent health
@@ -235,6 +236,9 @@ ${CYAN}Typical first run${RESET}
   sudo ./scripts/deploy-ubuntu.sh install   # skips Docker if already present
   ./scripts/deploy-ubuntu.sh configure
   ./scripts/deploy-ubuntu.sh deploy
+
+${CYAN}After code changes${RESET}
+  ./scripts/deploy-ubuntu.sh redeploy
 
 ${CYAN}Files${RESET}
   Compose: ${COMPOSE_FILE}
@@ -541,7 +545,7 @@ ${BOLD}PayTracker deploy${RESET}  ${CYAN}(Ubuntu 22)${RESET}
   1) Install / verify Docker (skip if preinstalled)
   2) Configure .env
   3) Deploy / rebuild
-  4) Update (git pull + rebuild)
+  4) Redeploy (git pull + rebuild)
   5) Start
   6) Stop
   7) Status
@@ -583,7 +587,7 @@ main() {
     install) cmd_install ;;
     configure|config) cmd_configure ;;
     deploy) cmd_deploy ;;
-    update) cmd_update ;;
+    update|redeploy|pull) cmd_update ;;
     up|start) cmd_up ;;
     down|stop) cmd_down ;;
     status|ps) cmd_status ;;
