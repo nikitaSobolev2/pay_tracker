@@ -1,18 +1,18 @@
 {
+  "id": "/",
   "name": "PayTracker",
   "short_name": "PayTracker",
-  "description": "Track earnings and spendings",
+  "description": "Track earnings, spendings, debts, categories, and shared charts",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
+  "categories": ["finance", "productivity"],
   "icons": [
-    {
-      "src": "/logo.ico",
-      "sizes": "any",
-      "type": "image/x-icon",
-      "purpose": "any"
-    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
@@ -30,6 +30,60 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Transactions",
+      "short_name": "Transactions",
+      "description": "Browse earnings and spendings",
+      "url": "/transactions",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Debts",
+      "short_name": "Debts",
+      "description": "Track money owed and lent",
+      "url": "/debts",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Shared charts",
+      "short_name": "Charts",
+      "description": "Manage shared chart links",
+      "url": "/shared-charts",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "short_name": "Settings",
+      "description": "Account, locale, and preferences",
+      "url": "/settings",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
