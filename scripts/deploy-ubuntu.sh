@@ -508,6 +508,11 @@ cmd_update() {
   else
     warn "Not a git checkout; rebuilding current tree only."
   fi
+  # Git checkouts often drop the executable bit on Windows-authored scripts.
+  chmod +x "${ROOT}/scripts/deploy-ubuntu.sh" \
+    "${ROOT}/scripts/app-entrypoint.sh" \
+    "${ROOT}/scripts/backup-entrypoint.sh" \
+    "${ROOT}/scripts/fx-worker-entrypoint.sh" 2>/dev/null || true
   cmd_deploy
 }
 
