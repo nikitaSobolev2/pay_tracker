@@ -3,6 +3,10 @@
 import { useTranslations } from "next-intl";
 
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
+import {
+  formatLeafCategoryLabel,
+  leafCategoriesOnly,
+} from "@/lib/category-selection";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { TransactionType } from "@/types/enums";
@@ -24,8 +28,8 @@ export function TransactionListPrimary({
   const isSpending = item.type === TransactionType.Spending;
   const title =
     item.title || (isSpending ? t("spending") : t("earning"));
-  const categoriesLabel = item.categories
-    .map((category) => category.title || category.path)
+  const categoriesLabel = leafCategoriesOnly(item.categories)
+    .map(formatLeafCategoryLabel)
     .filter(Boolean)
     .join(" · ");
 

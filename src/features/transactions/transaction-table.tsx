@@ -25,6 +25,10 @@ import {
   bulkDeleteTransactions,
   deleteTransaction,
 } from "@/lib/api/transactions";
+import {
+  formatLeafCategoryLabel,
+  leafCategoriesOnly,
+} from "@/lib/category-selection";
 import { formatMoney } from "@/lib/money";
 import { useUiStore } from "@/stores/ui.store";
 import { TransactionDebtRole, TransactionType } from "@/types/enums";
@@ -215,14 +219,16 @@ export function TransactionTable({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {item.categories.map((category) => (
-                            <span
-                              key={category.id}
-                              className="rounded-md bg-muted px-1.5 py-0.5 text-xs"
-                            >
-                              {category.path}
-                            </span>
-                          ))}
+                          {leafCategoriesOnly(item.categories).map(
+                            (category) => (
+                              <span
+                                key={category.id}
+                                className="rounded-md bg-muted px-1.5 py-0.5 text-xs"
+                              >
+                                {formatLeafCategoryLabel(category)}
+                              </span>
+                            ),
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

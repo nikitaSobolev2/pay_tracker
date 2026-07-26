@@ -231,6 +231,7 @@ export type ReadableDateKind = "today" | "yesterday" | "sameYear" | "otherYear";
 
 export type ReadableDateParts = {
   kind: ReadableDateKind;
+  weekday: string;
   date: string;
   year: number;
   time: string;
@@ -266,8 +267,17 @@ export function getReadableDateParts(
     kind = "sameYear";
   }
 
+  const weekday = new Intl.DateTimeFormat(locale, {
+    timeZone: timezone,
+    weekday: "short",
+  })
+    .format(date)
+    .replace(/\.$/, "")
+    .toLocaleUpperCase(locale);
+
   return {
     kind,
+    weekday,
     date: new Intl.DateTimeFormat(locale, {
       timeZone: timezone,
       day: "numeric",

@@ -66,10 +66,10 @@
     "all_time": "All time"
   },
   "datetime": {
-    "todayAt": "today, at {time}",
-    "yesterdayAt": "yesterday, at {time}",
-    "sameYearAt": "{date}, at {time}",
-    "otherYearAt": "{date}, {year}, at {time}",
+    "todayAt": "{weekday}, today, at {time}",
+    "yesterdayAt": "{weekday}, yesterday, at {time}",
+    "sameYearAt": "{weekday}, {date}, at {time}",
+    "otherYearAt": "{weekday}, {date}, {year}, at {time}",
     "current": "current"
   },
   "transaction": {

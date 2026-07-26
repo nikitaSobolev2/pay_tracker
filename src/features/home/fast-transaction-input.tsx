@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -15,6 +15,10 @@ import {
 import { FastEnterPlaceholder } from "@/features/home/fast-enter-placeholder";
 import { useAppUser } from "@/hooks/use-app-user";
 import {
+  formatAmountInputDisplay,
+  sanitizeAmountRaw,
+} from "@/lib/amount-input";
+import {
   getClientCurrencies,
   getCurrencySymbol,
 } from "@/lib/currencies";
@@ -24,7 +28,10 @@ import { TransactionFormMode, TransactionType } from "@/types/enums";
 
 const BASE_DIGIT_SLOTS = 5;
 
-function parseAmountInput(raw: string): {
+function parseAmountInput(
+  raw: string,
+  locale: string,
+): {
   mode: TransactionFormMode | null;
   digits: string;
 } {
@@ -35,23 +42,31 @@ function parseAmountInput(raw: string): {
   if (trimmed.startsWith("+")) {
     return {
       mode: TransactionFormMode.Earning,
-      digits: trimmed.slice(1).replace(/[^\d.]/g, ""),
+      digits: sanitizeAmountRaw(trimmed.slice(1), locale),
     };
   }
-  if (trimmed.startsWith("-")) {
+  if (trimmed.startsWith("-") || trimmed.startsWith("−")) {
     return {
       mode: TransactionFormMode.Spending,
-      digits: trimmed.slice(1).replace(/[^\d.]/g, ""),
+      digits: sanitizeAmountRaw(trimmed.slice(1), locale),
     };
   }
   return {
     mode: null,
-    digits: trimmed.replace(/[^\d.]/g, ""),
+    digits: sanitizeAmountRaw(trimmed, locale),
   };
+}
+
+function formatPlaceholderAmount(raw: string, locale: string): string {
+  if (raw.startsWith("+")) {
+    return `+${formatAmountInputDisplay(sanitizeAmountRaw(raw.slice(1), locale), locale)}`;
+  }
+  return formatAmountInputDisplay(sanitizeAmountRaw(raw, locale), locale);
 }
 
 export function FastTransactionInput() {
   const t = useTranslations("home");
+  const locale = useLocale();
   const { user } = useAppUser();
   const [mode, setMode] = useState<TransactionFormMode>(
     TransactionFormMode.Spending,
@@ -66,22 +81,27 @@ export function FastTransactionInput() {
   }, [user?.defaultCurrency]);
 
   const placeholderSlides = useMemo(
-    () => [
-      { amount: "1250", hint: t("fastHintSpending") },
-      { amount: "+4800", hint: t("fastHintEarning") },
-      { amount: "890", hint: t("fastHintSpendingQuick") },
-      { amount: "+12000", hint: t("fastHintEarningQuick") },
-      { amount: "3400", hint: t("fastHintSpending") },
-    ],
-    [t],
+    () =>
+      [
+        { amount: "1250", hint: t("fastHintSpending") },
+        { amount: "+4800", hint: t("fastHintEarning") },
+        { amount: "890", hint: t("fastHintSpendingQuick") },
+        { amount: "+12000", hint: t("fastHintEarningQuick") },
+        { amount: "3400", hint: t("fastHintSpending") },
+      ].map((slide) => ({
+        ...slide,
+        amount: formatPlaceholderAmount(slide.amount, locale),
+      })),
+    [locale, t],
   );
 
-  const digitSlots = Math.max(BASE_DIGIT_SLOTS, digits.length || 0);
+  const displayAmount = formatAmountInputDisplay(digits, locale);
+  const digitSlots = Math.max(BASE_DIGIT_SLOTS, displayAmount.length || 0);
   const sideShiftPercent = 10 + Math.max(0, digitSlots - BASE_DIGIT_SLOTS) * 5;
   const isEarning = mode === TransactionFormMode.Earning;
 
   function handleChange(raw: string) {
-    const parsed = parseAmountInput(raw);
+    const parsed = parseAmountInput(raw, locale);
     if (!parsed.digits) {
       setMode(TransactionFormMode.Spending);
       setDigits("");
@@ -185,7 +205,7 @@ export function FastTransactionInput() {
               aria-label={t("fastInputAria")}
               inputMode="decimal"
               autoComplete="off"
-              value={digits}
+              value={displayAmount}
               onChange={(event) => handleChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "+") {

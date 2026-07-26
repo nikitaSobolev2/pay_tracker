@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 
+import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +34,7 @@ import {
   createTransaction,
   updateTransaction,
 } from "@/lib/api/transactions";
+import { normalizeAmountRaw } from "@/lib/amount-input";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui.store";
 import {
@@ -107,7 +109,7 @@ export function TransactionFormModal() {
     setSelectedChipId(null);
     if (editingTransaction) {
       setForm({
-        amount: editingTransaction.originalAmount,
+        amount: normalizeAmountRaw(editingTransaction.originalAmount),
         currency: editingTransaction.inputCurrency,
         title: editingTransaction.title ?? "",
         occurredAt: new Date(editingTransaction.occurredAt),
@@ -207,16 +209,16 @@ export function TransactionFormModal() {
                   }
                 }}
               >
-                <TabsList className="grid h-12 w-full grid-cols-2 rounded-xl p-1 md:h-11">
+                <TabsList className="grid h-14 w-full grid-cols-2 rounded-xl p-1.5">
                   <TabsTrigger
                     value={TransactionFormMode.Spending}
-                    className="rounded-lg px-4 text-sm"
+                    className="h-full rounded-lg px-4 text-base font-medium"
                   >
                     {t("spending")}
                   </TabsTrigger>
                   <TabsTrigger
                     value={TransactionFormMode.Earning}
-                    className="rounded-lg px-4 text-sm"
+                    className="h-full rounded-lg px-4 text-base font-medium"
                   >
                     {t("earning")}
                   </TabsTrigger>
@@ -243,15 +245,11 @@ export function TransactionFormModal() {
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("amount")}</Label>
             <div className="flex items-stretch gap-2">
-              <Input
-                inputMode="decimal"
+              <AmountInput
                 className="h-12 flex-1 rounded-xl text-base md:h-11"
                 value={form.amount}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    amount: event.target.value.replace(/[^\d.]/g, ""),
-                  }))
+                onValueChange={(amount) =>
+                  setForm((prev) => ({ ...prev, amount }))
                 }
               />
               <CurrencySelect

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createCategory, listCategories } from "@/lib/api/categories";
 import { splitCategoryPath } from "@/lib/category-path";
+import {
+  CATEGORY_GROUP_TONES,
+  collectDescendantIds,
+  groupCategoriesByParent,
+  withAncestorSelection,
+} from "@/lib/category-selection";
 import { cn } from "@/lib/utils";
 import type { TransactionType } from "@/types/enums";
 import type { TransactionCategoryDto } from "@/types/transaction";
@@ -42,12 +48,21 @@ export function CategoryChipPicker({
     };
   }, [type]);
 
+  const groups = useMemo(
+    () => groupCategoriesByParent(categories),
+    [categories],
+  );
+
   function toggle(id: string) {
     if (selectedIds.includes(id)) {
-      onChange(selectedIds.filter((item) => item !== id));
+      const removeIds = new Set([
+        id,
+        ...collectDescendantIds(id, categories),
+      ]);
+      onChange(selectedIds.filter((item) => !removeIds.has(item)));
       return;
     }
-    onChange([...selectedIds, id]);
+    onChange(withAncestorSelection(selectedIds, id, categories));
   }
 
   async function handleCreate() {
@@ -66,9 +81,7 @@ export function CategoryChipPicker({
       (category) => category.path.toLowerCase() === pathKey,
     );
     if (existing) {
-      if (!selectedIds.includes(existing.id)) {
-        onChange([...selectedIds, existing.id]);
-      }
+      onChange(withAncestorSelection(selectedIds, existing.id, categories));
       setDraft("");
       return;
     }
@@ -78,7 +91,13 @@ export function CategoryChipPicker({
       const result = await createCategory(title, type);
       const refreshed = await listCategories(type);
       setCategories(refreshed.categories);
-      onChange([...selectedIds, result.category.id]);
+      onChange(
+        withAncestorSelection(
+          selectedIds,
+          result.category.id,
+          refreshed.categories,
+        ),
+      );
       setDraft("");
     } catch (error) {
       toast.error(
@@ -116,40 +135,57 @@ export function CategoryChipPicker({
           {tCommon("apply")}
         </Button>
       </div>
-      {categories.length > 0 || selectedIds.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => {
-            const active = selectedIds.includes(category.id);
+
+      {groups.length > 0 ? (
+        <div className="space-y-2">
+          {groups.map((group) => {
+            const tone =
+              CATEGORY_GROUP_TONES[
+                group.toneIndex % CATEGORY_GROUP_TONES.length
+              ]!;
             return (
-              <button
-                key={category.id}
-                type="button"
-                className="cursor-pointer"
-                onClick={() => toggle(category.id)}
+              <div
+                key={group.rootId}
+                className={cn("rounded-2xl border p-2", tone.shell)}
               >
-                <Badge
-                  variant={active ? "default" : "outline"}
-                  className={cn(
-                    "h-10 max-w-full rounded-full px-3.5 text-sm font-medium",
-                    active && "bg-foreground text-background",
-                  )}
-                >
-                  <span className="truncate">{category.path}</span>
-                </Badge>
-              </button>
+                <div className="flex flex-wrap gap-2">
+                  {group.members.map((category) => {
+                    const active = selectedIds.includes(category.id);
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        className="cursor-pointer"
+                        onClick={() => toggle(category.id)}
+                      >
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "h-10 max-w-full rounded-full border px-3.5 text-sm font-medium",
+                            active ? tone.chipActive : tone.chipIdle,
+                          )}
+                        >
+                          <span className="truncate">{category.title}</span>
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
-          {selectedIds.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 rounded-full px-3 text-sm"
-              onClick={() => onChange([])}
-            >
-              {tCommon("clearAll")}
-            </Button>
-          ) : null}
         </div>
+      ) : null}
+
+      {selectedIds.length > 0 ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 rounded-full px-3 text-sm"
+          onClick={() => onChange([])}
+        >
+          {tCommon("clearAll")}
+        </Button>
       ) : null}
     </div>
   );

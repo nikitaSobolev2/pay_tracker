@@ -16,6 +16,10 @@ import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { Link, useRouter } from "@/i18n/navigation";
 import { fetchTransactionContext } from "@/lib/api/stats";
 import { deleteTransaction } from "@/lib/api/transactions";
+import {
+  formatLeafCategoryLabel,
+  leafCategoriesOnly,
+} from "@/lib/category-selection";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { CategoryDetailStats } from "@/server/services/detail-stats-service.types";
@@ -192,13 +196,13 @@ export function TransactionDetailPage({
               {transaction.categories.length === 0 ? (
                 <span className="text-muted-foreground">—</span>
               ) : (
-                transaction.categories.map((category) => (
+                leafCategoriesOnly(transaction.categories).map((category) => (
                   <Link
                     key={category.id}
                     href={`/categories?id=${category.id}`}
                     className="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-sm hover:bg-muted"
                   >
-                    {category.path}
+                    {formatLeafCategoryLabel(category)}
                   </Link>
                 ))
               )}

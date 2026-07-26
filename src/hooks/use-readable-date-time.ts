@@ -20,15 +20,20 @@ export function useReadableDateTime() {
       }
 
       if (parts.kind === "today") {
-        return t("todayAt", { time: parts.time });
+        return t("todayAt", { weekday: parts.weekday, time: parts.time });
       }
       if (parts.kind === "yesterday") {
-        return t("yesterdayAt", { time: parts.time });
+        return t("yesterdayAt", { weekday: parts.weekday, time: parts.time });
       }
       if (parts.kind === "sameYear") {
-        return t("sameYearAt", { date: parts.date, time: parts.time });
+        return t("sameYearAt", {
+          weekday: parts.weekday,
+          date: parts.date,
+          time: parts.time,
+        });
       }
       return t("otherYearAt", {
+        weekday: parts.weekday,
         date: parts.date,
         year: parts.year,
         time: parts.time,

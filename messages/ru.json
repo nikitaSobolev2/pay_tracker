@@ -66,10 +66,10 @@
     "all_time": "Всё время"
   },
   "datetime": {
-    "todayAt": "сегодня, в {time}",
-    "yesterdayAt": "вчера, в {time}",
-    "sameYearAt": "{date}, в {time}",
-    "otherYearAt": "{date} {year} года, в {time}",
+    "todayAt": "{weekday}, сегодня, в {time}",
+    "yesterdayAt": "{weekday}, вчера, в {time}",
+    "sameYearAt": "{weekday}, {date}, в {time}",
+    "otherYearAt": "{weekday}, {date} {year} года, в {time}",
     "current": "текущий"
   },
   "transaction": {
