@@ -44,7 +44,7 @@ const CSV_COLUMNS = [
 
 export async function exportCsv(userId: string): Promise<CsvExportResult> {
   const rows = await prisma.transaction.findMany({
-    where: { userId },
+    where: { userId, isDeleted: false },
     include: {
       counterparty: true,
       categories: { include: { category: true } },
@@ -105,7 +105,7 @@ export async function previewImport(
   }
 
   const existing = await prisma.transaction.findMany({
-    where: { userId },
+    where: { userId, isDeleted: false },
     include: { counterparty: true },
   });
   const existingIds = new Set(existing.map((row) => row.id));

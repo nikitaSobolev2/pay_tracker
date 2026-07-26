@@ -2,6 +2,7 @@
 
 import { Cell, Pie, PieChart } from "recharts";
 import { useTranslations } from "next-intl";
+import { useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +25,13 @@ import { cn } from "@/lib/utils";
 import type { CategorySlice } from "@/server/services/stats-service.types";
 import { TransactionType } from "@/types/enums";
 
+type PieSliceDatum = Omit<CategorySlice, "amount"> & {
+  amount: number;
+  fill: string;
+  chartKey: string;
+  displayPercent: number;
+};
+
 type CategoryPieChartProps = {
   readonly title: string;
   readonly description?: string;
@@ -35,7 +43,6 @@ type CategoryPieChartProps = {
   /** Color slices by earning/spending and show type chips when both appear. */
   readonly showTypeHints?: boolean;
   readonly className?: string;
-  readonly onSliceClick?: (slice: CategorySlice) => void;
   /** Hide share control (e.g. on public shared pages). */
   readonly disableShare?: boolean;
 };
@@ -49,41 +56,121 @@ export function CategoryPieChart({
   layout = "split",
   showTypeHints = false,
   className,
-  onSliceClick,
   disableShare = false,
 }: CategoryPieChartProps) {
   const tTx = useTranslations("transaction");
   const tCharts = useTranslations("charts");
-  const typeCounts = { spending: 0, earning: 0 };
-  const data = slices.map((slice) => {
-    const withinType =
-      slice.type === TransactionType.Earning
-        ? typeCounts.earning++
-        : typeCounts.spending++;
-    return {
-      ...slice,
-      amount: Number(slice.amount),
-      fill: categorySliceFill(slice.type, withinType),
-      chartKey: sliceIdentityKey(
-        slice.categoryId,
-        slice.type,
-        slice.title,
-        withinType,
-      ),
-    };
-  });
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(() => new Set());
 
-  const total = data.reduce((sum, slice) => sum + slice.amount, 0);
-  const mixedTypes = typeCounts.spending > 0 && typeCounts.earning > 0;
+  const baseData = useMemo(() => {
+    const typeCounts = { spending: 0, earning: 0 };
+    return slices.map((slice) => {
+      const withinType =
+        slice.type === TransactionType.Earning
+          ? typeCounts.earning++
+          : typeCounts.spending++;
+      return {
+        ...slice,
+        amount: Number(slice.amount),
+        fill: categorySliceFill(slice.type, withinType),
+        chartKey: sliceIdentityKey(
+          slice.categoryId,
+          slice.type,
+          slice.title,
+          withinType,
+        ),
+      };
+    });
+  }, [slices]);
+
+  const slicesIdentity = useMemo(
+    () => baseData.map((slice) => slice.chartKey).join("|"),
+    [baseData],
+  );
+  const slicesIdentityRef = useRef(slicesIdentity);
+  if (slicesIdentityRef.current !== slicesIdentity) {
+    slicesIdentityRef.current = slicesIdentity;
+    if (hiddenKeys.size > 0) {
+      setHiddenKeys(new Set());
+    }
+  }
+
+  const mixedTypes = useMemo(() => {
+    let spending = 0;
+    let earning = 0;
+    for (const slice of baseData) {
+      if (slice.type === TransactionType.Earning) {
+        earning += 1;
+      } else {
+        spending += 1;
+      }
+    }
+    return spending > 0 && earning > 0;
+  }, [baseData]);
+
+  const dataWithPercents: PieSliceDatum[] = useMemo(() => {
+    const visible = baseData.filter((slice) => !hiddenKeys.has(slice.chartKey));
+    const totalByType = {
+      [TransactionType.Earning]: 0,
+      [TransactionType.Spending]: 0,
+    };
+    for (const slice of visible) {
+      totalByType[slice.type] += slice.amount;
+    }
+    const visibleTotal = visible.reduce((sum, slice) => sum + slice.amount, 0);
+
+    return baseData.map((slice) => {
+      const hidden = hiddenKeys.has(slice.chartKey);
+      let displayPercent = 0;
+      if (!hidden) {
+        const denominator =
+          showTypeHints && mixedTypes
+            ? totalByType[slice.type]
+            : visibleTotal;
+        displayPercent =
+          denominator > 0 ? (slice.amount / denominator) * 100 : 0;
+      }
+      return { ...slice, displayPercent };
+    });
+  }, [baseData, hiddenKeys, mixedTypes, showTypeHints]);
+
+  const visibleData = useMemo(
+    () => dataWithPercents.filter((slice) => !hiddenKeys.has(slice.chartKey)),
+    [dataWithPercents, hiddenKeys],
+  );
+
+  const visibleTotal = useMemo(
+    () => visibleData.reduce((sum, slice) => sum + slice.amount, 0),
+    [visibleData],
+  );
+
   const config = Object.fromEntries(
-    data.map((slice) => [
+    baseData.map((slice) => [
       slice.chartKey,
       { label: slice.title, color: slice.fill },
     ]),
   ) satisfies ChartConfig;
   const stacked = layout === "stack";
   const autoDescription =
-    total > 0 ? formatChartMoney(String(total), currency) : tCharts("noData");
+    visibleTotal > 0
+      ? formatChartMoney(String(visibleTotal), currency)
+      : tCharts("noData");
+
+  function toggleSlice(chartKey: string) {
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(chartKey)) {
+        next.delete(chartKey);
+        return next;
+      }
+      const visibleCount = baseData.length - next.size;
+      if (visibleCount <= 1) {
+        return prev;
+      }
+      next.add(chartKey);
+      return next;
+    });
+  }
 
   return (
     <StatCard
@@ -106,7 +193,7 @@ export function CategoryPieChart({
       className={cn("h-full", className)}
       skeleton={<CategoryPieSkeleton stacked={stacked} />}
     >
-      {data.length === 0 ? (
+      {baseData.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           <div className="size-28 rounded-full border-10 border-muted/50" />
           <span>{tCharts("noCategories")}</span>
@@ -131,13 +218,8 @@ export function CategoryPieChart({
                   <ChartTooltipContent
                     hideLabel
                     formatter={(value, _name, item) => {
-                      const payload = item.payload as
-                        | (CategorySlice & {
-                            amount: number;
-                            chartKey: string;
-                          })
-                        | undefined;
-                      const percent = payload?.percent;
+                      const payload = item.payload as PieSliceDatum | undefined;
+                      const percent = payload?.displayPercent;
                       return (
                         <div className="flex min-w-40 flex-col gap-0.5">
                           <span className="font-medium">
@@ -188,7 +270,7 @@ export function CategoryPieChart({
                 }
               />
               <Pie
-                data={data}
+                data={visibleData}
                 dataKey="amount"
                 nameKey="chartKey"
                 innerRadius={stacked ? 48 : 58}
@@ -196,13 +278,13 @@ export function CategoryPieChart({
                 paddingAngle={2}
                 stroke="transparent"
                 onClick={(_, index) => {
-                  const slice = slices[index];
+                  const slice = visibleData[index];
                   if (slice) {
-                    onSliceClick?.(slice);
+                    toggleSlice(slice.chartKey);
                   }
                 }}
               >
-                {data.map((entry) => (
+                {visibleData.map((entry) => (
                   <Cell
                     key={entry.chartKey}
                     fill={entry.fill}
@@ -214,18 +296,17 @@ export function CategoryPieChart({
           </ChartContainer>
 
           <ul className="space-y-2.5">
-            {data.slice(0, 5).map((slice, index) => {
-              const source = slices[index];
+            {dataWithPercents.slice(0, 5).map((slice) => {
+              const hidden = hiddenKeys.has(slice.chartKey);
               return (
                 <li key={slice.chartKey}>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-2.5 text-left text-sm"
-                    onClick={() => {
-                      if (source) {
-                        onSliceClick?.(source);
-                      }
-                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 text-left text-sm transition-opacity",
+                      hidden && "opacity-40",
+                    )}
+                    onClick={() => toggleSlice(slice.chartKey)}
                     title={
                       slice.children.length > 0
                         ? slice.children
@@ -263,7 +344,7 @@ export function CategoryPieChart({
                           : "text-rose-400",
                       )}
                     >
-                      {slice.percent.toFixed(0)}%
+                      {hidden ? "—" : `${slice.displayPercent.toFixed(0)}%`}
                     </span>
                   </button>
                 </li>

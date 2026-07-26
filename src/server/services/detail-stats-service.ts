@@ -98,6 +98,7 @@ export async function getCategoryDetailStats(input: {
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       type: category.type,
       occurredAt: { gte: start, lte: end },
       categories: {
@@ -272,6 +273,7 @@ export async function getDebtDetailStats(input: {
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       counterpartyId: input.counterpartyId,
       debtRole: {
         in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],

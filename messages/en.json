@@ -116,7 +116,10 @@
     "yearsSuffix": "years",
     "lastNDays": "Last {n} days",
     "lastNMonths": "Last {n} months",
-    "lastNYears": "Last {n} years"
+    "lastNYears": "Last {n} years",
+    "viewTransaction": "View transaction",
+    "restore": "Restore",
+    "deleted": "Deleted"
   },
   "home": {
     "fastInputPlaceholder": "Amount (123 spending, +123 earning)",

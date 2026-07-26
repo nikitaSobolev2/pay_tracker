@@ -41,7 +41,7 @@ export async function getOverviewStats(
   const [periodRows, recentRows, debtSnapshot] = await Promise.all([
     fetchRows(input.userId, start, end),
     prisma.transaction.findMany({
-      where: { userId: input.userId },
+      where: { userId: input.userId, isDeleted: false },
       include: {
         counterparty: true,
         categories: { include: { category: true } },
@@ -168,6 +168,7 @@ async function aggregateNettedDebtSnapshots(
     by: ["counterpartyId", "debtRole", "fxRateDate"],
     where: {
       userId,
+      isDeleted: false,
       debtRole: { in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow] },
     },
     _sum: { amount: true },

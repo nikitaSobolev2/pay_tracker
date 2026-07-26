@@ -267,6 +267,7 @@ async function searchDebtsForCounterparties(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       counterpartyId: { in: ids },
       debtRole: {
         in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],
@@ -340,6 +341,7 @@ async function searchTransactionsByDate(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       occurredAt: { gte: start, lte: end },
     },
     include: {
@@ -358,7 +360,7 @@ async function searchTransactionsByAmount(
   limit: number,
 ): Promise<SearchTransactionHit[]> {
   const rows = await prisma.transaction.findMany({
-    where: { userId: input.userId },
+    where: { userId: input.userId, isDeleted: false },
     include: {
       counterparty: true,
       categories: { include: { category: true } },
@@ -396,6 +398,7 @@ async function searchTransactionsByTitle(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       title: { contains: needle, mode: "insensitive" },
     },
     include: {
@@ -423,6 +426,7 @@ async function searchTransactionsByCategoryIds(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       categories: { some: { categoryId: { in: descendantIds } } },
     },
     include: {
@@ -443,6 +447,7 @@ async function searchTransactionsByCounterpartyIds(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       counterpartyId: { in: counterpartyIds },
     },
     include: {

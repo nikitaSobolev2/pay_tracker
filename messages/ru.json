@@ -116,7 +116,10 @@
     "yearsSuffix": "лет",
     "lastNDays": "Последние {n} дн.",
     "lastNMonths": "Последние {n} мес.",
-    "lastNYears": "Последние {n} лет"
+    "lastNYears": "Последние {n} лет",
+    "viewTransaction": "Открыть транзакцию",
+    "restore": "Восстановить",
+    "deleted": "Удалено"
   },
   "home": {
     "fastInputPlaceholder": "Сумма (123 расход, +123 доход)",

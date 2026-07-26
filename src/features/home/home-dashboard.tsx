@@ -17,7 +17,6 @@ import { TimelineChart } from "@/features/charts/timeline-chart";
 import { FastTransactionInput } from "@/features/home/fast-transaction-input";
 import { FastTransactionQueueTable } from "@/features/home/fast-transaction-queue-table";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRouter } from "@/i18n/navigation";
 import { fetchOverviewStats } from "@/lib/api/stats";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,6 @@ export function HomeDashboard() {
   const t = useTranslations("home");
   const tCharts = useTranslations("charts");
   const tDateRange = useTranslations("dateRange");
-  const router = useRouter();
   const isMobile = useIsMobile();
   const setMobilePageChrome = useMobilePageChromeStore((state) => state.setChrome);
   const dateRangeSentinelRef = useRef<HTMLDivElement>(null);
@@ -314,30 +312,12 @@ export function HomeDashboard() {
           loading={loading && !stats}
           slices={stats?.spendingByCategory ?? []}
           currency={stats?.displayCurrency ?? "RUB"}
-          onSliceClick={(slice) => {
-            if (slice.categoryId) {
-              router.push(
-                `/transactions?type=spending&categoryIds=${encodeURIComponent(slice.categoryId)}`,
-              );
-            } else {
-              router.push("/transactions?type=spending");
-            }
-          }}
         />
         <CategoryPieChart
           title={t("earningByCategory")}
           loading={loading && !stats}
           slices={stats?.earningByCategory ?? []}
           currency={stats?.displayCurrency ?? "RUB"}
-          onSliceClick={(slice) => {
-            if (slice.categoryId) {
-              router.push(
-                `/transactions?type=earning&categoryIds=${encodeURIComponent(slice.categoryId)}`,
-              );
-            } else {
-              router.push("/transactions?type=earning");
-            }
-          }}
         />
       </div>
 

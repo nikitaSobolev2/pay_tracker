@@ -91,7 +91,7 @@ export async function hasMultipleCurrenciesForUser(
   userId: string,
 ): Promise<boolean> {
   const rows = await prisma.transaction.findMany({
-    where: { userId },
+    where: { userId, isDeleted: false },
     select: { inputCurrency: true },
     distinct: ["inputCurrency"],
     take: 2,

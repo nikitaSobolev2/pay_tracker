@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
   type ReactNode,
   type TransitionEvent,
@@ -117,6 +118,8 @@ function useAnimatedPageChrome(chrome: MobilePageChrome | null) {
     null,
   );
   const [chromeOpen, setChromeOpen] = useState(false);
+  const chromeOpenRef = useRef(false);
+  chromeOpenRef.current = chromeOpen;
 
   useEffect(() => {
     if (chrome) {
@@ -126,13 +129,14 @@ function useAnimatedPageChrome(chrome: MobilePageChrome | null) {
       return () => cancelAnimationFrame(frame);
     }
 
-    setChromeOpen((isOpen) => {
-      if (!isOpen) {
-        setRenderedChrome(null);
-        setChromeExpanded(false);
-      }
-      return false;
-    });
+    // Already closed — clear immediately (no nested setState in updater).
+    if (!chromeOpenRef.current) {
+      setRenderedChrome(null);
+      setChromeExpanded(false);
+      return;
+    }
+
+    setChromeOpen(false);
   }, [chrome, setChromeExpanded]);
 
   function onChromeTransitionEnd(event: TransitionEvent<HTMLDivElement>) {

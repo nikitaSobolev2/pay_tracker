@@ -525,22 +525,22 @@ function CounterpartiesListContent({
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 w-full gap-2 rounded-xl px-3 sm:size-10 sm:shrink-0 sm:gap-0 sm:p-0"
+                className="h-11 w-full gap-2 rounded-xl px-3 sm:h-10 sm:w-auto sm:shrink-0"
                 aria-label={tCommon("edit")}
                 onClick={() => onStartEdit(counterparty)}
               >
                 <Pencil className="size-4" />
-                <span className="sm:hidden">{tCommon("edit")}</span>
+                {tCommon("edit")}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                className="h-11 w-full gap-2 rounded-xl px-3 sm:size-10 sm:shrink-0 sm:gap-0 sm:p-0"
+                className="h-11 w-full gap-2 rounded-xl px-3 sm:h-10 sm:w-auto sm:shrink-0"
                 aria-label={tCommon("delete")}
                 onClick={() => onDelete(counterparty)}
               >
                 <Trash2 className="size-4" />
-                <span className="sm:hidden">{tCommon("delete")}</span>
+                {tCommon("delete")}
               </Button>
             </div>
           </li>

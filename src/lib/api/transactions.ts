@@ -99,6 +99,12 @@ export function deleteTransaction(id: string) {
   });
 }
 
+export function restoreTransaction(id: string) {
+  return apiFetch<{ ok: true }>(`/api/transactions/${id}/restore`, {
+    method: "POST",
+  });
+}
+
 export function bulkDeleteTransactions(ids: string[]) {
   return apiFetch<{ deletedCount: number }>("/api/transactions/bulk-delete", {
     method: "POST",

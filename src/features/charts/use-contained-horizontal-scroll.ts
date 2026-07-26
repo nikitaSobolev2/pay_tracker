@@ -50,13 +50,14 @@ export function useContainedHorizontalScroll(
   }, [resetKey]);
 
   useEffect(() => {
-    const node = scrollRef.current;
-    if (!node) {
+    const target = scrollRef.current;
+    if (!target) {
       return;
     }
+    const scrollElement: HTMLElement = target;
 
-    function handleWheel(event: WheelEvent) {
-      if (!hasHorizontalOverflow(node)) {
+    const handleWheel = (event: WheelEvent) => {
+      if (!hasHorizontalOverflow(scrollElement)) {
         return;
       }
 
@@ -70,8 +71,8 @@ export function useContainedHorizontalScroll(
 
       // Gesture started on the chart — keep scroll local, never chain to the page.
       event.preventDefault();
-      node.scrollLeft += delta;
-    }
+      scrollElement.scrollLeft += delta;
+    };
 
     let touchStart: {
       x: number;
@@ -80,30 +81,30 @@ export function useContainedHorizontalScroll(
     } | null = null;
     let touchAxis: "horizontal" | "vertical" | null = null;
 
-    function handleTouchStart(event: TouchEvent) {
-      if (!hasHorizontalOverflow(node) || event.touches.length !== 1) {
+    const handleTouchStart = (event: TouchEvent) => {
+      if (!hasHorizontalOverflow(scrollElement) || event.touches.length !== 1) {
         touchStart = null;
         touchAxis = null;
         return;
       }
-      const touch = event.touches[0];
+      const touch = event.touches[0]!;
       touchStart = {
         x: touch.clientX,
         y: touch.clientY,
-        scrollLeft: node.scrollLeft,
+        scrollLeft: scrollElement.scrollLeft,
       };
       touchAxis = null;
-    }
+    };
 
-    function handleTouchMove(event: TouchEvent) {
+    const handleTouchMove = (event: TouchEvent) => {
       if (!touchStart || event.touches.length !== 1) {
         return;
       }
-      if (!hasHorizontalOverflow(node)) {
+      if (!hasHorizontalOverflow(scrollElement)) {
         return;
       }
 
-      const touch = event.touches[0];
+      const touch = event.touches[0]!;
       const deltaX = touch.clientX - touchStart.x;
       const deltaY = touch.clientY - touchStart.y;
 
@@ -121,27 +122,31 @@ export function useContainedHorizontalScroll(
       // Swallow the gesture so the page behind the chart does not scroll.
       event.preventDefault();
       if (touchAxis === "horizontal") {
-        node.scrollLeft = touchStart.scrollLeft - deltaX;
+        scrollElement.scrollLeft = touchStart.scrollLeft - deltaX;
       }
-    }
+    };
 
-    function handleTouchEnd() {
+    const handleTouchEnd = () => {
       touchStart = null;
       touchAxis = null;
-    }
+    };
 
-    node.addEventListener("wheel", handleWheel, { passive: false });
-    node.addEventListener("touchstart", handleTouchStart, { passive: true });
-    node.addEventListener("touchmove", handleTouchMove, { passive: false });
-    node.addEventListener("touchend", handleTouchEnd);
-    node.addEventListener("touchcancel", handleTouchEnd);
+    scrollElement.addEventListener("wheel", handleWheel, { passive: false });
+    scrollElement.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    scrollElement.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    scrollElement.addEventListener("touchend", handleTouchEnd);
+    scrollElement.addEventListener("touchcancel", handleTouchEnd);
 
     return () => {
-      node.removeEventListener("wheel", handleWheel);
-      node.removeEventListener("touchstart", handleTouchStart);
-      node.removeEventListener("touchmove", handleTouchMove);
-      node.removeEventListener("touchend", handleTouchEnd);
-      node.removeEventListener("touchcancel", handleTouchEnd);
+      scrollElement.removeEventListener("wheel", handleWheel);
+      scrollElement.removeEventListener("touchstart", handleTouchStart);
+      scrollElement.removeEventListener("touchmove", handleTouchMove);
+      scrollElement.removeEventListener("touchend", handleTouchEnd);
+      scrollElement.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, [resetKey]);
 

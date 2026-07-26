@@ -30,6 +30,7 @@ export async function getDebtsStats(
   const rows = await prisma.transaction.findMany({
     where: {
       userId: input.userId,
+      isDeleted: false,
       debtRole: { in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow] },
     },
     include: {

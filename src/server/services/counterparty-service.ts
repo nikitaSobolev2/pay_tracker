@@ -27,6 +27,7 @@ export async function searchCounterparties(
         : {}),
       transactions: {
         some: {
+          isDeleted: false,
           debtRole: input.debtRole
             ? input.debtRole
             : {

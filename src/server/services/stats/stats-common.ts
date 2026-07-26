@@ -92,7 +92,7 @@ export async function sumDisplayGrouped(
 ): Promise<Decimal> {
   const groups = await prisma.transaction.groupBy({
     by: ["fxRateDate"],
-    where,
+    where: { ...where, isDeleted: false },
     _sum: { amount: true },
   });
   let total = toDecimal(0);
@@ -119,6 +119,7 @@ export async function fetchRows(
   return prisma.transaction.findMany({
     where: {
       userId,
+      isDeleted: false,
       ...(type ? { type } : {}),
       ...(start || end
         ? {
@@ -146,7 +147,7 @@ export async function resolveDayCount(
     return elapsedDaysInRange(start, end);
   }
   const first = await prisma.transaction.findFirst({
-    where: { userId },
+    where: { userId, isDeleted: false },
     orderBy: { occurredAt: "asc" },
     select: { occurredAt: true },
   });

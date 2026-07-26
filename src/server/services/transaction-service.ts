@@ -42,15 +42,10 @@ type TransactionRecord = Prisma.TransactionGetPayload<{
 export async function createTransaction(
   input: CreateTransactionInput,
 ): Promise<TransactionDto> {
-  const existing = await prisma.transaction.findUnique({
-    where: {
-      userId_idempotencyKey: {
-        userId: input.userId,
-        idempotencyKey: input.idempotencyKey,
-      },
-    },
-    include: transactionInclude,
-  });
+  const existing = await findActiveByIdempotencyKey(
+    input.userId,
+    input.idempotencyKey,
+  );
   if (existing) {
     return mapTransactionDto(existing, input.displayCurrency);
   }
@@ -89,15 +84,10 @@ export async function createTransaction(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      const raced = await prisma.transaction.findUnique({
-        where: {
-          userId_idempotencyKey: {
-            userId: input.userId,
-            idempotencyKey: input.idempotencyKey,
-          },
-        },
-        include: transactionInclude,
-      });
+      const raced = await findActiveByIdempotencyKey(
+        input.userId,
+        input.idempotencyKey,
+      );
       if (raced) {
         return mapTransactionDto(raced, input.displayCurrency);
       }
@@ -136,7 +126,7 @@ export async function getTransaction(
   displayCurrency: string,
 ): Promise<TransactionDto> {
   const row = await prisma.transaction.findFirst({
-    where: { id: transactionId, userId },
+    where: { id: transactionId, userId, isDeleted: false },
     include: transactionInclude,
   });
   if (!row) {
@@ -149,7 +139,11 @@ export async function updateTransaction(
   input: UpdateTransactionInput,
 ): Promise<TransactionDto> {
   const existing = await prisma.transaction.findFirst({
-    where: { id: input.transactionId, userId: input.userId },
+    where: {
+      id: input.transactionId,
+      userId: input.userId,
+      isDeleted: false,
+    },
     include: transactionInclude,
   });
   if (!existing) {
@@ -229,8 +223,26 @@ export async function deleteTransaction(
   userId: string,
   transactionId: string,
 ): Promise<void> {
-  const result = await prisma.transaction.deleteMany({
-    where: { id: transactionId, userId },
+  const result = await prisma.transaction.updateMany({
+    where: { id: transactionId, userId, isDeleted: false },
+    data: {
+      isDeleted: true,
+      // Free the unique idempotency slot so the same key can be reused.
+      idempotencyKey: deletedIdempotencyKey(transactionId),
+    },
+  });
+  if (result.count === 0) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Transaction not found");
+  }
+}
+
+export async function restoreTransaction(
+  userId: string,
+  transactionId: string,
+): Promise<void> {
+  const result = await prisma.transaction.updateMany({
+    where: { id: transactionId, userId, isDeleted: true },
+    data: { isDeleted: false },
   });
   if (result.count === 0) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Transaction not found");
@@ -244,13 +256,24 @@ export async function bulkDeleteTransactions(
   if (ids.length === 0) {
     return { deletedCount: 0 };
   }
-  const result = await prisma.transaction.deleteMany({
-    where: {
-      userId: input.userId,
-      id: { in: ids },
-    },
-  });
-  return { deletedCount: result.count };
+  const result = await prisma.$transaction(
+    ids.map((id) =>
+      prisma.transaction.updateMany({
+        where: {
+          userId: input.userId,
+          id,
+          isDeleted: false,
+        },
+        data: {
+          isDeleted: true,
+          idempotencyKey: deletedIdempotencyKey(id),
+        },
+      }),
+    ),
+  );
+  return {
+    deletedCount: result.reduce((sum, item) => sum + item.count, 0),
+  };
 }
 
 export function resolveListDateBounds(
@@ -306,6 +329,7 @@ export function buildTransactionWhere(
 
   return {
     userId: input.userId,
+    isDeleted: false,
     ...(input.type ? { type: input.type } : {}),
     ...(input.debtRoles && input.debtRoles.length > 0
       ? { debtRole: { in: input.debtRoles } }
@@ -491,3 +515,17 @@ const transactionInclude = {
   counterparty: true,
   categories: { include: { category: true } },
 } satisfies Prisma.TransactionInclude;
+
+async function findActiveByIdempotencyKey(
+  userId: string,
+  idempotencyKey: string,
+): Promise<TransactionRecord | null> {
+  return prisma.transaction.findFirst({
+    where: { userId, idempotencyKey, isDeleted: false },
+    include: transactionInclude,
+  });
+}
+
+function deletedIdempotencyKey(transactionId: string): string {
+  return `deleted:${transactionId}`;
+}

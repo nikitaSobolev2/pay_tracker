@@ -141,6 +141,7 @@ model Transaction {
   debtRole       TransactionDebtRole?
   counterpartyId String?
   idempotencyKey String
+  isDeleted      Boolean              @default(false)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -151,6 +152,7 @@ model Transaction {
   @@index([userId, occurredAt])
   @@index([userId, type, occurredAt])
   @@index([userId, debtRole, counterpartyId])
+  @@index([userId, isDeleted, occurredAt])
 }
 
 model ExchangeRate {

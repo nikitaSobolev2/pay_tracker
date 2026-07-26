@@ -146,3 +146,117 @@
     cursor: not-allowed;
   }
 }
+
+/* react-swipeable-list: keep page scroll; style action bands */
+.transaction-swipe-list.swipeable-list {
+  flex: none;
+  height: auto;
+  overflow: visible;
+}
+
+.transaction-swipe-list .swipeable-list-item__content {
+  background: var(--background);
+}
+
+/* Embedded in StatCard — match card surface (not page --background). */
+.transaction-swipe-list--plain .swipeable-list-item__content {
+  background: var(--card);
+}
+
+.transaction-swipe-list .swipe-action {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+}
+
+/* Equal fixed action columns (lib class is swipeable-list-item__trailing-actions). */
+.transaction-swipe-list .swipeable-list-item__trailing-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.transaction-swipe-list .swipeable-list-item__trailing-actions > .swipe-action {
+  flex: 0 0 5.5rem;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+  height: 100%;
+  overflow: hidden;
+  transition:
+    flex-basis 0.2s ease-out,
+    width 0.2s ease-out,
+    min-width 0.2s ease-out,
+    max-width 0.2s ease-out;
+}
+
+.transaction-swipe-list .swipeable-list-item__trailing-actions > .swipe-action > * {
+  flex: 1 1 auto;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+  height: 100%;
+  align-self: stretch;
+}
+
+/* Second-swipe full delete: Edit collapses, Delete stretches full band. */
+.transaction-swipe-list .swipe-action__trailing--full-swipe-rest {
+  flex: 0 0 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0;
+}
+
+.transaction-swipe-list .swipe-action__trailing--full-swipe-main {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 5.5rem !important;
+  max-width: none !important;
+}
+
+.transaction-swipe-list .swipe-action__trailing--full-swipe-main > * {
+  width: 100% !important;
+  min-width: 5.5rem !important;
+  max-width: none !important;
+}
+
+.transaction-swipe-list .transaction-swipe-action {
+  box-sizing: border-box;
+  display: grid !important;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
+  height: 100% !important;
+  place-content: center !important;
+  place-items: center !important;
+  justify-items: center !important;
+  align-content: center !important;
+  gap: 0.25rem;
+  overflow: hidden;
+  text-align: center;
+}
+
+/* Keep Delete icon near the content edge while the red band grows. */
+.transaction-swipe-list
+  .swipe-action__trailing--full-swipe-main
+  > .transaction-swipe-action--delete {
+  width: 100% !important;
+  max-width: none !important;
+  justify-content: flex-start !important;
+  justify-items: start !important;
+  place-content: center start !important;
+  padding-inline-start: 1.25rem;
+}
+
+/* Library sets justify-content: flex-end/start — center icon+label at rest. */
+.transaction-swipe-list .swipe-action__trailing > *,
+.transaction-swipe-list .swipe-action__leading > *,
+.transaction-swipe-list .swipe-action__leading--full-swipe-main > * {
+  display: grid !important;
+  place-content: center !important;
+  place-items: center !important;
+  justify-content: center !important;
+  align-items: center !important;
+  align-content: center !important;
+}
