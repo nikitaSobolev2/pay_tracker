@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
@@ -40,7 +41,6 @@ import { fetchTransactionStats } from "@/lib/api/stats";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { CategorySlice } from "@/server/services/stats-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 import { DateRangeType, TransactionType } from "@/types/enums";
 import type { TransactionCategoryDto } from "@/types/transaction";
@@ -99,7 +99,7 @@ export function CategoriesPage() {
       ]);
       setCategories(listResult.categories);
       setActivityById(
-        buildCategoryActivityMap(stats.categoryPie, stats.displayCurrency),
+        buildCategoryActivityMap(stats.categoryActivity, stats.displayCurrency),
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("loadFailed"));
@@ -294,14 +294,14 @@ export function CategoriesPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+        <PageTitleWithBack fallbackHref="/">
           <h1 className="text-3xl font-semibold tracking-tight">
             {t("title")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground sm:text-base">
             {t("subtitle")}
           </p>
-        </div>
+        </PageTitleWithBack>
         <Button
           type="button"
           className="hidden h-11 shrink-0 gap-1.5 rounded-xl md:inline-flex"
@@ -488,28 +488,20 @@ export function CategoriesPage() {
 }
 
 function buildCategoryActivityMap(
-  slices: CategorySlice[],
+  activities: Array<{
+    readonly categoryId: string;
+    readonly amount: string;
+    readonly percent: number;
+  }>,
   currency: string,
 ): Map<string, CategoryActivityInfo> {
   const map = new Map<string, CategoryActivityInfo>();
-  for (const slice of slices) {
-    if (slice.categoryId) {
-      map.set(slice.categoryId, {
-        amount: slice.amount,
-        percent: slice.percent,
-        currency,
-      });
-    }
-    for (const child of slice.children) {
-      if (!child.categoryId) {
-        continue;
-      }
-      map.set(child.categoryId, {
-        amount: child.amount,
-        percent: child.percent,
-        currency,
-      });
-    }
+  for (const activity of activities) {
+    map.set(activity.categoryId, {
+      amount: activity.amount,
+      percent: activity.percent,
+      currency,
+    });
   }
   return map;
 }

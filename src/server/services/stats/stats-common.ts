@@ -11,6 +11,7 @@ import {
 import { toZonedTime } from "date-fns-tz";
 import Decimal from "decimal.js";
 
+import { listCategoryAncestorIds } from "@/lib/category-ancestors";
 import { daysInRange, elapsedDaysInRange } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,7 @@ import {
 } from "../category-service";
 import { convertRubToDisplay } from "../exchange-rate-service";
 import type {
+  CategoryActivity,
   CategorySlice,
   MoneyAmount,
   NamedAmount,
@@ -186,6 +188,64 @@ export function comparisonFromAmounts(
     deltaAmount: decimalToString(delta),
     deltaPercent,
   };
+}
+
+/**
+ * Amounts for every category in each assignment's ancestor chain (leaf → root).
+ * Needed by the categories list: pie slices only expose root + one child level.
+ */
+export async function buildCategoryActivity(
+  userId: string,
+  rows: TxRow[],
+  displayCurrency: string,
+): Promise<CategoryActivity[]> {
+  const assignedIds = rows.flatMap((row) =>
+    row.categories.map((link) => link.categoryId),
+  );
+  const byId = await loadCategoryAncestorMap(userId, assignedIds);
+  const buckets = new Map<string, { type: TransactionType; amount: Decimal }>();
+  const totalByType = new Map<TransactionType, Decimal>();
+
+  for (const row of rows) {
+    const display = await rowDisplayAmount(row, displayCurrency);
+    totalByType.set(
+      row.type,
+      (totalByType.get(row.type) ?? toDecimal(0)).plus(display),
+    );
+    if (row.categories.length === 0) {
+      continue;
+    }
+    const share = display.div(row.categories.length);
+    for (const link of row.categories) {
+      for (const categoryId of listCategoryAncestorIds(link.categoryId, byId)) {
+        const key = `${row.type}:${categoryId}`;
+        const current = buckets.get(key) ?? {
+          type: row.type,
+          amount: toDecimal(0),
+        };
+        current.amount = current.amount.plus(share);
+        buckets.set(key, current);
+      }
+    }
+  }
+
+  const activities: CategoryActivity[] = [];
+  for (const [key, value] of buckets) {
+    const categoryId = key.slice(key.indexOf(":") + 1);
+    const typeTotal = totalByType.get(value.type) ?? toDecimal(0);
+    activities.push({
+      categoryId,
+      type: value.type,
+      amount: decimalToString(value.amount),
+      percent: typeTotal.gt(0)
+        ? Number(value.amount.div(typeTotal).mul(100).toFixed(2))
+        : 0,
+    });
+  }
+  activities.sort((left, right) =>
+    toDecimal(right.amount).cmp(toDecimal(left.amount)),
+  );
+  return activities;
 }
 
 export async function buildCategorySlices(

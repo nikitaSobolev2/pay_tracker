@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,12 +122,12 @@ export function TransactionDetailPage({
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <PageTitleWithBack fallbackHref="/transactions">
           <p className="text-sm text-muted-foreground">{t("title")}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
             {transaction.title || "—"}
           </h1>
-        </div>
+        </PageTitleWithBack>
         <div className="flex gap-2">
           <Button
             variant="outline"

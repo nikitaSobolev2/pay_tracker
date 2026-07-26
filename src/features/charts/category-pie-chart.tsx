@@ -382,6 +382,7 @@ export function CategoryPieChart({
                                 amount: String(payload.amount),
                               }}
                               currency={currency}
+                              className="mt-2 border-t border-border/50 pt-2"
                             />
                           ) : null}
                         </div>

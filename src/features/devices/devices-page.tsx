@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DevicesSessionsList } from "@/features/devices/devices-sessions-list";
@@ -103,10 +104,12 @@ export function DevicesPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-10 pb-10">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          {t("subtitle")}
-        </p>
+        <PageTitleWithBack fallbackHref="/">
+          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+            {t("subtitle")}
+          </p>
+        </PageTitleWithBack>
       </header>
 
       <section className="space-y-5 rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6">

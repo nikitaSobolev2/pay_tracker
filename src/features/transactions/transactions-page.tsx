@@ -16,6 +16,7 @@ import {
   subYears,
 } from "date-fns";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
@@ -322,9 +323,11 @@ export function TransactionsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {tNav("transactions")}
-        </h1>
+        <PageTitleWithBack fallbackHref="/">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {tNav("transactions")}
+          </h1>
+        </PageTitleWithBack>
       </header>
 
       <div

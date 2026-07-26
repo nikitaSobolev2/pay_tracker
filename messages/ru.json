@@ -57,7 +57,8 @@
     "export": "Экспорт CSV",
     "import": "Импорт CSV",
     "search": "Поиск",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "back": "Назад"
   },
   "dateRange": {
     "day": "День",

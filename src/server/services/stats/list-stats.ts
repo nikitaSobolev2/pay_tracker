@@ -26,6 +26,7 @@ import {
 import { resolveTimelineBucket } from "@/lib/timeline-bucket";
 
 import {
+  buildCategoryActivity,
   buildCategorySlices,
   buildCurrencyBreakdown,
   buildTimeline,
@@ -127,11 +128,10 @@ export async function getListPageStats(
           bounds.end,
         );
 
-  const categoryPie = await buildCategorySlices(
-    input.userId,
-    rows,
-    input.displayCurrency,
-  );
+  const [categoryPie, categoryActivity] = await Promise.all([
+    buildCategorySlices(input.userId, rows, input.displayCurrency),
+    buildCategoryActivity(input.userId, rows, input.displayCurrency),
+  ]);
   const topCategories = [...categoryPie]
     .sort((a, b) => toDecimal(b.amount).cmp(toDecimal(a.amount)))
     .slice(0, 8);
@@ -192,6 +192,7 @@ export async function getListPageStats(
       input.displayCurrency,
     ),
     categoryPie,
+    categoryActivity,
     topCategories,
     currencyBreakdown: multiCurrency ? buildCurrencyBreakdown(rows) : null,
     vsPreviousPeriod,

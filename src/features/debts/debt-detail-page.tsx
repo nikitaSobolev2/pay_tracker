@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,9 +31,14 @@ import type { TransactionDto } from "@/types/transaction";
 
 type DebtDetailPageProps = {
   readonly counterpartyId: string;
+  /** When nested under counterparty detail, omit the page back control. */
+  readonly embedded?: boolean;
 };
 
-export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
+export function DebtDetailPage({
+  counterpartyId,
+  embedded = false,
+}: DebtDetailPageProps) {
   const t = useTranslations("debtDetail");
   const tNav = useTranslations("nav");
   const router = useRouter();
@@ -132,19 +138,18 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 pb-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{t("title")}</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-            {stats.name}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {stats.tone === "settled"
+        <DebtDetailTitle
+          embedded={embedded}
+          name={stats.name}
+          toneLabel={
+            stats.tone === "settled"
               ? t("noOpenDebt")
               : stats.tone === "owe"
                 ? t("owe")
-                : t("owed")}
-          </p>
-        </div>
+                : t("owed")
+          }
+          eyebrow={t("title")}
+        />
         {stats.tone !== "settled" ? (
           <Button
             className="h-11 w-full rounded-xl sm:w-auto"
@@ -336,6 +341,36 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
         onConfirm={() => void handleDelete()}
       />
     </div>
+  );
+}
+
+function DebtDetailTitle({
+  embedded,
+  eyebrow,
+  name,
+  toneLabel,
+}: {
+  readonly embedded: boolean;
+  readonly eyebrow: string;
+  readonly name: string;
+  readonly toneLabel: string;
+}) {
+  const title = (
+    <>
+      <p className="text-sm text-muted-foreground">{eyebrow}</p>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+        {name}
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">{toneLabel}</p>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="min-w-0">{title}</div>;
+  }
+
+  return (
+    <PageTitleWithBack fallbackHref="/debts">{title}</PageTitleWithBack>
   );
 }
 

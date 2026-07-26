@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmCounterpartyDeleteDialog } from "@/features/counterparties/confirm-counterparty-delete-dialog";
@@ -79,17 +80,19 @@ export function CounterpartyDetailPage({ id }: { readonly id: string }) {
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        {editing ? (
-          <Input
-            className="w-full max-w-sm"
-            value={draftName}
-            onChange={(event) => setDraftName(event.target.value)}
-          />
-        ) : (
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {counterparty.name}
-          </h1>
-        )}
+        <PageTitleWithBack fallbackHref="/counterparties">
+          {editing ? (
+            <Input
+              className="w-full max-w-sm"
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+            />
+          ) : (
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {counterparty.name}
+            </h1>
+          )}
+        </PageTitleWithBack>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           {editing ? (
             <Button
@@ -116,7 +119,7 @@ export function CounterpartyDetailPage({ id }: { readonly id: string }) {
           </Button>
         </div>
       </header>
-      <DebtDetailPage counterpartyId={id} />
+      <DebtDetailPage counterpartyId={id} embedded />
       <ConfirmCounterpartyDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}

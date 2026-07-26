@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,7 +194,7 @@ export function CategoryDetailPage({ id }: { readonly id: string }) {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 pb-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+        <PageTitleWithBack fallbackHref="/categories" className="flex-1">
           {editing ? (
             <div className="space-y-2">
               <Input
@@ -236,7 +237,7 @@ export function CategoryDetailPage({ id }: { readonly id: string }) {
               ) : null}
             </>
           )}
-        </div>
+        </PageTitleWithBack>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           {editing ? (
             <Button className="h-11 w-full sm:h-9 sm:w-auto" onClick={() => void save()}>

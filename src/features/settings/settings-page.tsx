@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { LocaleSelect } from "@/components/locale-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,13 +151,15 @@ export function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-2xl pb-10">
       <header className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-          {user?.username}
-          {user?.email ? (
-            <span className="text-muted-foreground/80"> · {user.email}</span>
-          ) : null}
-        </p>
+        <PageTitleWithBack fallbackHref="/">
+          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+            {user?.username}
+            {user?.email ? (
+              <span className="text-muted-foreground/80"> · {user.email}</span>
+            ) : null}
+          </p>
+        </PageTitleWithBack>
       </header>
 
       <div className="space-y-0 divide-y divide-border/50">
@@ -376,8 +379,10 @@ function SettingsPageSkeleton({ title }: { readonly title: string }) {
   return (
     <div className="mx-auto w-full max-w-2xl pb-10">
       <header className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-        <Skeleton className="mt-2 h-5 w-48 max-w-full sm:h-6 sm:w-64" />
+        <PageTitleWithBack fallbackHref="/">
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <Skeleton className="mt-2 h-5 w-48 max-w-full sm:h-6 sm:w-64" />
+        </PageTitleWithBack>
       </header>
 
       <div className="space-y-0 divide-y divide-border/50">

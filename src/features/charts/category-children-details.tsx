@@ -18,7 +18,7 @@ export function CategoryChildrenDetails({
   }
 
   return (
-    <ul className={cn("mt-2 space-y-1.5 border-t border-border/50 pt-2", className)}>
+    <ul className={cn("space-y-1.5", className)}>
       {slice.children.map((child) => (
         <li
           key={child.categoryId ?? child.title}

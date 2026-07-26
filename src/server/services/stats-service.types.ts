@@ -122,6 +122,14 @@ export type OverviewStats = {
   vsPreviousPeriod: PeriodComparison;
 };
 
+/** Per-category rollup including nested descendants (leaf amounts included). */
+export type CategoryActivity = {
+  categoryId: string;
+  type: TransactionType;
+  amount: string;
+  percent: number;
+};
+
 export type ListPageStats = {
   displayCurrency: string;
   dateRangeType: DateRangeType;
@@ -139,6 +147,8 @@ export type ListPageStats = {
   avgPerDayVsPrevious: PeriodComparison;
   timeline: TimelinePoint[];
   categoryPie: CategorySlice[];
+  /** Full-depth category totals for lists; pie stays root + one child level. */
+  categoryActivity: CategoryActivity[];
   topCategories: CategorySlice[];
   currencyBreakdown: Array<{
     currency: string;

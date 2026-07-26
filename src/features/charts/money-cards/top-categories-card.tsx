@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
+import { CategoryChildrenDetails } from "@/features/charts/category-children-details";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import {
@@ -36,7 +37,6 @@ export function TopCategoriesCard({
   className?: string;
   disableShare?: boolean;
 }) {
-  const tTx = useTranslations("transaction");
   const tCharts = useTranslations("charts");
   const mixedTypes =
     showTypeHints &&
@@ -68,82 +68,20 @@ export function TopCategoriesCard({
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="flex flex-col gap-3">
           {items.map((item, index) => (
-            <li
+            <CategoryBarRow
               key={sliceIdentityKey(
                 item.categoryId,
                 item.type,
                 item.title,
                 index,
               )}
-              className="group/category space-y-1.5"
-            >
-              <div
-                className="flex items-center justify-between gap-3 text-sm"
-                title={`${item.title}: ${formatChartMoney(item.amount, currency)} · ${item.percent.toFixed(1)}%`}
-              >
-                <span className="min-w-0 truncate font-medium">
-                  {item.title}
-                </span>
-                {mixedTypes ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "shrink-0 rounded-full px-1.5 text-[10px] font-medium",
-                      categoryTypeBadgeClass(item.type),
-                    )}
-                  >
-                    {item.type === TransactionType.Earning
-                      ? tTx("earning")
-                      : tTx("spending")}
-                  </Badge>
-                ) : null}
-                <span className="shrink-0 tabular-nums text-muted-foreground">
-                  {item.percent.toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-full rounded-full",
-                  )}
-                  style={{
-                    width: `${Math.min(100, Math.max(0, item.percent))}%`,
-                    backgroundColor: categorySliceFill(item.type, index),
-                  }}
-                />
-              </div>
-              <div className="text-xs tabular-nums text-muted-foreground">
-                {formatChartMoney(item.amount, currency)}
-              </div>
-              {item.children.length > 0 ? (
-                <ul className="space-y-1 rounded-xl border border-border/50 bg-muted/25 p-2.5">
-                  {item.children.map((child, childIndex) => (
-                    <li
-                      key={sliceIdentityKey(
-                        child.categoryId,
-                        child.type,
-                        child.title,
-                        childIndex,
-                      )}
-                      className="flex items-center justify-between gap-3 text-xs"
-                      title={`${child.title}: ${formatChartMoney(child.amount, currency)} · ${child.percent.toFixed(1)}%`}
-                    >
-                      <span className="min-w-0 truncate text-muted-foreground">
-                        {child.title}
-                      </span>
-                      <span className="shrink-0 tabular-nums">
-                        {formatChartMoney(child.amount, currency)}
-                        <span className="ml-1 text-muted-foreground">
-                          {parentRelativePercent(child.amount, item.amount).toFixed(0)}%
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </li>
+              item={item}
+              index={index}
+              currency={currency}
+              showTypeBadge={mixedTypes}
+            />
           ))}
         </ul>
       )}
@@ -151,7 +89,76 @@ export function TopCategoriesCard({
   );
 }
 
-function parentRelativePercent(childAmount: string, parentAmount: string): number {
-  const parent = Number(parentAmount);
-  return parent > 0 ? (Number(childAmount) / parent) * 100 : 0;
+function CategoryBarRow({
+  item,
+  index,
+  currency,
+  showTypeBadge,
+}: {
+  readonly item: CategorySlice;
+  readonly index: number;
+  readonly currency: string;
+  readonly showTypeBadge: boolean;
+}) {
+  const tTx = useTranslations("transaction");
+  const hasChildren = item.children.length > 0;
+  const amountLabel = formatChartMoney(item.amount, currency);
+
+  return (
+    <li
+      className="group/category space-y-1.5"
+      tabIndex={hasChildren ? 0 : undefined}
+      title={`${item.title}: ${amountLabel} · ${item.percent.toFixed(1)}%`}
+    >
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-medium">{item.title}</span>
+        {showTypeBadge ? (
+          <Badge
+            variant="outline"
+            className={cn(
+              "shrink-0 rounded-full px-1.5 text-[10px] font-medium",
+              categoryTypeBadgeClass(item.type),
+            )}
+          >
+            {item.type === TransactionType.Earning
+              ? tTx("earning")
+              : tTx("spending")}
+          </Badge>
+        ) : null}
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {item.percent.toFixed(0)}%
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${Math.min(100, Math.max(0, item.percent))}%`,
+            backgroundColor: categorySliceFill(item.type, index),
+          }}
+        />
+      </div>
+      <div className="text-xs tabular-nums text-muted-foreground">
+        {amountLabel}
+      </div>
+      {hasChildren ? (
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-150",
+            "grid-rows-[0fr] opacity-0",
+            "group-hover/category:grid-rows-[1fr] group-hover/category:opacity-100",
+            "group-focus-within/category:grid-rows-[1fr] group-focus-within/category:opacity-100",
+          )}
+        >
+          <div className="overflow-hidden">
+            <CategoryChildrenDetails
+              slice={item}
+              currency={currency}
+              className="rounded-xl border border-border/50 bg-muted/25 p-2.5"
+            />
+          </div>
+        </div>
+      ) : null}
+    </li>
+  );
 }

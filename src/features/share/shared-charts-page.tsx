@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,10 +85,10 @@ export function SharedChartsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <div>
+      <PageTitleWithBack fallbackHref="/">
         <h1 className="text-2xl font-semibold tracking-tight">{t("pageTitle")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("pageHint")}</p>
-      </div>
+      </PageTitleWithBack>
 
       {loading ? (
         <div className="space-y-3">
