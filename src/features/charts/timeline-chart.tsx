@@ -13,7 +13,10 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/charts/stat-card";
-import { useContainedHorizontalScroll } from "@/features/charts/use-contained-horizontal-scroll";
+import {
+  useContainedHorizontalScroll,
+  useStripChartFocus,
+} from "@/features/charts/use-contained-horizontal-scroll";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import { formatBucketLabel } from "@/lib/chart-format";
 import { formatChartMoney } from "@/lib/money";
@@ -106,6 +109,7 @@ export function TimelineChart({
     onPointerMove,
     onPointerUp,
   } = useContainedHorizontalScroll(scrollResetKey);
+  useStripChartFocus(scrollRef, scrollResetKey);
 
   return (
     <StatCard
@@ -150,9 +154,12 @@ export function TimelineChart({
         <div
           ref={scrollRef}
           className={cn(
-            "-mb-2 touch-none overflow-x-auto overscroll-contain scrollbar-none",
+            "-mb-2 touch-none select-none overflow-x-auto overscroll-contain scrollbar-none",
             isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
+          onMouseDownCapture={(event) => {
+            event.preventDefault();
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -160,7 +167,7 @@ export function TimelineChart({
         >
           <ChartContainer
             config={config}
-            className="aspect-auto h-56 w-full"
+            className="aspect-auto h-56 w-full outline-none [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg]:outline-none"
             style={
               data.length > 12
                 ? { minWidth: `${Math.max(data.length * 40, 320)}px` }
@@ -170,6 +177,9 @@ export function TimelineChart({
             <AreaChart
               data={data}
               margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
+              tabIndex={-1}
+              accessibilityLayer={false}
+              style={{ outline: "none" }}
             >
               <defs>
                 <linearGradient id="fillEarning" x1="0" y1="0" x2="0" y2="1">

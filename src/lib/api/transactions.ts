@@ -1,7 +1,9 @@
 import { apiFetch, buildQuery } from "@/lib/api/client";
 import type {
   DateRangeType,
-  TransactionDebtRole,
+  SortDirection,
+  TransactionKind,
+  TransactionSortBy,
   TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
@@ -13,10 +15,12 @@ export type TransactionListParams = {
   startDate?: string;
   endDate?: string;
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  sortBy?: TransactionSortBy;
+  sortDir?: SortDirection;
   page?: number;
   pageSize?: number;
 };
@@ -34,7 +38,7 @@ export type CreateTransactionInput = {
   inputCurrency: string;
   title?: string | null;
   occurredAt: string;
-  debtRole?: TransactionDebtRole | null;
+  kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
   idempotencyKey: string;
@@ -46,7 +50,7 @@ export type UpdateTransactionInput = Partial<{
   inputCurrency: string;
   title: string | null;
   occurredAt: string;
-  debtRole: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterpartyName: string | null;
   categoryIds: string[];
 }>;
@@ -59,10 +63,12 @@ function toListQuery(params: TransactionListParams): string {
     startDate: params.startDate,
     endDate: params.endDate,
     type: params.type,
-    debtRoles: params.debtRoles?.join(","),
+    kinds: params.kinds?.join(","),
     categoryIds: params.categoryIds?.join(","),
     counterpartyIds: params.counterpartyIds?.join(","),
     hideUncategorized: params.hideUncategorized ? "true" : undefined,
+    sortBy: params.sortBy,
+    sortDir: params.sortDir,
     page: params.page,
     pageSize: params.pageSize,
   });
@@ -110,4 +116,18 @@ export function bulkDeleteTransactions(ids: string[]) {
     method: "POST",
     body: { ids },
   });
+}
+
+export function suggestTransactionsByTitle(params: {
+  q: string;
+  type?: TransactionType;
+  limit?: number;
+}) {
+  return apiFetch<{ items: TransactionDto[] }>(
+    `/api/transactions/title-suggestions${buildQuery({
+      q: params.q,
+      type: params.type,
+      limit: params.limit,
+    })}`,
+  );
 }

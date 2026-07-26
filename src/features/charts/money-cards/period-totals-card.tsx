@@ -13,6 +13,8 @@ import type {
 
 import {
   AMOUNT_CLASS,
+  comparisonTrendClassName,
+  MONEY_CARD_CONTENT_CLASS,
   MoneyCardSkeleton,
   PeriodChangeIndicator,
   signedAmountClassName,
@@ -57,6 +59,7 @@ export function PeriodTotalsCard({
       }
       loading={loading}
       className="h-full"
+      contentClassName={MONEY_CARD_CONTENT_CLASS}
       skeleton={
         <MoneyCardSkeleton
           showBadge={!hideComparison}
@@ -66,7 +69,14 @@ export function PeriodTotalsCard({
         />
       }
     >
-      <div className={cn(AMOUNT_CLASS, signedAmountClassName(stats.net.amount))}>
+      <div
+        className={cn(
+          AMOUNT_CLASS,
+          comparison && !hideComparison
+            ? comparisonTrendClassName(comparison, "higherIsBetter")
+            : signedAmountClassName(stats.net.amount),
+        )}
+      >
         {formatChartMoney(stats.net.amount, stats.net.currency)}
       </div>
       {comparison ? (
@@ -76,11 +86,11 @@ export function PeriodTotalsCard({
           hide={hideComparison}
         />
       ) : null}
-      <p className="mt-1.5 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         {t("netBalanceHint")} · {stats.count} {t("count").toLowerCase()}
       </p>
 
-      <div className="mt-auto space-y-4 pt-5">
+      <div className="mt-auto space-y-4">
         <AmountRow
           label={tHome("income")}
           amount={formatChartMoney(

@@ -10,45 +10,52 @@ import {
   type CounterpartyDto,
 } from "@/lib/api/counterparties";
 import { cn } from "@/lib/utils";
-import type { TransactionDebtRole } from "@/types/enums";
+import type { TransactionKind } from "@/types/enums";
 
 type CounterpartyAutocompleteProps = {
-  readonly debtRole: TransactionDebtRole;
+  readonly kind: TransactionKind;
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly placeholder?: string;
   readonly className?: string;
   readonly inactive?: boolean;
+  /** When provided, skips chip fetch and uses parent-loaded counterparties. */
+  readonly chips?: CounterpartyDto[];
 };
 
 export function CounterpartyAutocomplete({
-  debtRole,
+  kind,
   value,
   onChange,
   placeholder,
   className,
   inactive = false,
+  chips: chipsProp,
 }: CounterpartyAutocompleteProps) {
   const debounced = useDebouncedValue(value, 300);
   const [suggestions, setSuggestions] = useState<CounterpartyDto[]>([]);
-  const [chips, setChips] = useState<CounterpartyDto[]>([]);
+  const [chipsInternal, setChipsInternal] = useState<CounterpartyDto[]>([]);
   const [open, setOpen] = useState(false);
+  const chips = chipsProp ?? chipsInternal;
 
   useEffect(() => {
+    if (chipsProp || inactive) {
+      return;
+    }
     let cancelled = false;
-    void listCounterparties({ debtRole }).then((result) => {
+    void listCounterparties({ kind }).then((result) => {
       if (!cancelled) {
-        setChips(result.counterparties);
+        setChipsInternal(result.counterparties);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [debtRole]);
+  }, [chipsProp, inactive, kind]);
 
   useEffect(() => {
     let cancelled = false;
-    void listCounterparties({ debtRole, q: debounced || undefined }).then(
+    void listCounterparties({ kind, q: debounced || undefined }).then(
       (result) => {
         if (!cancelled) {
           setSuggestions(result.counterparties);
@@ -58,7 +65,7 @@ export function CounterpartyAutocomplete({
     return () => {
       cancelled = true;
     };
-  }, [debtRole, debounced]);
+  }, [kind, debounced]);
 
   function selectName(name: string) {
     onChange(name);

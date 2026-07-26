@@ -8,6 +8,8 @@ import type { MoneyAmount, PeriodComparison } from "@/server/services/stats-serv
 
 import {
   AMOUNT_CLASS,
+  comparisonTrendClassName,
+  MONEY_CARD_CONTENT_CLASS,
   MoneyCardSkeleton,
   PeriodChangeIndicator,
   type TrendSense,
@@ -37,6 +39,7 @@ export function MoneyValueCard({
     readonly label: string;
     readonly value: string;
     readonly valueClassName?: string;
+    readonly onClick?: () => void;
   }>;
   disableShare?: boolean;
 }) {
@@ -61,6 +64,7 @@ export function MoneyValueCard({
       }
       loading={loading}
       className="h-full"
+      contentClassName={MONEY_CARD_CONTENT_CLASS}
       skeleton={
         <MoneyCardSkeleton
           showBadge={Boolean(comparison) && !hideComparison}
@@ -69,7 +73,14 @@ export function MoneyValueCard({
         />
       }
     >
-      <div className={cn(AMOUNT_CLASS, amountClassName)}>
+      <div
+        className={cn(
+          AMOUNT_CLASS,
+          comparison && !hideComparison
+            ? comparisonTrendClassName(comparison, comparisonSense)
+            : amountClassName,
+        )}
+      >
         {formatChartMoney(amount.amount, amount.currency)}
       </div>
       {comparison ? (
@@ -80,26 +91,44 @@ export function MoneyValueCard({
         />
       ) : null}
       {hint ? (
-        <div className="mt-2 text-sm text-muted-foreground">{hint}</div>
+        <div className="text-sm text-muted-foreground">{hint}</div>
       ) : null}
       {details && details.length > 0 ? (
         <div className="mt-auto space-y-2.5 rounded-xl bg-muted/35 px-4 py-3.5 text-base">
-          {details.map((row, index) => (
-            <div
-              key={row.label}
-              className={cn(
-                "flex justify-between gap-4",
-                index > 0 && "border-t border-border/40 pt-2.5",
-              )}
-            >
-              <span className="text-muted-foreground">{row.label}</span>
+          {details.map((row, index) => {
+            const rowClassName = cn(
+              "flex w-full justify-between gap-4 text-left",
+              index > 0 && "border-t border-border/40 pt-2.5",
+              row.onClick &&
+                "cursor-pointer transition-colors hover:text-foreground",
+            );
+            const value = (
               <span
                 className={cn("font-medium tabular-nums", row.valueClassName)}
               >
                 {row.value}
               </span>
-            </div>
-          ))}
+            );
+            if (row.onClick) {
+              return (
+                <button
+                  key={row.label}
+                  type="button"
+                  onClick={row.onClick}
+                  className={rowClassName}
+                >
+                  <span className="text-muted-foreground">{row.label}</span>
+                  {value}
+                </button>
+              );
+            }
+            return (
+              <div key={row.label} className={rowClassName}>
+                <span className="text-muted-foreground">{row.label}</span>
+                {value}
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </StatCard>

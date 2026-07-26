@@ -18,6 +18,7 @@ const createBodySchema = z.object({
   title: z.string().min(1).max(200),
   type: zodEnumFromConst(TransactionType),
   parentCategoryId: z.string().min(1).nullable().optional(),
+  keywords: z.array(z.string().min(1).max(100)).max(50).optional(),
 });
 
 export async function GET(request: Request) {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       title: body.title,
       type: body.type,
       parentCategoryId: body.parentCategoryId,
+      keywords: body.keywords,
     });
     return jsonOk({ category }, { status: 201 });
   } catch (error) {

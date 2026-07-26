@@ -1,5 +1,5 @@
 import { apiFetch, buildQuery } from "@/lib/api/client";
-import type { TransactionDebtRole } from "@/types/enums";
+import type { TransactionKind } from "@/types/enums";
 
 export type CounterpartyDto = {
   id: string;
@@ -8,14 +8,14 @@ export type CounterpartyDto = {
 
 export function listCounterparties(
   params: {
-    debtRole?: TransactionDebtRole;
+    kind?: TransactionKind;
     q?: string;
     all?: boolean;
   } = {},
 ) {
   return apiFetch<{ counterparties: CounterpartyDto[] }>(
     `/api/counterparties${buildQuery({
-      debtRole: params.debtRole,
+      kind: params.kind,
       q: params.q,
       all: params.all ? "true" : undefined,
     })}`,

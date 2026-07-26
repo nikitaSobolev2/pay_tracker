@@ -78,6 +78,7 @@ export function CategoriesPage() {
     TransactionType.Spending,
   );
   const [draftParentId, setDraftParentId] = useState<string | null>(null);
+  const [draftKeywords, setDraftKeywords] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] =
     useState<TransactionCategoryDto | null>(null);
@@ -161,7 +162,15 @@ export function CategoriesPage() {
 
   const visibleCategories = useMemo(() => {
     if (!filterId) {
-      return categories;
+      return [...categories].sort((left, right) => {
+        if (typeFilter === "all") {
+          return left.title.localeCompare(right.title);
+        }
+        return (
+          Number(activityById.get(right.id)?.amount ?? 0) -
+          Number(activityById.get(left.id)?.amount ?? 0)
+        );
+      });
     }
     return categories.filter((category) => category.id === filterId);
   }, [categories, filterId]);
@@ -171,6 +180,7 @@ export function CategoriesPage() {
     setEditingId(null);
     setDraftTitle("");
     setDraftParentId(null);
+    setDraftKeywords("");
     setDraftType(
       typeFilter === TransactionType.Earning
         ? TransactionType.Earning
@@ -183,6 +193,7 @@ export function CategoriesPage() {
     setEditingId(null);
     setDraftTitle("");
     setDraftParentId(null);
+    setDraftKeywords("");
     setDraftType(
       typeFilter === TransactionType.Earning
         ? TransactionType.Earning
@@ -213,6 +224,7 @@ export function CategoriesPage() {
     setDraftTitle(category.title);
     setDraftType(category.type);
     setDraftParentId(category.parentCategoryId);
+    setDraftKeywords(category.keywords.join(", "));
   }
 
   async function saveDialog() {
@@ -224,7 +236,12 @@ export function CategoriesPage() {
     setSaving(true);
     try {
       if (dialogMode === "create") {
-        await createCategory(title, draftType, draftParentId);
+        await createCategory(
+          title,
+          draftType,
+          draftParentId,
+          parseKeywords(draftKeywords),
+        );
         const refreshed = await listCategories(pageType);
         setCategories(refreshed.categories);
         closeDialog();
@@ -237,6 +254,7 @@ export function CategoriesPage() {
       await updateCategory(editingCategory.id, {
         title,
         parentCategoryId: draftParentId,
+        keywords: parseKeywords(draftKeywords),
       });
       const refreshed = await listCategories(pageType);
       setCategories(refreshed.categories);
@@ -364,6 +382,15 @@ export function CategoriesPage() {
                     void saveDialog();
                   }
                 }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("keywords")}</Label>
+              <Input
+                className="h-12 rounded-xl text-base md:h-11"
+                value={draftKeywords}
+                placeholder={t("keywordsHint")}
+                onChange={(event) => setDraftKeywords(event.target.value)}
               />
             </div>
             {dialogMode === "create" ? (
@@ -561,7 +588,7 @@ function CategoriesListContent({
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Link
-                  href={`/categories?id=${encodeURIComponent(category.id)}`}
+                  href={`/categories/${encodeURIComponent(category.id)}`}
                   className="truncate text-base font-medium underline-offset-4 hover:underline"
                 >
                   {category.path}
@@ -641,4 +668,8 @@ function CategoriesListContent({
       })}
     </ul>
   );
+}
+
+function parseKeywords(value: string): string[] {
+  return [...new Set(value.split(",").map((keyword) => keyword.trim()).filter(Boolean))];
 }

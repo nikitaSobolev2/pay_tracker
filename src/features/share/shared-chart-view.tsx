@@ -11,7 +11,7 @@ import {
   TopCategoriesCard,
   VsPreviousPeriodCard,
 } from "@/features/charts/money-summary-cards";
-import { TimelineChart } from "@/features/charts/timeline-chart";
+import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import {
   SharedChartType,
   type SharedChartPayload,
@@ -26,13 +26,15 @@ export function SharedChartView({ payload, shareId }: SharedChartViewProps) {
   switch (payload.type) {
     case SharedChartType.Timeline:
       return (
-        <TimelineChart
+        <TimelineWithDrilldown
           title={payload.title}
-          description={payload.description}
           points={payload.points}
           currency={payload.currency}
           mode={payload.mode}
+          filters={payload.filters}
+          shareId={shareId}
           disableShare
+          drilldownLayout="below"
         />
       );
     case SharedChartType.CategoryPie:

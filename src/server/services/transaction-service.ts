@@ -10,7 +10,9 @@ import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
 import {
-  TransactionDebtRole,
+  SortDirection,
+  TransactionKind,
+  TransactionSortBy,
   TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
@@ -29,6 +31,7 @@ import type {
   CreateTransactionInput,
   ListTransactionsInput,
   ListTransactionsResult,
+  TitleSuggestionsInput,
   UpdateTransactionInput,
 } from "./transaction-service.types";
 
@@ -38,6 +41,11 @@ type TransactionRecord = Prisma.TransactionGetPayload<{
     categories: { include: { category: true } };
   };
 }>;
+
+const DEBT_KINDS: TransactionKind[] = [
+  TransactionKind.Loan,
+  TransactionKind.Debt,
+];
 
 export async function createTransaction(
   input: CreateTransactionInput,
@@ -69,7 +77,7 @@ export async function createTransaction(
         fxRateDate: money.fxRateDate,
         title: validated.title,
         occurredAt: validated.occurredAt,
-        debtRole: validated.debtRole,
+        kind: validated.kind,
         counterpartyId: validated.counterpartyId,
         idempotencyKey: input.idempotencyKey,
         categories: {
@@ -103,12 +111,40 @@ export async function listTransactions(
   const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 50));
   const where = buildTransactionWhere(input);
 
+  const orderBy = resolveTransactionOrderBy(input.sortBy, input.sortDir);
+
+  if (input.sortBy === TransactionSortBy.Categories) {
+    const ordered = await listOrderedByCategoryTitle({
+      where,
+      sortDir: input.sortDir ?? SortDirection.Asc,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    const [total, rows] = await Promise.all([
+      prisma.transaction.count({ where }),
+      ordered.length === 0
+        ? Promise.resolve([] as TransactionRecord[])
+        : prisma.transaction.findMany({
+            where: { ...where, id: { in: ordered } },
+            include: transactionInclude,
+          }),
+    ]);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const items = await Promise.all(
+      ordered
+        .map((id) => byId.get(id))
+        .filter((row): row is TransactionRecord => row != null)
+        .map((row) => mapTransactionDto(row, input.displayCurrency)),
+    );
+    return { items, page, pageSize, total };
+  }
+
   const [total, rows] = await Promise.all([
     prisma.transaction.count({ where }),
     prisma.transaction.findMany({
       where,
       include: transactionInclude,
-      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      orderBy,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -118,6 +154,31 @@ export async function listTransactions(
     rows.map((row) => mapTransactionDto(row, input.displayCurrency)),
   );
   return { items, page, pageSize, total };
+}
+
+export async function suggestTransactionsByTitle(
+  input: TitleSuggestionsInput,
+): Promise<TransactionDto[]> {
+  const query = input.query.trim();
+  if (!query) {
+    return [];
+  }
+  const limit = Math.min(50, Math.max(1, input.limit ?? 20));
+  const rows = await prisma.transaction.findMany({
+    where: {
+      userId: input.userId,
+      isDeleted: false,
+      title: { contains: query, mode: "insensitive" },
+      ...(input.type ? { type: input.type } : {}),
+    },
+    include: transactionInclude,
+    orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+    take: limit * 3,
+  });
+  const ranked = rankTitleMatches(rows, query).slice(0, limit);
+  return Promise.all(
+    ranked.map((row) => mapTransactionDto(row, input.displayCurrency)),
+  );
 }
 
 export async function getTransaction(
@@ -153,23 +214,22 @@ export async function updateTransaction(
   const nextType = input.type ?? existing.type;
   const nextOriginalAmount =
     input.originalAmount ?? existing.originalAmount.toString();
-  const nextInputCurrency =
-    (input.inputCurrency ?? existing.inputCurrency).toUpperCase();
+  const nextInputCurrency = (
+    input.inputCurrency ?? existing.inputCurrency
+  ).toUpperCase();
   const nextOccurredAt = input.occurredAt ?? existing.occurredAt;
   const nextTitle =
     input.title === undefined ? existing.title : input.title?.trim() || null;
-  const nextDebtRole =
-    input.debtRole === undefined ? existing.debtRole : input.debtRole;
+  const nextKind = input.kind === undefined ? existing.kind : input.kind;
   const nextCategoryIds =
-    input.categoryIds ??
-    existing.categories.map((link) => link.categoryId);
+    input.categoryIds ?? existing.categories.map((link) => link.categoryId);
 
   let counterpartyName =
     input.counterpartyName === undefined
-      ? existing.counterparty?.name ?? null
+      ? (existing.counterparty?.name ?? null)
       : input.counterpartyName;
 
-  if (nextDebtRole == null) {
+  if (!requiresCounterparty(nextKind)) {
     counterpartyName = null;
   }
 
@@ -180,7 +240,7 @@ export async function updateTransaction(
     inputCurrency: nextInputCurrency,
     title: nextTitle,
     occurredAt: nextOccurredAt,
-    debtRole: nextDebtRole,
+    kind: nextKind,
     counterpartyName,
     categoryIds: nextCategoryIds,
   });
@@ -206,7 +266,7 @@ export async function updateTransaction(
         fxRateDate: money.fxRateDate,
         title: validated.title,
         occurredAt: validated.occurredAt,
-        debtRole: validated.debtRole,
+        kind: validated.kind,
         counterpartyId: validated.counterpartyId,
         categories: {
           create: validated.categoryIds.map((categoryId) => ({ categoryId })),
@@ -227,7 +287,6 @@ export async function deleteTransaction(
     where: { id: transactionId, userId, isDeleted: false },
     data: {
       isDeleted: true,
-      // Free the unique idempotency slot so the same key can be reused.
       idempotencyKey: deletedIdempotencyKey(transactionId),
     },
   });
@@ -318,7 +377,7 @@ export function buildTransactionWhere(
     | "startDate"
     | "endDate"
     | "type"
-    | "debtRoles"
+    | "kinds"
     | "categoryIds"
     | "counterpartyIds"
     | "hideUncategorized"
@@ -331,8 +390,8 @@ export function buildTransactionWhere(
     userId: input.userId,
     isDeleted: false,
     ...(input.type ? { type: input.type } : {}),
-    ...(input.debtRoles && input.debtRoles.length > 0
-      ? { debtRole: { in: input.debtRoles } }
+    ...(input.kinds && input.kinds.length > 0
+      ? { kind: { in: input.kinds } }
       : {}),
     ...(input.counterpartyIds && input.counterpartyIds.length > 0
       ? { counterpartyId: { in: input.counterpartyIds } }
@@ -376,7 +435,7 @@ async function validateTransactionWrite(input: {
   inputCurrency: string;
   title?: string | null;
   occurredAt: Date;
-  debtRole?: TransactionDebtRole | null;
+  kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
 }): Promise<{
@@ -385,7 +444,7 @@ async function validateTransactionWrite(input: {
   inputCurrency: string;
   title: string | null;
   occurredAt: Date;
-  debtRole: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterpartyId: string | null;
   categoryIds: string[];
 }> {
@@ -397,20 +456,20 @@ async function validateTransactionWrite(input: {
     );
   }
 
-  const debtRole = input.debtRole ?? null;
-  validateDebtRoleForType(input.type, debtRole);
+  const kind = input.kind ?? TransactionKind.Default;
+  validateKindForType(input.type, kind);
 
   const counterpartyName = input.counterpartyName?.trim() || null;
-  if (debtRole == null && counterpartyName) {
+  if (!requiresCounterparty(kind) && counterpartyName) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Counterparty requires a debt role",
+      "Counterparty is only allowed for loan or debt",
     );
   }
-  if (debtRole != null && !counterpartyName) {
+  if (requiresCounterparty(kind) && !counterpartyName) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Counterparty is required when debt role is set",
+      "Counterparty is required for loan or debt",
     );
   }
 
@@ -418,10 +477,12 @@ async function validateTransactionWrite(input: {
   await assertCategoriesMatchType(input.userId, categoryIds, input.type);
 
   const counterpartyId = counterpartyName
-    ? (await findOrCreateCounterparty({
-        userId: input.userId,
-        name: counterpartyName,
-      })).id
+    ? (
+        await findOrCreateCounterparty({
+          userId: input.userId,
+          name: counterpartyName,
+        })
+      ).id
     : null;
 
   return {
@@ -430,31 +491,72 @@ async function validateTransactionWrite(input: {
     inputCurrency: input.inputCurrency.toUpperCase(),
     title: input.title?.trim() || null,
     occurredAt: input.occurredAt,
-    debtRole,
+    kind,
     counterpartyId,
     categoryIds,
   };
 }
 
-function validateDebtRoleForType(
+function requiresCounterparty(kind: TransactionKind): boolean {
+  return DEBT_KINDS.includes(kind);
+}
+
+function validateKindForType(
   type: TransactionType,
-  debtRole: TransactionDebtRole | null,
+  kind: TransactionKind,
 ): void {
-  if (debtRole == null) {
+  if (kind === TransactionKind.Default) {
     return;
   }
-  if (type === TransactionType.Spending && debtRole !== TransactionDebtRole.Lend) {
+  if (type === TransactionType.Spending && kind !== TransactionKind.Loan) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Spending transactions may only use LEND debt role",
+      "Spending transactions may only use DEFAULT or LOAN kind",
     );
   }
-  if (type === TransactionType.Earning && debtRole !== TransactionDebtRole.Borrow) {
+  if (
+    type === TransactionType.Earning &&
+    kind !== TransactionKind.Debt &&
+    kind !== TransactionKind.Refund
+  ) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Earning transactions may only use BORROW debt role",
+      "Earning transactions may only use DEFAULT, DEBT, or REFUND kind",
     );
   }
+}
+
+function rankTitleMatches(
+  rows: TransactionRecord[],
+  query: string,
+): TransactionRecord[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  return [...rows].sort((left, right) => {
+    const leftScore = titleMatchScore(left.title, normalizedQuery);
+    const rightScore = titleMatchScore(right.title, normalizedQuery);
+    if (rightScore !== leftScore) {
+      return rightScore - leftScore;
+    }
+    return right.occurredAt.getTime() - left.occurredAt.getTime();
+  });
+}
+
+function titleMatchScore(title: string | null, query: string): number {
+  if (!title) {
+    return 0;
+  }
+  const normalized = title.toLowerCase();
+  if (normalized === query) {
+    return 1000;
+  }
+  if (normalized.startsWith(query)) {
+    return 500 + Math.min(query.length, 100);
+  }
+  const index = normalized.indexOf(query);
+  if (index >= 0) {
+    return 200 - index;
+  }
+  return 1;
 }
 
 async function resolveCanonicalMoney(
@@ -488,6 +590,7 @@ async function mapTransactionDto(
       title: link.category.title,
       type: link.category.type,
       parentCategoryId: link.category.parentCategoryId,
+      keywords: link.category.keywords,
     })),
   );
   return {
@@ -502,7 +605,7 @@ async function mapTransactionDto(
     displayCurrency: display.currency,
     title: row.title,
     occurredAt: row.occurredAt.toISOString(),
-    debtRole: row.debtRole,
+    kind: row.kind,
     counterpartyId: row.counterpartyId,
     counterpartyName: row.counterparty?.name ?? null,
     categories,
@@ -528,4 +631,66 @@ async function findActiveByIdempotencyKey(
 
 function deletedIdempotencyKey(transactionId: string): string {
   return `deleted:${transactionId}`;
+}
+
+function resolveTransactionOrderBy(
+  sortBy?: TransactionSortBy,
+  sortDir?: SortDirection,
+): Prisma.TransactionOrderByWithRelationInput[] {
+  const direction = sortDir ?? SortDirection.Desc;
+  if (sortBy === TransactionSortBy.Title) {
+    return [{ title: direction }, { occurredAt: "desc" }];
+  }
+  if (sortBy === TransactionSortBy.Amount) {
+    return [{ amount: direction }, { occurredAt: "desc" }];
+  }
+  if (sortBy === TransactionSortBy.Date) {
+    return [{ occurredAt: direction }, { createdAt: direction }];
+  }
+  return [{ occurredAt: "desc" }, { createdAt: "desc" }];
+}
+
+async function listOrderedByCategoryTitle(input: {
+  where: Prisma.TransactionWhereInput;
+  sortDir: SortDirection;
+  skip: number;
+  take: number;
+}): Promise<string[]> {
+  const matching = await prisma.transaction.findMany({
+    where: input.where,
+    select: {
+      id: true,
+      occurredAt: true,
+      categories: {
+        select: { category: { select: { title: true } } },
+      },
+    },
+  });
+  const direction = input.sortDir === SortDirection.Asc ? 1 : -1;
+  matching.sort((left, right) => {
+    const leftTitle = earliestCategoryTitle(left.categories);
+    const rightTitle = earliestCategoryTitle(right.categories);
+    if (leftTitle === rightTitle) {
+      return right.occurredAt.getTime() - left.occurredAt.getTime();
+    }
+    if (leftTitle == null) {
+      return 1;
+    }
+    if (rightTitle == null) {
+      return -1;
+    }
+    return leftTitle.localeCompare(rightTitle) * direction;
+  });
+  return matching.slice(input.skip, input.skip + input.take).map((row) => row.id);
+}
+
+function earliestCategoryTitle(
+  categories: Array<{ category: { title: string } }>,
+): string | null {
+  if (categories.length === 0) {
+    return null;
+  }
+  return [...categories]
+    .map((link) => link.category.title)
+    .sort((left, right) => left.localeCompare(right))[0] ?? null;
 }

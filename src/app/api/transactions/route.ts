@@ -10,7 +10,9 @@ import {
 } from "@/server/services/transaction-service";
 import {
   DateRangeType,
-  TransactionDebtRole,
+  SortDirection,
+  TransactionKind,
+  TransactionSortBy,
   TransactionType,
 } from "@/types/enums";
 
@@ -22,10 +24,12 @@ const listQuerySchema = z
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     type: zodEnumFromConst(TransactionType).optional(),
-    debtRoles: z.array(zodEnumFromConst(TransactionDebtRole)).optional(),
+    kinds: z.array(zodEnumFromConst(TransactionKind)).optional(),
     categoryIds: z.array(z.string().min(1)).optional(),
     counterpartyIds: z.array(z.string().min(1)).optional(),
     hideUncategorized: z.boolean().optional(),
+    sortBy: zodEnumFromConst(TransactionSortBy).optional(),
+    sortDir: zodEnumFromConst(SortDirection).optional(),
     page: z.coerce.number().int().positive().optional(),
     pageSize: z.coerce.number().int().positive().max(100).optional(),
   })
@@ -43,7 +47,7 @@ const createBodySchema = z.object({
   inputCurrency: z.string().min(3).max(3),
   title: z.string().max(200).nullable().optional(),
   occurredAt: z.string().datetime(),
-  debtRole: zodEnumFromConst(TransactionDebtRole).nullable().optional(),
+  kind: zodEnumFromConst(TransactionKind).default(TransactionKind.Default),
   counterpartyName: z.string().max(200).nullable().optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
   idempotencyKey: z.string().min(1).max(100),
@@ -70,11 +74,13 @@ export async function GET(request: Request) {
       startDate: searchParams.get("startDate") ?? undefined,
       endDate: searchParams.get("endDate") ?? undefined,
       type: searchParams.get("type") ?? undefined,
-      debtRoles: parseCsvParam(searchParams.get("debtRoles")),
+      kinds: parseCsvParam(searchParams.get("kinds")),
       categoryIds: parseCsvParam(searchParams.get("categoryIds")),
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:
         searchParams.get("hideUncategorized") === "true" ? true : undefined,
+      sortBy: searchParams.get("sortBy") ?? undefined,
+      sortDir: searchParams.get("sortDir") ?? undefined,
       page: searchParams.get("page") ?? undefined,
       pageSize: searchParams.get("pageSize") ?? undefined,
     });
@@ -109,7 +115,7 @@ export async function POST(request: Request) {
       inputCurrency: body.inputCurrency,
       title: body.title,
       occurredAt: new Date(body.occurredAt),
-      debtRole: body.debtRole,
+      kind: body.kind,
       counterpartyName: body.counterpartyName,
       categoryIds: body.categoryIds,
       idempotencyKey: body.idempotencyKey,

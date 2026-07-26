@@ -7,7 +7,7 @@ import { zodEnumFromConst } from "@/lib/zod-helpers";
 import { getListPageStats } from "@/server/services/stats-service";
 import {
   DateRangeType,
-  TransactionDebtRole,
+  TransactionKind,
   TransactionType,
 } from "@/types/enums";
 
@@ -18,7 +18,7 @@ const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   type: zodEnumFromConst(TransactionType).optional(),
-  debtRoles: z.array(zodEnumFromConst(TransactionDebtRole)).optional(),
+  kinds: z.array(zodEnumFromConst(TransactionKind)).optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
   counterpartyIds: z.array(z.string().min(1)).optional(),
   hideUncategorized: z.boolean().optional(),
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       startDate: searchParams.get("startDate") ?? undefined,
       endDate: searchParams.get("endDate") ?? undefined,
       type: searchParams.get("type") ?? undefined,
-      debtRoles: parseCsvParam(searchParams.get("debtRoles")),
+      kinds: parseCsvParam(searchParams.get("kinds")),
       categoryIds: parseCsvParam(searchParams.get("categoryIds")),
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:

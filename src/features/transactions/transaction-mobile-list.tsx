@@ -44,6 +44,7 @@ type TransactionMobileListProps = {
   readonly onEdit: (item: TransactionDto) => void;
   readonly onSoftDeleted?: (id: string) => void;
   readonly onRestored?: (id: string) => void;
+  readonly onDateClick?: (date: string) => void;
   /** card = bordered panel; plain = for embedding in StatCard */
   readonly variant?: "card" | "plain";
   readonly emptyLabel?: string;
@@ -67,6 +68,7 @@ export function TransactionMobileList({
   onEdit,
   onSoftDeleted,
   onRestored,
+  onDateClick,
   variant = "card",
   emptyLabel = "—",
   skeletonCount = SKELETON_ROWS,
@@ -127,6 +129,7 @@ export function TransactionMobileList({
             onEdit={onEdit}
             onSoftDeleted={onSoftDeleted}
             onRestored={onRestored}
+            onDateClick={onDateClick}
             showDivider={isPlain}
           />
         ))}
@@ -164,6 +167,7 @@ type TransactionMobileRowProps = {
   readonly onEdit: (item: TransactionDto) => void;
   readonly onSoftDeleted?: (id: string) => void;
   readonly onRestored?: (id: string) => void;
+  readonly onDateClick?: (date: string) => void;
   readonly showDivider?: boolean;
 } & SwipeableListInjectedProps;
 
@@ -176,6 +180,7 @@ function TransactionMobileRow({
   onEdit,
   onSoftDeleted,
   onRestored,
+  onDateClick,
   showDivider = false,
   listType = SwipeType.IOS,
   actionDelay,
@@ -332,6 +337,7 @@ function TransactionMobileRow({
             item={item}
             className="flex-1"
             selected={selected && !softDeleted}
+            onDateClick={onDateClick}
           />
           <TransactionListAmount item={item} />
         </div>

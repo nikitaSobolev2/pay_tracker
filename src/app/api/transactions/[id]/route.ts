@@ -9,7 +9,7 @@ import {
   getTransaction,
   updateTransaction,
 } from "@/server/services/transaction-service";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 const updateBodySchema = z.object({
   type: zodEnumFromConst(TransactionType).optional(),
@@ -17,7 +17,7 @@ const updateBodySchema = z.object({
   inputCurrency: z.string().min(3).max(3).optional(),
   title: z.string().max(200).nullable().optional(),
   occurredAt: z.string().datetime().optional(),
-  debtRole: zodEnumFromConst(TransactionDebtRole).nullable().optional(),
+  kind: zodEnumFromConst(TransactionKind).optional(),
   counterpartyName: z.string().max(200).nullable().optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
 });
@@ -55,7 +55,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       inputCurrency: body.inputCurrency,
       title: body.title,
       occurredAt: body.occurredAt ? new Date(body.occurredAt) : undefined,
-      debtRole: body.debtRole,
+      kind: body.kind,
       counterpartyName: body.counterpartyName,
       categoryIds: body.categoryIds,
     });

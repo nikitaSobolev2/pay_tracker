@@ -11,6 +11,7 @@ export type CreateCategoryInput = {
   title: string;
   type: TransactionType;
   parentCategoryId?: string | null;
+  keywords?: string[];
 };
 
 export type FindOrCreateCategoryByPathInput = {
@@ -24,6 +25,7 @@ export type UpdateCategoryInput = {
   categoryId: string;
   title?: string;
   parentCategoryId?: string | null;
+  keywords?: string[];
 };
 
 export type DeleteCategoryInput = {

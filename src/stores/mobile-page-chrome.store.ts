@@ -18,6 +18,11 @@ export type MobilePageChromeAction =
       readonly kind: "add";
       readonly onClick: () => void;
       readonly label: string;
+    }
+  | {
+      readonly kind: "back";
+      readonly onClick: () => void;
+      readonly label: string;
     };
 
 /** Page-specific tools merged into the mobile bottom island. */
@@ -33,6 +38,11 @@ export type MobilePageChrome = {
     readonly onChange: (value: string) => void;
   };
   readonly action?: MobilePageChromeAction;
+  /** Optional restore control when drilling into a list date filter. */
+  readonly backAction?: {
+    readonly onClick: () => void;
+    readonly label: string;
+  };
 };
 
 type MobilePageChromeStore = {

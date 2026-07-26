@@ -45,3 +45,14 @@ export function fetchPublicShareDay(id: string, date: string) {
     `/api/shares/${id}/day?date=${encodeURIComponent(date)}`,
   );
 }
+
+export function fetchPublicSharePeriod(
+  id: string,
+  range: { readonly startDate: string; readonly endDate: string },
+) {
+  const params = new URLSearchParams({
+    startDate: range.startDate,
+    endDate: range.endDate,
+  });
+  return apiFetch<ListPageStats>(`/api/shares/${id}/day?${params.toString()}`);
+}

@@ -165,6 +165,7 @@ export function ActivityHeatmapCard({
       className={cn(
         "flex flex-col gap-3",
         !stackDrilldown && "lg:flex-row lg:items-stretch",
+        selected && "rounded-2xl bg-muted/35 p-3",
       )}
     >
       <div

@@ -10,7 +10,7 @@ import { AppServiceError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
 import {
-  TransactionDebtRole,
+  TransactionKind,
   TransactionType,
 } from "@/types/enums";
 
@@ -36,7 +36,7 @@ const CSV_COLUMNS = [
   "fxRateDate",
   "title",
   "occurredAt",
-  "debtRole",
+  "kind",
   "counterparty",
   "categories",
   "createdAt",
@@ -72,7 +72,7 @@ export async function exportCsv(userId: string): Promise<CsvExportResult> {
     fxRateDate: row.fxRateDate.toISOString().slice(0, 10),
     title: row.title ?? "",
     occurredAt: row.occurredAt.toISOString(),
-    debtRole: row.debtRole ?? "",
+    kind: row.kind,
     counterparty: row.counterparty?.name ?? "",
     categories: joinCsvCategories(
       row.categories.map(
@@ -117,7 +117,7 @@ export async function previewImport(
         inputCurrency: row.inputCurrency,
         occurredAt: row.occurredAt.toISOString(),
         title: row.title,
-        debtRole: row.debtRole,
+        kind: row.kind,
         counterparty: row.counterparty?.name ?? null,
       }),
     ),
@@ -196,7 +196,7 @@ export async function applyImport(
         inputCurrency: row.inputCurrency,
         title: row.title ?? "",
         occurredAt: row.occurredAt,
-        debtRole: row.debtRole ?? "",
+        kind: row.kind,
         counterparty: row.counterparty ?? "",
         categories: joinCsvCategories(row.categories ?? []),
       })),
@@ -237,7 +237,7 @@ export async function applyImport(
         inputCurrency: previewRow.row.inputCurrency,
         title: previewRow.row.title,
         occurredAt: new Date(previewRow.row.occurredAt),
-        debtRole: previewRow.row.debtRole ?? null,
+        kind: previewRow.row.kind,
         counterpartyName: previewRow.row.counterparty ?? null,
         categoryIds,
         idempotencyKey: `import-${randomUUID()}`,
@@ -281,16 +281,18 @@ function parseImportRow(
     errors.push("Invalid occurredAt");
   }
 
-  const debtRoleRaw = (raw.debtRole || "").trim().toUpperCase();
-  let debtRole: TransactionDebtRole | null = null;
-  if (debtRoleRaw) {
+  const kindRaw = (raw.kind || "").trim().toUpperCase();
+  let kind: TransactionKind = TransactionKind.Default;
+  if (kindRaw) {
     if (
-      debtRoleRaw !== TransactionDebtRole.Lend &&
-      debtRoleRaw !== TransactionDebtRole.Borrow
+      kindRaw !== TransactionKind.Loan &&
+      kindRaw !== TransactionKind.Debt &&
+      kindRaw !== TransactionKind.Default &&
+      kindRaw !== TransactionKind.Refund
     ) {
-      errors.push("Invalid debtRole");
+      errors.push("Invalid kind");
     } else {
-      debtRole = debtRoleRaw;
+      kind = kindRaw;
     }
   }
 
@@ -305,7 +307,7 @@ function parseImportRow(
     inputCurrency,
     title: (raw.title || "").trim() || null,
     occurredAt: new Date(occurredAt).toISOString(),
-    debtRole,
+    kind,
     counterparty: (raw.counterparty || "").trim() || null,
     categories: splitCsvCategories(raw.categories || ""),
   };
@@ -317,7 +319,7 @@ function buildDuplicateHash(input: {
   inputCurrency: string;
   occurredAt: string;
   title?: string | null;
-  debtRole?: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterparty?: string | null;
 }): string {
   const payload = [
@@ -326,7 +328,7 @@ function buildDuplicateHash(input: {
     input.inputCurrency.toUpperCase(),
     new Date(input.occurredAt).toISOString(),
     input.title ?? "",
-    input.debtRole ?? "",
+    input.kind,
     input.counterparty ?? "",
   ].join("|");
   return createHash("sha256").update(payload).digest("hex");

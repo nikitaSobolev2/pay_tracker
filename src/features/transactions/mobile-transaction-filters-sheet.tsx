@@ -47,7 +47,7 @@ import {
   categoryTypeTextClass,
 } from "@/lib/category-chart-style";
 import { cn } from "@/lib/utils";
-import { DateRangeType, TransactionDebtRole, TransactionType } from "@/types/enums";
+import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
 import type { TransactionCategoryDto } from "@/types/transaction";
 
 type MobileTransactionFiltersSheetProps = {
@@ -98,13 +98,11 @@ export function MobileTransactionFiltersSheet({
   const [pickerDraft, setPickerDraft] = useState<DateRange | undefined>();
   const wasOpenRef = useRef(false);
 
-  const showLend = draft.debtRoles.includes(TransactionDebtRole.Lend);
-  const showBorrow = draft.debtRoles.includes(TransactionDebtRole.Borrow);
   const isCustom = customExpanded || isCustomDatePreset(draft.datePreset);
 
   const { categories, loading: categoriesLoading } =
     useFilterCategories(pageType);
-  const counterparties = useFilterCounterparties(showLend, showBorrow);
+  const counterparties = useFilterCounterparties();
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -362,63 +360,79 @@ export function MobileTransactionFiltersSheet({
               </div>
             </FilterSection>
 
-            <FilterSection title={t("filterDebt")}>
+            <FilterSection title={t("filterKind")}>
               <div className="space-y-2">
                 <ToggleRow
-                  checked={showLend}
-                  label={t("toLend")}
+                  checked={draft.kinds.includes(TransactionKind.Default)}
+                  label={t("kindDefault")}
                   onCheckedChange={() =>
                     setDraft((current) => ({
                       ...current,
-                      debtRoles: toggleValue(
-                        current.debtRoles,
-                        TransactionDebtRole.Lend,
+                      kinds: toggleValue(
+                        current.kinds,
+                        TransactionKind.Default,
                       ),
-                      counterpartyIds: [],
                     }))
                   }
                 />
                 <ToggleRow
-                  checked={showBorrow}
-                  label={t("toBorrow")}
+                  checked={draft.kinds.includes(TransactionKind.Loan)}
+                  label={t("kindLoan")}
                   onCheckedChange={() =>
                     setDraft((current) => ({
                       ...current,
-                      debtRoles: toggleValue(
-                        current.debtRoles,
-                        TransactionDebtRole.Borrow,
+                      kinds: toggleValue(
+                        current.kinds,
+                        TransactionKind.Loan,
                       ),
-                      counterpartyIds: [],
+                    }))
+                  }
+                />
+                <ToggleRow
+                  checked={draft.kinds.includes(TransactionKind.Debt)}
+                  label={t("kindDebt")}
+                  onCheckedChange={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      kinds: toggleValue(current.kinds, TransactionKind.Debt),
+                    }))
+                  }
+                />
+                <ToggleRow
+                  checked={draft.kinds.includes(TransactionKind.Refund)}
+                  label={t("kindRefund")}
+                  onCheckedChange={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      kinds: toggleValue(current.kinds, TransactionKind.Refund),
                     }))
                   }
                 />
               </div>
-              {counterparties.length > 0 ? (
-                <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
-                  <p className="px-1 pb-1 text-sm text-muted-foreground">
-                    {t("counterparties")}
-                  </p>
-                  <div className="max-h-48 space-y-2 overflow-y-auto">
-                    {counterparties.map((item) => (
-                      <ToggleRow
-                        key={item.id}
-                        checked={draft.counterpartyIds.includes(item.id)}
-                        label={item.name}
-                        onCheckedChange={() =>
-                          setDraft((current) => ({
-                            ...current,
-                            counterpartyIds: toggleValue(
-                              current.counterpartyIds,
-                              item.id,
-                            ),
-                          }))
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </FilterSection>
+
+            {counterparties.length > 0 ? (
+              <FilterSection title={t("counterparties")}>
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {counterparties.map((item) => (
+                    <ToggleRow
+                      key={item.id}
+                      checked={draft.counterpartyIds.includes(item.id)}
+                      label={item.name}
+                      onCheckedChange={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          counterpartyIds: toggleValue(
+                            current.counterpartyIds,
+                            item.id,
+                          ),
+                        }))
+                      }
+                    />
+                  ))}
+                </div>
+              </FilterSection>
+            ) : null}
 
             <FilterSection title={t("categories")}>
               <CategoriesBlock
@@ -598,11 +612,12 @@ function CategoriesBlock({
 
   return (
     <div className="max-h-64 space-y-2 overflow-y-auto">
-      {categories.map((category) => (
+      {treeCategories(categories).map((category) => (
         <ToggleRow
           key={category.id}
           checked={selectedIds.includes(category.id)}
-          label={category.path}
+          label={category.title}
+          indent={category.depth}
           indicatorClassName={categoryBarClass(category.type)}
           labelClassName={categoryTypeTextClass(category.type)}
           onCheckedChange={() => onToggle(category.id)}
@@ -626,12 +641,14 @@ function ToggleRow({
   label,
   labelClassName,
   indicatorClassName,
+  indent = 0,
   onCheckedChange,
 }: {
   readonly checked: boolean;
   readonly label: string;
   readonly labelClassName?: string;
   readonly indicatorClassName?: string;
+  readonly indent?: number;
   readonly onCheckedChange: () => void;
 }) {
   return (
@@ -641,6 +658,7 @@ function ToggleRow({
         "transition-colors hover:bg-muted/40",
         checked && "bg-muted/30",
       )}
+      style={{ paddingLeft: `${0.75 + indent * 1}rem` }}
     >
       <Checkbox
         className="size-5 shrink-0"
@@ -658,6 +676,26 @@ function ToggleRow({
       </span>
     </label>
   );
+}
+
+function treeCategories(
+  categories: TransactionCategoryDto[],
+): Array<TransactionCategoryDto & { depth: number }> {
+  const byParent = new Map<string | null, TransactionCategoryDto[]>();
+  for (const category of categories) {
+    const siblings = byParent.get(category.parentCategoryId) ?? [];
+    siblings.push(category);
+    byParent.set(category.parentCategoryId, siblings);
+  }
+  const result: Array<TransactionCategoryDto & { depth: number }> = [];
+  function visit(parentId: string | null, depth: number) {
+    for (const category of byParent.get(parentId) ?? []) {
+      result.push({ ...category, depth });
+      visit(category.id, depth + 1);
+    }
+  }
+  visit(null, 0);
+  return result;
 }
 
 function RollingRow({

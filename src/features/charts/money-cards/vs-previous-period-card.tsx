@@ -5,13 +5,17 @@ import { useTranslations } from "next-intl";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import type { PeriodComparison } from "@/server/services/stats-service.types";
 import { DateRangeType } from "@/types/enums";
 
 import {
   AMOUNT_CLASS,
+  comparisonTrendClassName,
+  MONEY_CARD_CONTENT_CLASS,
   MoneyCardSkeleton,
   PeriodChangeIndicator,
+  thisPeriodVsPreviousClassName,
 } from "./primitives";
 
 export function VsPreviousPeriodCard({
@@ -19,12 +23,14 @@ export function VsPreviousPeriodCard({
   loading,
   comparison,
   dateRangeType,
+  onPreviousPeriodClick,
   disableShare = false,
 }: {
   title: string;
   loading?: boolean;
   comparison: PeriodComparison;
   dateRangeType: DateRangeType;
+  onPreviousPeriodClick?: () => void;
   disableShare?: boolean;
 }) {
   const t = useTranslations("home");
@@ -50,26 +56,42 @@ export function VsPreviousPeriodCard({
       }
       loading={loading}
       className="h-full"
+      contentClassName={MONEY_CARD_CONTENT_CLASS}
       skeleton={<MoneyCardSkeleton showBadge showHint detailRows={2} />}
     >
-      <div className={AMOUNT_CLASS}>
+      <div
+        className={cn(
+          AMOUNT_CLASS,
+          comparisonTrendClassName(comparison, "higherIsBetter"),
+        )}
+      >
         {delta === null
           ? "—"
           : formatChartMoney(delta, comparison.current.currency)}
       </div>
       <PeriodChangeIndicator comparison={comparison} sense="higherIsBetter" />
-      <p className="mt-1.5 text-sm text-muted-foreground">{t("netChange")}</p>
+      <p className="text-sm text-muted-foreground">{t("netChange")}</p>
       <div className="mt-auto space-y-2.5 rounded-xl bg-muted/35 px-4 py-3.5 text-base">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">{t("thisPeriod")}</span>
-          <span className="font-medium tabular-nums">
+          <span
+            className={cn(
+              "font-medium tabular-nums",
+              thisPeriodVsPreviousClassName(comparison, "higherIsBetter"),
+            )}
+          >
             {formatChartMoney(
               comparison.current.amount,
               comparison.current.currency,
             )}
           </span>
         </div>
-        <div className="flex justify-between gap-4 border-t border-border/40 pt-2.5">
+        <button
+          type="button"
+          disabled={!onPreviousPeriodClick}
+          onClick={onPreviousPeriodClick}
+          className="flex w-full cursor-pointer justify-between gap-4 border-t border-border/40 pt-2.5 text-left transition-colors hover:text-foreground disabled:cursor-default disabled:hover:text-inherit"
+        >
           <span className="text-muted-foreground">{t("previousPeriod")}</span>
           <span className="font-medium tabular-nums">
             {comparison.previous
@@ -79,7 +101,7 @@ export function VsPreviousPeriodCard({
                 )
               : "—"}
           </span>
-        </div>
+        </button>
       </div>
     </StatCard>
   );

@@ -1,4 +1,4 @@
-import type { TransactionDebtRole } from "@/types/enums";
+import type { TransactionKind } from "@/types/enums";
 
 export type CounterpartyDto = {
   id: string;
@@ -7,7 +7,7 @@ export type CounterpartyDto = {
 
 export type SearchCounterpartiesInput = {
   userId: string;
-  debtRole?: TransactionDebtRole;
+  kind?: TransactionKind;
   q?: string;
   limit?: number;
 };

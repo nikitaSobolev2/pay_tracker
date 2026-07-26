@@ -1,8 +1,6 @@
 import { AppServiceError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
-import { TransactionDebtRole } from "@/types/enums";
-
 import type {
   CounterpartyDto,
   CreateCounterpartyInput,
@@ -25,16 +23,13 @@ export async function searchCounterparties(
       ...(query
         ? { name: { contains: query, mode: "insensitive" } }
         : {}),
-      transactions: {
-        some: {
-          isDeleted: false,
-          debtRole: input.debtRole
-            ? input.debtRole
-            : {
-                in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],
-              },
-        },
-      },
+      ...(input.kind
+        ? {
+            transactions: {
+              some: { isDeleted: false, kind: input.kind },
+            },
+          }
+        : {}),
     },
     orderBy: { name: "asc" },
     take: limit,

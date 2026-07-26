@@ -23,30 +23,49 @@ type CategoryChipPickerProps = {
   readonly type: TransactionType;
   readonly selectedIds: string[];
   readonly onChange: (ids: string[]) => void;
+  /** When provided, skips internal fetch and uses parent-loaded categories. */
+  readonly categories?: TransactionCategoryDto[];
+  readonly onCategoriesChange?: (categories: TransactionCategoryDto[]) => void;
 };
 
 export function CategoryChipPicker({
   type,
   selectedIds,
   onChange,
+  categories: categoriesProp,
+  onCategoriesChange,
 }: CategoryChipPickerProps) {
   const t = useTranslations("transaction");
   const tCommon = useTranslations("common");
-  const [categories, setCategories] = useState<TransactionCategoryDto[]>([]);
+  const [categoriesInternal, setCategoriesInternal] = useState<
+    TransactionCategoryDto[]
+  >([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const categories = categoriesProp ?? categoriesInternal;
+
+  function replaceCategories(next: TransactionCategoryDto[]) {
+    if (onCategoriesChange) {
+      onCategoriesChange(next);
+      return;
+    }
+    setCategoriesInternal(next);
+  }
 
   useEffect(() => {
+    if (categoriesProp) {
+      return;
+    }
     let cancelled = false;
     listCategories(type).then((result) => {
       if (!cancelled) {
-        setCategories(result.categories);
+        setCategoriesInternal(result.categories);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [type]);
+  }, [categoriesProp, type]);
 
   const groups = useMemo(
     () => groupCategoriesByParent(categories),
@@ -90,7 +109,7 @@ export function CategoryChipPicker({
     try {
       const result = await createCategory(title, type);
       const refreshed = await listCategories(type);
-      setCategories(refreshed.categories);
+      replaceCategories(refreshed.categories);
       onChange(
         withAncestorSelection(
           selectedIds,

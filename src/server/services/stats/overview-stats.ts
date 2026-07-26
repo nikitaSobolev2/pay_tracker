@@ -2,12 +2,15 @@ import Decimal from "decimal.js";
 
 import {
   daysInRange,
+  getAbsoluteRangeBounds,
   getDateRangeBounds,
+  getPreviousBoundsFromCurrent,
   getPreviousDateRangeBounds,
+  type DateBounds,
 } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 import { DateRangeType } from "@/types/enums";
 
 import { convertRubToDisplay } from "../exchange-rate-service";
@@ -33,10 +36,8 @@ import {
 export async function getOverviewStats(
   input: OverviewStatsInput,
 ): Promise<OverviewStats> {
-  const { start, end } = getDateRangeBounds(
-    input.dateRangeType,
-    input.timezone,
-  );
+  const bounds = resolveOverviewBounds(input);
+  const { start, end } = bounds;
   const timelineBucket = resolveTimelineBucket({ start, end });
   const [periodRows, recentRows, debtSnapshot] = await Promise.all([
     fetchRows(input.userId, start, end),
@@ -55,13 +56,24 @@ export async function getOverviewStats(
   const { debtsIOwe, debtsOwedToMe } = debtSnapshot;
 
   const spendingRows = periodRows.filter(
-    (row) => row.type === TransactionType.Spending,
+    (row) =>
+      row.type === TransactionType.Spending &&
+      row.kind !== TransactionKind.Refund,
+  );
+  const refundRows = periodRows.filter(
+    (row) =>
+      row.type === TransactionType.Spending &&
+      row.kind === TransactionKind.Refund,
   );
   const earningRows = periodRows.filter(
-    (row) => row.type === TransactionType.Earning,
+    (row) =>
+      row.type === TransactionType.Earning &&
+      row.kind !== TransactionKind.Refund,
   );
 
-  const spendingTotal = await sumDisplay(spendingRows, input.displayCurrency);
+  const spendingTotal = (
+    await sumDisplay(spendingRows, input.displayCurrency)
+  ).minus(await sumDisplay(refundRows, input.displayCurrency));
   const earningTotal = await sumDisplay(earningRows, input.displayCurrency);
   const netTotal = earningTotal.minus(spendingTotal);
 
@@ -79,6 +91,8 @@ export async function getOverviewStats(
     timezone: input.timezone,
     displayCurrency: input.displayCurrency,
     dateRangeType: input.dateRangeType,
+    currentBounds: bounds,
+    useAbsolutePrevious: Boolean(input.startDate && input.endDate),
   });
   const vsPreviousPeriod = comparisonFromAmounts(
     netTotal,
@@ -151,7 +165,7 @@ export async function getOverviewStats(
 }
 
 /**
- * Net each counterparty as (what they owe me / LEND) − (what I owe them / BORROW).
+ * Net each counterparty as (what they owe me / LOAN) − (what I owe them / DEBT).
  * Positive → "owed to me"; negative → "I'm in debt"; zero → omitted.
  *
  * Aggregated in Postgres by (counterparty, role, fxRateDate) so we never pull
@@ -165,11 +179,11 @@ async function aggregateNettedDebtSnapshots(
   debtsOwedToMe: { total: MoneyAmount; breakdown: NamedAmount[] };
 }> {
   const groups = await prisma.transaction.groupBy({
-    by: ["counterpartyId", "debtRole", "fxRateDate"],
+    by: ["counterpartyId", "kind", "fxRateDate"],
     where: {
       userId,
       isDeleted: false,
-      debtRole: { in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow] },
+      kind: { in: [TransactionKind.Loan, TransactionKind.Debt] },
     },
     _sum: { amount: true },
   });
@@ -186,7 +200,7 @@ async function aggregateNettedDebtSnapshots(
       group.fxRateDate,
     );
     const signed =
-      group.debtRole === TransactionDebtRole.Lend
+      group.kind === TransactionKind.Loan
         ? toDecimal(display.amount)
         : toDecimal(display.amount).neg();
     netByParty.set(key, (netByParty.get(key) ?? toDecimal(0)).plus(signed));
@@ -246,33 +260,67 @@ async function loadCounterpartyNames(
   return new Map(parties.map((party) => [party.id, party.name]));
 }
 
+function resolveOverviewBounds(input: OverviewStatsInput): DateBounds {
+  if (input.startDate && input.endDate) {
+    return getAbsoluteRangeBounds(
+      input.startDate,
+      input.endDate,
+      input.timezone,
+    );
+  }
+  return getDateRangeBounds(input.dateRangeType, input.timezone);
+}
+
 async function loadPreviousPeriodTotals(input: {
   userId: string;
   timezone: string;
   displayCurrency: string;
   dateRangeType: DateRangeType;
+  currentBounds: DateBounds;
+  useAbsolutePrevious: boolean;
 }): Promise<{
   net: Decimal;
   avgDailySpend: Decimal;
 } | null> {
-  if (input.dateRangeType === DateRangeType.AllTime) {
+  if (input.dateRangeType === DateRangeType.AllTime && !input.useAbsolutePrevious) {
     return null;
   }
-  const previousBounds = getPreviousDateRangeBounds(
-    input.dateRangeType,
-    input.timezone,
-  );
+  const previousBounds = input.useAbsolutePrevious
+    ? getPreviousBoundsFromCurrent(input.currentBounds)
+    : getPreviousDateRangeBounds(input.dateRangeType, input.timezone);
+  if (!previousBounds.start || !previousBounds.end) {
+    return null;
+  }
   const previousRows = await fetchRows(
     input.userId,
     previousBounds.start,
     previousBounds.end,
   );
-  const previousSpending = await sumDisplay(
-    previousRows.filter((row) => row.type === TransactionType.Spending),
-    input.displayCurrency,
+  const previousSpending = (
+    await sumDisplay(
+      previousRows.filter(
+        (row) =>
+          row.type === TransactionType.Spending &&
+          row.kind !== TransactionKind.Refund,
+      ),
+      input.displayCurrency,
+    )
+  ).minus(
+    await sumDisplay(
+      previousRows.filter(
+        (row) =>
+          row.type === TransactionType.Spending &&
+          row.kind === TransactionKind.Refund,
+      ),
+      input.displayCurrency,
+    ),
   );
   const previousEarning = await sumDisplay(
-    previousRows.filter((row) => row.type === TransactionType.Earning),
+    previousRows.filter(
+      (row) =>
+        row.type === TransactionType.Earning &&
+        row.kind !== TransactionKind.Refund,
+    ),
     input.displayCurrency,
   );
   const previousDayCount = daysInRange(

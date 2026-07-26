@@ -1,7 +1,12 @@
-import type { TransactionDebtRole, TransactionType } from "@/types/enums";
+import type { TransactionKind, TransactionType } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
-import type { MoneyAmount, NamedAmount, TimelinePoint } from "./stats-service.types";
+import type {
+  CategorySlice,
+  MoneyAmount,
+  NamedAmount,
+  TimelinePoint,
+} from "./stats-service.types";
 
 export type CategoryDetailStats = {
   readonly categoryId: string;
@@ -16,6 +21,8 @@ export type CategoryDetailStats = {
   readonly parentTimeline: TimelinePoint[];
   readonly siblingShares: NamedAmount[];
   readonly childrenBreakdown: NamedAmount[];
+  /** Direct children as pie slices; each may nest grandchildren for toggle. */
+  readonly childrenPie: CategorySlice[];
   readonly thisMonth: MoneyAmount;
   readonly lastMonth: MoneyAmount;
   readonly momDeltaPercent: number | null;
@@ -50,7 +57,7 @@ export type DebtDetailStats = {
 
 export type DebtEventRow = {
   readonly id: string;
-  readonly debtRole: TransactionDebtRole;
+  readonly kind: TransactionKind;
   readonly amountRub: string;
   readonly displayAmount: string;
   readonly inputCurrency: string;

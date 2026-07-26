@@ -53,7 +53,8 @@ import {
   categoryTypeTextClass,
 } from "@/lib/category-chart-style";
 import { cn } from "@/lib/utils";
-import { DateRangeType, TransactionDebtRole, TransactionType } from "@/types/enums";
+import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
+import type { TransactionCategoryDto } from "@/types/transaction";
 
 export type { TransactionFilterState } from "@/features/transactions/transaction-filter.types";
 export { DEFAULT_TRANSACTION_FILTERS } from "@/features/transactions/transaction-filter.types";
@@ -112,14 +113,12 @@ export function TransactionFilters({
   const [draftRolling, setDraftRolling] = useState<RollingDraft | null>(null);
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
 
-  const showLend = value.debtRoles.includes(TransactionDebtRole.Lend);
-  const showBorrow = value.debtRoles.includes(TransactionDebtRole.Borrow);
   const isDefault = filtersAreDefault(value);
   const isCustom = isCustomDatePreset(value.datePreset);
 
   const { categories, loading: categoriesLoading } =
     useFilterCategories(pageType);
-  const counterparties = useFilterCounterparties(showLend, showBorrow);
+  const counterparties = useFilterCounterparties();
 
   useEffect(() => {
     if (value.datePreset.kind !== "rolling") {
@@ -219,18 +218,27 @@ export function TransactionFilters({
 
   const customLabel = formatCustomPeriodLabel(value.datePreset, t, dateLocale);
 
-  const debtLabel =
-    value.debtRoles.length === 0
-      ? t("filterDebt")
-      : value.debtRoles
-          .map((role) =>
-            role === TransactionDebtRole.Lend ? t("toLend") : t("toBorrow"),
-          )
+  const kindLabel =
+    value.kinds.length === 0
+      ? t("filterKind")
+      : value.kinds
+          .map((kind) => {
+            if (kind === TransactionKind.Default) {
+              return t("kindDefault");
+            }
+            if (kind === TransactionKind.Loan) {
+              return t("kindLoan");
+            }
+            if (kind === TransactionKind.Debt) {
+              return t("kindDebt");
+            }
+            return t("kindRefund");
+          })
           .join(" · ");
 
   const selectedCategoryTitles = categories
     .filter((category) => value.categoryIds.includes(category.id))
-    .map((category) => category.path);
+    .map((category) => category.title);
   const categoriesLabel = categoriesChipLabel(selectedCategoryTitles, t);
 
   const rangeFromLabel = draftRange?.from
@@ -245,7 +253,7 @@ export function TransactionFilters({
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         {typeFilter != null && onTypeFilterChange ? (
           <TransactionTypeSelect
-            className="hidden shrink-0 md:flex"
+            className="hidden h-11 shrink-0 md:flex"
             value={typeFilter}
             onChange={onTypeFilterChange}
           />
@@ -413,67 +421,93 @@ export function TransactionFilters({
         ) : (
           <>
             <FilterMenuChip
-              active={value.debtRoles.length > 0}
-              label={debtLabel}
-              title={t("filterDebt")}
+              active={value.kinds.length > 0}
+              label={kindLabel}
+              title={t("filterKind")}
               contentClassName="w-64"
             >
               <div className="space-y-1">
                 <ToggleRow
-                  checked={showLend}
-                  label={t("toLend")}
+                  checked={value.kinds.includes(TransactionKind.Default)}
+                  label={t("kindDefault")}
                   onCheckedChange={() =>
                     onChange({
                       ...value,
-                      debtRoles: toggleValue(
-                        value.debtRoles,
-                        TransactionDebtRole.Lend,
+                      kinds: toggleValue(
+                        value.kinds,
+                        TransactionKind.Default,
                       ),
-                      counterpartyIds: [],
                     })
                   }
                 />
                 <ToggleRow
-                  checked={showBorrow}
-                  label={t("toBorrow")}
+                  checked={value.kinds.includes(TransactionKind.Loan)}
+                  label={t("kindLoan")}
                   onCheckedChange={() =>
                     onChange({
                       ...value,
-                      debtRoles: toggleValue(
-                        value.debtRoles,
-                        TransactionDebtRole.Borrow,
+                      kinds: toggleValue(
+                        value.kinds,
+                        TransactionKind.Loan,
                       ),
-                      counterpartyIds: [],
+                    })
+                  }
+                />
+                <ToggleRow
+                  checked={value.kinds.includes(TransactionKind.Debt)}
+                  label={t("kindDebt")}
+                  onCheckedChange={() =>
+                    onChange({
+                      ...value,
+                      kinds: toggleValue(value.kinds, TransactionKind.Debt),
+                    })
+                  }
+                />
+                <ToggleRow
+                  checked={value.kinds.includes(TransactionKind.Refund)}
+                  label={t("kindRefund")}
+                  onCheckedChange={() =>
+                    onChange({
+                      ...value,
+                      kinds: toggleValue(value.kinds, TransactionKind.Refund),
                     })
                   }
                 />
               </div>
-              {counterparties.length > 0 ? (
-                <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
-                  <p className="px-1 pb-1 text-xs text-muted-foreground">
-                    {t("counterparties")}
-                  </p>
-                  <div className="max-h-48 space-y-1 overflow-y-auto">
-                    {counterparties.map((item) => (
-                      <ToggleRow
-                        key={item.id}
-                        checked={value.counterpartyIds.includes(item.id)}
-                        label={item.name}
-                        onCheckedChange={() =>
-                          onChange({
-                            ...value,
-                            counterpartyIds: toggleValue(
-                              value.counterpartyIds,
-                              item.id,
-                            ),
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </FilterMenuChip>
+
+            {counterparties.length > 0 ? (
+              <FilterMenuChip
+                active={value.counterpartyIds.length > 0}
+                label={counterpartiesChipLabel(
+                  counterparties
+                    .filter((item) => value.counterpartyIds.includes(item.id))
+                    .map((item) => item.name),
+                  t,
+                )}
+                title={t("counterparties")}
+                contentClassName="w-64"
+              >
+                <div className="max-h-56 space-y-1 overflow-y-auto">
+                  {counterparties.map((item) => (
+                    <ToggleRow
+                      key={item.id}
+                      checked={value.counterpartyIds.includes(item.id)}
+                      label={item.name}
+                      onCheckedChange={() =>
+                        onChange({
+                          ...value,
+                          counterpartyIds: toggleValue(
+                            value.counterpartyIds,
+                            item.id,
+                          ),
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </FilterMenuChip>
+            ) : null}
 
             {categories.length > 0 ? (
               <FilterMenuChip
@@ -483,11 +517,12 @@ export function TransactionFilters({
                 contentClassName="w-64"
               >
                 <div className="max-h-56 space-y-1 overflow-y-auto">
-                  {categories.map((category) => (
+                  {treeCategories(categories).map((category) => (
                     <ToggleRow
                       key={category.id}
                       checked={value.categoryIds.includes(category.id)}
-                      label={category.path}
+                      label={category.title}
+                      indent={category.depth}
                       indicatorClassName={categoryBarClass(category.type)}
                       labelClassName={categoryTypeTextClass(category.type)}
                       onCheckedChange={() =>
@@ -623,21 +658,59 @@ function categoriesChipLabel(
   return t("categoriesSelected", { count: titles.length });
 }
 
+function counterpartiesChipLabel(
+  names: string[],
+  t: ReturnType<typeof useTranslations<"transaction">>,
+): string {
+  if (names.length === 0) {
+    return t("counterparties");
+  }
+  if (names.length === 1) {
+    return names[0] ?? t("counterparties");
+  }
+  return t("categoriesSelected", { count: names.length });
+}
+
+function treeCategories(
+  categories: TransactionCategoryDto[],
+): Array<TransactionCategoryDto & { depth: number }> {
+  const byParent = new Map<string | null, TransactionCategoryDto[]>();
+  for (const category of categories) {
+    const siblings = byParent.get(category.parentCategoryId) ?? [];
+    siblings.push(category);
+    byParent.set(category.parentCategoryId, siblings);
+  }
+  const result: Array<TransactionCategoryDto & { depth: number }> = [];
+  function visit(parentId: string | null, depth: number) {
+    for (const category of byParent.get(parentId) ?? []) {
+      result.push({ ...category, depth });
+      visit(category.id, depth + 1);
+    }
+  }
+  visit(null, 0);
+  return result;
+}
+
 function ToggleRow({
   checked,
   label,
   labelClassName,
   indicatorClassName,
+  indent = 0,
   onCheckedChange,
 }: {
   readonly checked: boolean;
   readonly label: string;
   readonly labelClassName?: string;
   readonly indicatorClassName?: string;
+  readonly indent?: number;
   readonly onCheckedChange: () => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-muted/40">
+    <label
+      className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-muted/40"
+      style={{ paddingLeft: `${0.5 + indent * 1}rem` }}
+    >
       <Checkbox
         checked={checked}
         onCheckedChange={() => onCheckedChange()}

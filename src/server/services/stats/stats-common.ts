@@ -15,7 +15,11 @@ import { daysInRange, elapsedDaysInRange } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import type { TimelineBucket } from "@/lib/timeline-bucket";
-import { DateRangeType, TransactionDebtRole, TransactionType } from "@/types/enums";
+import {
+  DateRangeType,
+  TransactionKind,
+  TransactionType,
+} from "@/types/enums";
 
 import {
   loadCategoryAncestorMap,
@@ -40,7 +44,7 @@ export type TxRow = {
   fxRateDate: Date;
   title: string | null;
   occurredAt: Date;
-  debtRole: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterpartyId: string | null;
   counterparty: { id: string; name: string } | null;
   categories: Array<{
@@ -315,8 +319,10 @@ export async function buildTimeline(
     }
     const amount = await rowDisplayAmount(row, displayCurrency);
     if (row.type === TransactionType.Spending) {
-      spending.set(key, (spending.get(key) ?? toDecimal(0)).plus(amount));
-    } else {
+      const delta =
+        row.kind === TransactionKind.Refund ? amount.neg() : amount;
+      spending.set(key, (spending.get(key) ?? toDecimal(0)).plus(delta));
+    } else if (row.kind !== TransactionKind.Refund) {
       earning.set(key, (earning.get(key) ?? toDecimal(0)).plus(amount));
     }
   }
@@ -428,8 +434,8 @@ export function groupDebtRowsByCounterparty(rows: TxRow[]): Map<string, TxRow[]>
   const byParty = new Map<string, TxRow[]>();
   for (const row of rows) {
     if (
-      row.debtRole !== TransactionDebtRole.Lend &&
-      row.debtRole !== TransactionDebtRole.Borrow
+      row.kind !== TransactionKind.Loan &&
+      row.kind !== TransactionKind.Debt
     ) {
       continue;
     }
@@ -447,10 +453,10 @@ export async function netDebtBalance(
   displayCurrency: string,
 ): Promise<Decimal> {
   const lendRows = partyRows.filter(
-    (row) => row.debtRole === TransactionDebtRole.Lend,
+    (row) => row.kind === TransactionKind.Loan,
   );
   const borrowRows = partyRows.filter(
-    (row) => row.debtRole === TransactionDebtRole.Borrow,
+    (row) => row.kind === TransactionKind.Debt,
   );
   const owedToMe = await sumDisplay(lendRows, displayCurrency);
   const iOwe = await sumDisplay(borrowRows, displayCurrency);

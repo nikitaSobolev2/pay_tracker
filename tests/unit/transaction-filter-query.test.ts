@@ -7,7 +7,7 @@ import {
   writeFiltersToSearchParams,
 } from "../../src/features/transactions/transaction-filter-query";
 import { DEFAULT_TRANSACTION_FILTERS } from "../../src/features/transactions/transaction-filter.types";
-import { DateRangeType, TransactionDebtRole } from "../../src/types/enums";
+import { DateRangeType, TransactionKind } from "../../src/types/enums";
 
 describe("filtersFromSearchParams", () => {
   it("returns defaults for empty params", () => {
@@ -18,7 +18,7 @@ describe("filtersFromSearchParams", () => {
   it("parses calendar, debt, categories, counterparties, and hide flag", () => {
     const params = new URLSearchParams({
       dateRangeType: "year",
-      debtRoles: "LEND,BORROW",
+      kinds: "DEFAULT,LOAN,DEBT,REFUND",
       categoryIds: "c1,c2",
       counterpartyIds: "p1",
       hideUncategorized: "true",
@@ -28,9 +28,9 @@ describe("filtersFromSearchParams", () => {
       kind: "calendar",
       range: DateRangeType.Year,
     });
-    assert.deepEqual(filters.debtRoles, [
-      TransactionDebtRole.Lend,
-      TransactionDebtRole.Borrow,
+    assert.deepEqual(filters.kinds, [
+      TransactionKind.Loan,
+      TransactionKind.Debt,
     ]);
     assert.deepEqual(filters.categoryIds, ["c1", "c2"]);
     assert.deepEqual(filters.counterpartyIds, ["p1"]);
@@ -83,7 +83,7 @@ describe("writeFiltersToSearchParams", () => {
         unit: "months" as const,
         n: 3,
       },
-      debtRoles: [TransactionDebtRole.Borrow],
+      kinds: [TransactionKind.Debt],
       categoryIds: ["cat-1"],
       counterpartyIds: ["cp-1"],
       hideUncategorized: true,

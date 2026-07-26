@@ -6,7 +6,7 @@ import {
   medianDays,
   medianSettleDaysFromEvents,
 } from "../../src/lib/debt-episodes";
-import { TransactionDebtRole } from "../../src/types/enums";
+import { TransactionKind } from "../../src/types/enums";
 
 function at(iso: string): Date {
   return new Date(iso);
@@ -17,12 +17,12 @@ describe("detectCompletedDebtEpisodes", () => {
     const episodes = detectCompletedDebtEpisodes([
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 1000,
       },
       {
         occurredAt: at("2026-01-11T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 1000,
       },
     ]);
@@ -36,7 +36,7 @@ describe("detectCompletedDebtEpisodes", () => {
     const episodes = detectCompletedDebtEpisodes([
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 500,
       },
     ]);
@@ -47,27 +47,27 @@ describe("detectCompletedDebtEpisodes", () => {
     const episodes = detectCompletedDebtEpisodes([
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 1000,
       },
       {
         occurredAt: at("2026-01-06T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 400,
       },
       {
         occurredAt: at("2026-01-16T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 600,
       },
       {
         occurredAt: at("2026-02-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 200,
       },
       {
         occurredAt: at("2026-02-05T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 200,
       },
     ]);
@@ -83,17 +83,17 @@ describe("detectCompletedDebtEpisodes", () => {
     const episodes = detectCompletedDebtEpisodes([
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 100,
       },
       {
         occurredAt: at("2026-01-04T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 250,
       },
       {
         occurredAt: at("2026-01-10T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 150,
       },
     ]);
@@ -111,32 +111,32 @@ describe("medianSettleDaysFromEvents", () => {
     const median = medianSettleDaysFromEvents([
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-01-03T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-02-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-02-11T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-03-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-03-05T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 10,
       },
     ]);
@@ -148,22 +148,22 @@ describe("medianSettleDaysFromEvents", () => {
     const events = [
       {
         occurredAt: at("2026-01-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-01-11T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-02-01T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Borrow,
+        kind: TransactionKind.Debt,
         amountRub: 10,
       },
       {
         occurredAt: at("2026-02-03T00:00:00.000Z"),
-        debtRole: TransactionDebtRole.Lend,
+        kind: TransactionKind.Loan,
         amountRub: 10,
       },
     ] as const;

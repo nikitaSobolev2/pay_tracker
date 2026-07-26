@@ -128,7 +128,7 @@ export function SearchSpotlight({
           type="button"
           variant="outline"
           className={cn(
-            "h-8 w-full min-w-0 max-w-64 justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground",
+            "h-8 w-full min-w-0 max-w-64 justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground md:max-w-md xl:max-w-xl",
             className,
           )}
           onClick={() => setOpen(true)}
@@ -230,7 +230,7 @@ export function SearchSpotlight({
                     key={item.id}
                     value={`category-${item.id}`}
                     onSelect={() =>
-                      closeAndGo(`/categories?id=${encodeURIComponent(item.id)}`)
+                      closeAndGo(`/categories/${encodeURIComponent(item.id)}`)
                     }
                   >
                     <Tags />
@@ -261,7 +261,7 @@ export function SearchSpotlight({
                     value={`counterparty-${item.id}`}
                     onSelect={() =>
                       closeAndGo(
-                        `/counterparties?id=${encodeURIComponent(item.id)}`,
+                        `/counterparties/${encodeURIComponent(item.id)}`,
                       )
                     }
                   >

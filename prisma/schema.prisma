@@ -11,9 +11,11 @@ enum TransactionType {
   EARNING
 }
 
-enum TransactionDebtRole {
-  LEND
-  BORROW
+enum TransactionKind {
+  DEFAULT
+  LOAN
+  DEBT
+  REFUND
 }
 
 model User {
@@ -104,6 +106,7 @@ model UserCategory {
   title            String
   type             TransactionType
   parentCategoryId String?
+  keywords         String[]        @default([])
   createdAt        DateTime        @default(now())
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   parent           UserCategory?   @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
@@ -128,30 +131,30 @@ model UserCounterparty {
 }
 
 model Transaction {
-  id             String               @id @default(cuid())
+  id             String           @id @default(cuid())
   userId         String
   type           TransactionType
-  amount         Decimal              @db.Decimal(18, 4)
+  amount         Decimal          @db.Decimal(18, 4)
   inputCurrency  String
-  originalAmount Decimal              @db.Decimal(18, 4)
-  rateToRub      Decimal              @db.Decimal(18, 8)
-  fxRateDate     DateTime             @db.Date
+  originalAmount Decimal          @db.Decimal(18, 4)
+  rateToRub      Decimal          @db.Decimal(18, 8)
+  fxRateDate     DateTime         @db.Date
   title          String?
   occurredAt     DateTime
-  debtRole       TransactionDebtRole?
+  kind           TransactionKind  @default(DEFAULT)
   counterpartyId String?
   idempotencyKey String
-  isDeleted      Boolean              @default(false)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  counterparty   UserCounterparty?    @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
+  isDeleted      Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counterparty   UserCounterparty? @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
   categories     TransactionCategory[]
 
   @@unique([userId, idempotencyKey])
   @@index([userId, occurredAt])
   @@index([userId, type, occurredAt])
-  @@index([userId, debtRole, counterpartyId])
+  @@index([userId, kind, counterpartyId])
   @@index([userId, isDeleted, occurredAt])
 }
 

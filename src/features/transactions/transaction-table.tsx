@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -30,15 +30,31 @@ import {
   leafCategoriesOnly,
 } from "@/lib/category-selection";
 import { formatMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui.store";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import {
+  SortDirection,
+  TransactionKind,
+  TransactionSortBy,
+  TransactionType,
+  type TransactionSortBy as TransactionSortByType,
+  type SortDirection as SortDirectionType,
+} from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
+
+export type TransactionTableSort = {
+  readonly sortBy: TransactionSortByType;
+  readonly sortDir: SortDirectionType;
+} | null;
 
 type TransactionTableProps = {
   items: TransactionDto[];
   loading?: boolean;
   loadingMore?: boolean;
   onChanged: () => void;
+  onDateClick?: (date: string) => void;
+  sort?: TransactionTableSort;
+  onSortChange?: (sort: TransactionTableSort) => void;
 };
 
 const SKELETON_ROWS = 5;
@@ -48,6 +64,9 @@ export function TransactionTable({
   loading = false,
   loadingMore = false,
   onChanged,
+  onDateClick,
+  sort = null,
+  onSortChange,
 }: TransactionTableProps) {
   const t = useTranslations("transaction");
   const tCommon = useTranslations("common");
@@ -60,6 +79,21 @@ export function TransactionTable({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
+
+  function toggleSort(sortBy: TransactionSortByType) {
+    if (!onSortChange) {
+      return;
+    }
+    if (sort?.sortBy !== sortBy) {
+      onSortChange({ sortBy, sortDir: SortDirection.Asc });
+      return;
+    }
+    if (sort.sortDir === SortDirection.Asc) {
+      onSortChange({ sortBy, sortDir: SortDirection.Desc });
+      return;
+    }
+    onSortChange({ sortBy, sortDir: SortDirection.Asc });
+  }
 
   function toggleAll(checked: boolean) {
     setSelected(checked ? items.map((item) => item.id) : []);
@@ -126,6 +160,7 @@ export function TransactionTable({
           onSoftDeleted={(id) => {
             setSelected((prev) => prev.filter((item) => item !== id));
           }}
+          onDateClick={onDateClick}
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border">
@@ -140,10 +175,38 @@ export function TransactionTable({
                     onCheckedChange={(checked) => toggleAll(checked === true)}
                   />
                 </TableHead>
-                <TableHead>{t("title")}</TableHead>
-                <TableHead>{t("amount")}</TableHead>
-                <TableHead>{t("date")}</TableHead>
-                <TableHead>{t("categories")}</TableHead>
+                <SortableTableHead
+                  label={t("title")}
+                  sortBy={TransactionSortBy.Title}
+                  sort={sort}
+                  onToggle={toggleSort}
+                  onClear={() => onSortChange?.(null)}
+                  clearLabel={t("clearTableSort")}
+                />
+                <SortableTableHead
+                  label={t("amount")}
+                  sortBy={TransactionSortBy.Amount}
+                  sort={sort}
+                  onToggle={toggleSort}
+                  onClear={() => onSortChange?.(null)}
+                  clearLabel={t("clearTableSort")}
+                />
+                <SortableTableHead
+                  label={t("date")}
+                  sortBy={TransactionSortBy.Date}
+                  sort={sort}
+                  onToggle={toggleSort}
+                  onClear={() => onSortChange?.(null)}
+                  clearLabel={t("clearTableSort")}
+                />
+                <SortableTableHead
+                  label={t("categories")}
+                  sortBy={TransactionSortBy.Categories}
+                  sort={sort}
+                  onToggle={toggleSort}
+                  onClear={() => onSortChange?.(null)}
+                  clearLabel={t("clearTableSort")}
+                />
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -187,10 +250,10 @@ export function TransactionTable({
                                 : t("earning"))}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {item.debtRole === TransactionDebtRole.Lend
+                            {item.kind === TransactionKind.Loan
                               ? `${t("toLend")}: ${item.counterpartyName ?? "—"}`
                               : null}
-                            {item.debtRole === TransactionDebtRole.Borrow
+                            {item.kind === TransactionKind.Debt
                               ? `${t("toBorrow")}: ${item.counterpartyName ?? "—"}`
                               : null}
                           </div>
@@ -215,18 +278,26 @@ export function TransactionTable({
                         ) : null}
                       </TableCell>
                       <TableCell>
-                        {formatReadableDateTime(item.occurredAt)}
+                        <button
+                          type="button"
+                          onClick={() => onDateClick?.(item.occurredAt.slice(0, 10))}
+                          className="hover:underline"
+                        >
+                          {formatReadableDateTime(item.occurredAt)}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {leafCategoriesOnly(item.categories).map(
                             (category) => (
-                              <span
+                              <Link
                                 key={category.id}
+                                href={`/categories/${category.id}`}
+                                onClick={(event) => event.stopPropagation()}
                                 className="rounded-md bg-muted px-1.5 py-0.5 text-xs"
                               >
                                 {formatLeafCategoryLabel(category)}
-                              </span>
+                              </Link>
                             ),
                           )}
                         </div>
@@ -275,6 +346,60 @@ export function TransactionTable({
         onConfirm={() => void confirmDelete()}
       />
     </div>
+  );
+}
+
+function SortableTableHead({
+  label,
+  sortBy,
+  sort,
+  onToggle,
+  onClear,
+  clearLabel,
+}: {
+  readonly label: string;
+  readonly sortBy: TransactionSortByType;
+  readonly sort: TransactionTableSort;
+  readonly onToggle: (sortBy: TransactionSortByType) => void;
+  readonly onClear: () => void;
+  readonly clearLabel: string;
+}) {
+  const active = sort?.sortBy === sortBy;
+  return (
+    <TableHead>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-left font-medium transition-colors hover:bg-muted/60",
+            active && "text-foreground",
+          )}
+          onClick={() => onToggle(sortBy)}
+        >
+          <span>{label}</span>
+          {active ? (
+            sort?.sortDir === SortDirection.Asc ? (
+              <ArrowUp className="size-3.5 shrink-0" aria-hidden />
+            ) : (
+              <ArrowDown className="size-3.5 shrink-0" aria-hidden />
+            )
+          ) : null}
+        </button>
+        {active ? (
+          <button
+            type="button"
+            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={(event) => {
+              event.stopPropagation();
+              onClear();
+            }}
+            aria-label={clearLabel}
+          >
+            <X className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+    </TableHead>
   );
 }
 

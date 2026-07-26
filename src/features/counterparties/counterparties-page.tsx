@@ -453,7 +453,7 @@ function CounterpartiesListContent({
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Link
-                  href={`/counterparties?id=${encodeURIComponent(counterparty.id)}`}
+                  href={`/counterparties/${encodeURIComponent(counterparty.id)}`}
                   className="truncate text-base font-medium underline-offset-4 hover:underline"
                 >
                   {counterparty.name}

@@ -9,10 +9,10 @@ import {
   listAllCounterparties,
   searchCounterparties,
 } from "@/server/services/counterparty-service";
-import { TransactionDebtRole } from "@/types/enums";
+import { TransactionKind } from "@/types/enums";
 
 const querySchema = z.object({
-  debtRole: zodEnumFromConst(TransactionDebtRole).optional(),
+  kind: zodEnumFromConst(TransactionKind).optional(),
   q: z.string().optional(),
   all: z
     .enum(["true", "false", "1", "0"])
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const user = await requireUser();
     const { searchParams } = new URL(request.url);
     const query = querySchema.parse({
-      debtRole: searchParams.get("debtRole") ?? undefined,
+      kind: searchParams.get("kind") ?? undefined,
       q: searchParams.get("q") ?? undefined,
       all: searchParams.get("all") ?? undefined,
     });
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       ? await listAllCounterparties({ userId: user.id })
       : await searchCounterparties({
           userId: user.id,
-          debtRole: query.debtRole,
+          kind: query.kind,
           q: query.q,
         });
 

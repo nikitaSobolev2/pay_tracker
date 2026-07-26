@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  endOfDay,
+  endOfMonth,
+  endOfYear,
+  format,
+  startOfDay,
+  startOfMonth,
+  startOfYear,
+  subDays,
+  subMonths,
+  subYears,
+} from "date-fns";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -13,7 +25,7 @@ import {
   VsPreviousPeriodCard,
 } from "@/features/charts/money-summary-cards";
 import { RecentTransactionsList } from "@/features/charts/recent-transactions-list";
-import { TimelineChart } from "@/features/charts/timeline-chart";
+import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import { FastTransactionInput } from "@/features/home/fast-transaction-input";
 import { FastTransactionQueueTable } from "@/features/home/fast-transaction-queue-table";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -23,6 +35,11 @@ import { cn } from "@/lib/utils";
 import type { OverviewStats } from "@/server/services/stats-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 import { DateRangeType } from "@/types/enums";
+
+type AbsoluteRange = {
+  readonly startDate: string;
+  readonly endDate: string;
+};
 
 const DATE_RANGE_OPTIONS = [
   DateRangeType.Day,
@@ -42,18 +59,24 @@ export function HomeDashboard() {
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>(
     DateRangeType.Month,
   );
+  const [absoluteRange, setAbsoluteRange] = useState<AbsoluteRange | null>(
+    null,
+  );
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await fetchOverviewStats(dateRangeType);
+      const result = await fetchOverviewStats(
+        dateRangeType,
+        absoluteRange ?? undefined,
+      );
       setStats(result);
     } finally {
       setLoading(false);
     }
-  }, [dateRangeType]);
+  }, [absoluteRange, dateRangeType]);
 
   useEffect(() => {
     void load();
@@ -145,6 +168,7 @@ export function HomeDashboard() {
             next === DateRangeType.Year ||
             next === DateRangeType.AllTime
           ) {
+            setAbsoluteRange(null);
             setDateRangeType(next);
           }
         },
@@ -169,6 +193,20 @@ export function HomeDashboard() {
   const avgDailyChangeClassName = spendChangeClassName(
     avgDailyComparison.deltaAmount,
   );
+  const canApplyPreviousPeriod = dateRangeType !== DateRangeType.AllTime;
+  const applyPreviousPeriod = useCallback(() => {
+    if (!canApplyPreviousPeriod) {
+      return;
+    }
+    setAbsoluteRange((current) =>
+      previousAbsoluteRange(dateRangeType, current),
+    );
+  }, [canApplyPreviousPeriod, dateRangeType]);
+
+  function handleDateRangeTypeChange(next: DateRangeType) {
+    setAbsoluteRange(null);
+    setDateRangeType(next);
+  }
 
   return (
     <div className="space-y-6">
@@ -200,7 +238,7 @@ export function HomeDashboard() {
       >
         <DateRangeTypeSwitcher
           value={dateRangeType}
-          onChange={setDateRangeType}
+          onChange={handleDateRangeTypeChange}
         />
       </div>
 
@@ -237,9 +275,9 @@ export function HomeDashboard() {
         </div>
         <div
           className={cn(
-            "min-w-0 overflow-hidden transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
+            "min-w-0 transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
             dateRangeType === DateRangeType.Day
-              ? "pointer-events-none max-h-0 flex-[0_0_0%] opacity-0 md:max-h-none"
+              ? "pointer-events-none max-h-0 flex-[0_0_0%] overflow-hidden opacity-0 md:max-h-none"
               : "flex-1 opacity-100",
           )}
         >
@@ -267,6 +305,9 @@ export function HomeDashboard() {
                       avgDailyComparison.previous.currency,
                     )
                   : "—",
+                onClick: canApplyPreviousPeriod
+                  ? applyPreviousPeriod
+                  : undefined,
               },
               {
                 label: t("change"),
@@ -284,9 +325,9 @@ export function HomeDashboard() {
         </div>
         <div
           className={cn(
-            "min-w-0 overflow-hidden transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
+            "min-w-0 transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
             dateRangeType === DateRangeType.AllTime
-              ? "pointer-events-none max-h-0 flex-[0_0_0%] opacity-0 md:max-h-none"
+              ? "pointer-events-none max-h-0 flex-[0_0_0%] overflow-hidden opacity-0 md:max-h-none"
               : "flex-1 opacity-100",
           )}
         >
@@ -302,6 +343,9 @@ export function HomeDashboard() {
               }
             }
             dateRangeType={dateRangeType}
+            onPreviousPeriodClick={
+              canApplyPreviousPeriod ? applyPreviousPeriod : undefined
+            }
           />
         </div>
       </div>
@@ -321,7 +365,7 @@ export function HomeDashboard() {
         />
       </div>
 
-      <TimelineChart
+      <TimelineWithDrilldown
         title={t("timelineIncomeSpending")}
         loading={loading && !stats}
         points={stats?.timeline ?? []}
@@ -336,6 +380,8 @@ export function HomeDashboard() {
 
       <RecentTransactionsList
         dateRangeType={dateRangeType}
+        startDate={absoluteRange?.startDate}
+        endDate={absoluteRange?.endDate}
         periodTotalAmount={
           stats?.periodTotal ?? { amount: "0", currency: "RUB" }
         }
@@ -343,6 +389,46 @@ export function HomeDashboard() {
       />
     </div>
   );
+}
+
+function previousAbsoluteRange(
+  dateRangeType: DateRangeType,
+  current: AbsoluteRange | null,
+): AbsoluteRange | null {
+  if (dateRangeType === DateRangeType.AllTime) {
+    return null;
+  }
+  const toKey = (date: Date) => format(date, "yyyy-MM-dd");
+  if (current) {
+    const start = new Date(`${current.startDate}T00:00:00`);
+    const end = new Date(`${current.endDate}T00:00:00`);
+    const length =
+      Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    return {
+      startDate: toKey(subDays(start, length)),
+      endDate: toKey(subDays(end, length)),
+    };
+  }
+  const today = new Date();
+  if (dateRangeType === DateRangeType.Day) {
+    const date = subDays(today, 1);
+    return {
+      startDate: toKey(startOfDay(date)),
+      endDate: toKey(endOfDay(date)),
+    };
+  }
+  if (dateRangeType === DateRangeType.Month) {
+    const date = subMonths(today, 1);
+    return {
+      startDate: toKey(startOfMonth(date)),
+      endDate: toKey(endOfMonth(date)),
+    };
+  }
+  const date = subYears(today, 1);
+  return {
+    startDate: toKey(startOfYear(date)),
+    endDate: toKey(endOfYear(date)),
+  };
 }
 
 function spendChangeClassName(deltaAmount: string | null): string | undefined {

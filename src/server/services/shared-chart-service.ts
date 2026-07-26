@@ -103,12 +103,17 @@ export async function getSharedChartForViewer(input: {
   return toPublicDto(row);
 }
 
-/** Returns owner context for public heatmap day drill-down. */
-export async function getPublicHeatmapShareContext(id: string): Promise<{
+type DrilldownSharePayload = Extract<
+  SharedChartPayload,
+  { type: "activityHeatmap" } | { type: "timeline" }
+>;
+
+/** Owner context for public heatmap/timeline period drill-down. */
+export async function getPublicShareDrilldownContext(id: string): Promise<{
   userId: string;
   timezone: string;
   displayCurrency: string;
-  payload: Extract<SharedChartPayload, { type: "activityHeatmap" }>;
+  payload: DrilldownSharePayload;
 }> {
   const row = await prisma.sharedChart.findUnique({
     where: { id },
@@ -122,10 +127,10 @@ export async function getPublicHeatmapShareContext(id: string): Promise<{
     throw new AppServiceError(ApiErrorCode.NotFound, "Shared chart not found");
   }
   const payload = parseSharedChartPayload(row.payload);
-  if (payload.type !== "activityHeatmap") {
+  if (payload.type !== "activityHeatmap" && payload.type !== "timeline") {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Day drill-down is only available for activity heatmaps",
+      "Period drill-down is only available for activity heatmaps and timelines",
     );
   }
   return {
@@ -133,6 +138,23 @@ export async function getPublicHeatmapShareContext(id: string): Promise<{
     timezone: row.user.timezone || "UTC",
     displayCurrency: row.user.defaultCurrency.toUpperCase(),
     payload,
+  };
+}
+
+/** @deprecated Use getPublicShareDrilldownContext */
+export async function getPublicHeatmapShareContext(id: string) {
+  const context = await getPublicShareDrilldownContext(id);
+  if (context.payload.type !== "activityHeatmap") {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Day drill-down is only available for activity heatmaps",
+    );
+  }
+  return {
+    userId: context.userId,
+    timezone: context.timezone,
+    displayCurrency: context.displayCurrency,
+    payload: context.payload,
   };
 }
 

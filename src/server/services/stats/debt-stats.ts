@@ -8,7 +8,7 @@ import {
 import { getDateRangeBounds } from "@/lib/dates";
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { DateRangeType, TransactionDebtRole } from "@/types/enums";
+import { DateRangeType, TransactionKind } from "@/types/enums";
 
 import type {
   DebtCounterpartyStats,
@@ -31,7 +31,7 @@ export async function getDebtsStats(
     where: {
       userId: input.userId,
       isDeleted: false,
-      debtRole: { in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow] },
+      kind: { in: [TransactionKind.Loan, TransactionKind.Debt] },
     },
     include: {
       counterparty: true,
@@ -173,14 +173,14 @@ function partyRowsToEpisodeEvents(partyRows: TxRow[]): DebtEpisodeEvent[] {
   const events: DebtEpisodeEvent[] = [];
   for (const row of partyRows) {
     if (
-      row.debtRole !== TransactionDebtRole.Lend &&
-      row.debtRole !== TransactionDebtRole.Borrow
+      row.kind !== TransactionKind.Loan &&
+      row.kind !== TransactionKind.Debt
     ) {
       continue;
     }
     events.push({
       occurredAt: row.occurredAt,
-      debtRole: row.debtRole,
+      kind: row.kind,
       amountRub: row.amount.toString(),
     });
   }

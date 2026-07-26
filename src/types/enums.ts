@@ -18,12 +18,14 @@ export const TransactionType = {
 export type TransactionType =
   (typeof TransactionType)[keyof typeof TransactionType];
 
-export const TransactionDebtRole = {
-  Lend: "LEND",
-  Borrow: "BORROW",
+export const TransactionKind = {
+  Default: "DEFAULT",
+  Loan: "LOAN",
+  Debt: "DEBT",
+  Refund: "REFUND",
 } as const;
-export type TransactionDebtRole =
-  (typeof TransactionDebtRole)[keyof typeof TransactionDebtRole];
+export type TransactionKind =
+  (typeof TransactionKind)[keyof typeof TransactionKind];
 
 export const DateRangeType = {
   Day: "day",
@@ -48,3 +50,18 @@ export const TransactionFormMode = {
 } as const;
 export type TransactionFormMode =
   (typeof TransactionFormMode)[keyof typeof TransactionFormMode];
+
+export const TransactionSortBy = {
+  Title: "title",
+  Amount: "amount",
+  Date: "date",
+  Categories: "categories",
+} as const;
+export type TransactionSortBy =
+  (typeof TransactionSortBy)[keyof typeof TransactionSortBy];
+
+export const SortDirection = {
+  Asc: "asc",
+  Desc: "desc",
+} as const;
+export type SortDirection = (typeof SortDirection)[keyof typeof SortDirection];

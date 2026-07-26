@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import type { DebtDetailStats } from "@/server/services/detail-stats-service.types";
 import type { DebtCounterpartyStats } from "@/server/services/stats-service.types";
 import { useUiStore } from "@/stores/ui.store";
-import { TransactionDebtRole } from "@/types/enums";
+import { TransactionKind } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
 type DebtDetailPageProps = {
@@ -131,8 +131,8 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 pb-10">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{t("title")}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
             {stats.name}
@@ -147,7 +147,7 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
         </div>
         {stats.tone !== "settled" ? (
           <Button
-            className="h-11 rounded-xl"
+            className="h-11 w-full rounded-xl sm:w-auto"
             onClick={() => setCloseOpen(true)}
           >
             {t("closeDebt")}
@@ -273,7 +273,7 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
                 >
                   <p className="truncate text-base font-medium">
                     {item.title ||
-                      (item.debtRole === TransactionDebtRole.Lend
+                      (item.kind === TransactionKind.Loan
                         ? "Lend"
                         : "Borrow")}
                   </p>

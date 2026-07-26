@@ -1,4 +1,4 @@
-import type { TransactionDebtRole, TransactionType } from "@/types/enums";
+import type { TransactionKind, TransactionType } from "@/types/enums";
 
 export type SearchResultKind =
   | "category"
@@ -17,7 +17,7 @@ export type SearchTransactionHit = {
   readonly originalAmount: string;
   readonly inputCurrency: string;
   readonly occurredAt: string;
-  readonly debtRole: TransactionDebtRole | null;
+  readonly transactionKind: TransactionKind;
   readonly counterpartyName: string | null;
   readonly categoryPaths: string[];
   readonly score: number;

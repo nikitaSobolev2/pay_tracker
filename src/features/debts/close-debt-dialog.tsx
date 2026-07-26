@@ -23,7 +23,7 @@ import { DateTimePicker } from "@/features/transactions/date-time-picker";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { createTransaction } from "@/lib/api/transactions";
 import { formatMoney } from "@/lib/money";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 import type { DebtCounterpartyStats } from "@/server/services/stats-service.types";
 
 export type DebtCloseTone = "owe" | "owed";
@@ -71,9 +71,9 @@ export function CloseDebtDialog({
 
     const isOwe = target.tone === "owe";
     const type = isOwe ? TransactionType.Spending : TransactionType.Earning;
-    const debtRole = isOwe
-      ? TransactionDebtRole.Lend
-      : TransactionDebtRole.Borrow;
+    const kind = isOwe
+      ? TransactionKind.Loan
+      : TransactionKind.Debt;
 
     setSaving(true);
     try {
@@ -83,7 +83,7 @@ export function CloseDebtDialog({
         inputCurrency: target.person.totalAllTime.currency,
         title: t("closeDebtTitle", { name: target.person.name }),
         occurredAt: occurredAt.toISOString(),
-        debtRole,
+        kind,
         counterpartyName: target.person.name,
         categoryIds: [],
         idempotencyKey: uuidv4(),

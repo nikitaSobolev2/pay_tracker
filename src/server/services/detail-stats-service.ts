@@ -7,7 +7,7 @@ import { AppServiceError } from "@/lib/errors";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 import { toCategoryDtos } from "./category-service";
 import type {
@@ -16,6 +16,7 @@ import type {
 } from "./detail-stats-service.types";
 import { convertRubToDisplay } from "./exchange-rate-service";
 import type {
+  CategorySlice,
   MoneyAmount,
   NamedAmount,
   TimelinePoint,
@@ -166,23 +167,81 @@ export async function getCategoryDetailStats(input: {
 
   const children = allCats.filter((row) => row.parentCategoryId === category.id);
   const childrenBreakdown: NamedAmount[] = [];
+  const childrenPieDrafts: Array<{
+    child: (typeof children)[number];
+    amount: Decimal;
+    nested: CategorySlice[];
+  }> = [];
+  let childrenPieTotal = toDecimal(0);
+
   for (const child of children) {
     const ids = [child.id, ...collectDescendants(allCats, child.id)];
     const childRows = inCategory.filter((row) =>
       row.categories.some((link) => ids.includes(link.categoryId)),
     );
     const total = await sumRows(childRows, input.displayCurrency);
-    if (!total.isZero()) {
-      childrenBreakdown.push({
-        id: child.id,
-        name: child.title,
-        amount: decimalToString(total),
+    if (total.isZero()) {
+      continue;
+    }
+    childrenBreakdown.push({
+      id: child.id,
+      name: child.title,
+      amount: decimalToString(total),
+    });
+
+    const grandchildren = allCats.filter(
+      (row) => row.parentCategoryId === child.id,
+    );
+    const nested: CategorySlice[] = [];
+    for (const grandchild of grandchildren) {
+      const grandchildIds = [
+        grandchild.id,
+        ...collectDescendants(allCats, grandchild.id),
+      ];
+      const grandchildRows = inCategory.filter((row) =>
+        row.categories.some((link) =>
+          grandchildIds.includes(link.categoryId),
+        ),
+      );
+      const grandchildTotal = await sumRows(
+        grandchildRows,
+        input.displayCurrency,
+      );
+      if (grandchildTotal.isZero()) {
+        continue;
+      }
+      nested.push({
+        categoryId: grandchild.id,
+        title: grandchild.title,
+        type: category.type,
+        amount: decimalToString(grandchildTotal),
+        percent: Number(
+          grandchildTotal.div(total).mul(100).toFixed(2),
+        ),
+        children: [],
       });
     }
+    nested.sort((a, b) => toDecimal(b.amount).cmp(toDecimal(a.amount)));
+    childrenPieDrafts.push({ child, amount: total, nested });
+    childrenPieTotal = childrenPieTotal.plus(total);
   }
+
   childrenBreakdown.sort((a, b) =>
     toDecimal(b.amount).cmp(toDecimal(a.amount)),
   );
+
+  const childrenPie: CategorySlice[] = childrenPieDrafts
+    .map(({ child, amount, nested }) => ({
+      categoryId: child.id,
+      title: child.title,
+      type: category.type,
+      amount: decimalToString(amount),
+      percent: childrenPieTotal.gt(0)
+        ? Number(amount.div(childrenPieTotal).mul(100).toFixed(2))
+        : 0,
+      children: nested,
+    }))
+    .sort((a, b) => toDecimal(b.amount).cmp(toDecimal(a.amount)));
 
   const thisMonthStart = startOfMonth(end);
   const lastMonthStart = startOfMonth(subMonths(end, 1));
@@ -239,6 +298,7 @@ export async function getCategoryDetailStats(input: {
     parentTimeline,
     siblingShares: siblingShares.slice(0, 8),
     childrenBreakdown: childrenBreakdown.slice(0, 8),
+    childrenPie,
     thisMonth: moneyOf(thisMonthAmt, input.displayCurrency),
     lastMonth: moneyOf(lastMonthAmt, input.displayCurrency),
     momDeltaPercent,
@@ -265,7 +325,7 @@ export async function getDebtDetailStats(input: {
     displayCurrency: input.displayCurrency,
     timezone: input.timezone,
     counterpartyIds: [input.counterpartyId],
-    debtRoles: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],
+    kinds: [TransactionKind.Loan, TransactionKind.Debt],
     page: 1,
     pageSize: 100,
   });
@@ -275,14 +335,14 @@ export async function getDebtDetailStats(input: {
       userId: input.userId,
       isDeleted: false,
       counterpartyId: input.counterpartyId,
-      debtRole: {
-        in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],
+      kind: {
+        in: [TransactionKind.Loan, TransactionKind.Debt],
       },
     },
     orderBy: { occurredAt: "asc" },
     select: {
       id: true,
-      debtRole: true,
+      kind: true,
       amount: true,
       originalAmount: true,
       inputCurrency: true,
@@ -301,7 +361,7 @@ export async function getDebtDetailStats(input: {
       input.displayCurrency,
       row.fxRateDate,
     );
-    if (row.debtRole === TransactionDebtRole.Lend) {
+    if (row.kind === TransactionKind.Loan) {
       running = running.plus(display);
     } else {
       running = running.minus(display);
@@ -328,7 +388,7 @@ export async function getDebtDetailStats(input: {
       input.displayCurrency,
       row.fxRateDate,
     );
-    if (row.debtRole === TransactionDebtRole.Lend) {
+    if (row.kind === TransactionKind.Loan) {
       bucket.lend = bucket.lend.plus(display);
     } else {
       bucket.borrow = bucket.borrow.plus(display);
@@ -398,7 +458,7 @@ export async function getDebtDetailStats(input: {
       row.fxRateDate,
     );
     monthNet =
-      row.debtRole === TransactionDebtRole.Lend
+      row.kind === TransactionKind.Loan
         ? monthNet.plus(display)
         : monthNet.minus(display);
   }
@@ -437,12 +497,12 @@ export async function getDebtDetailStats(input: {
         : null,
     medianSettleDays: medianSettleDaysFromEvents(
       rows.flatMap((row) =>
-        row.debtRole === TransactionDebtRole.Lend ||
-        row.debtRole === TransactionDebtRole.Borrow
+        row.kind === TransactionKind.Loan ||
+        row.kind === TransactionKind.Debt
           ? [
               {
                 occurredAt: row.occurredAt,
-                debtRole: row.debtRole,
+                kind: row.kind,
                 amountRub: row.amount.toString(),
               },
             ]

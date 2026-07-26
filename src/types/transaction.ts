@@ -1,7 +1,4 @@
-import type {
-  TransactionDebtRole,
-  TransactionType,
-} from "@/types/enums";
+import type { TransactionKind, TransactionType } from "@/types/enums";
 
 export type TransactionCategoryDto = {
   id: string;
@@ -9,6 +6,7 @@ export type TransactionCategoryDto = {
   type: TransactionType;
   parentCategoryId: string | null;
   path: string;
+  keywords: string[];
 };
 
 export type TransactionDto = {
@@ -23,7 +21,7 @@ export type TransactionDto = {
   displayCurrency: string;
   title: string | null;
   occurredAt: string;
-  debtRole: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterpartyId: string | null;
   counterpartyName: string | null;
   categories: TransactionCategoryDto[];

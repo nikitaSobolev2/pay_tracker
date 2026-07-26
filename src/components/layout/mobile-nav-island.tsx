@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type TransitionEvent,
 } from "react";
-import { Menu, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Menu, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -151,18 +151,37 @@ function useAnimatedPageChrome(chrome: MobilePageChrome | null) {
 }
 
 function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
+  const hasBack = chrome.backAction != null;
   const hasAction = chrome.action != null;
 
   return (
     <div
       className={cn(
         "grid h-12 gap-1",
-        hasAction ? "grid-cols-[minmax(0,1fr)_3rem]" : "grid-cols-1",
+        hasBack && hasAction
+          ? "grid-cols-[minmax(0,1fr)_3rem_3rem]"
+          : hasBack || hasAction
+            ? "grid-cols-[minmax(0,1fr)_3rem]"
+            : "grid-cols-1",
       )}
     >
       <div className="flex h-12 min-w-0 items-center">
         <PageChromeFilter chrome={chrome} />
       </div>
+      {chrome.backAction ? (
+        <div className={ICON_SLOT_CLASS}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={ICON_BUTTON_CLASS}
+            onClick={chrome.backAction.onClick}
+            aria-label={chrome.backAction.label}
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+        </div>
+      ) : null}
       {chrome.action ? (
         <div className={ICON_SLOT_CLASS}>
           <Button
@@ -175,6 +194,8 @@ function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
           >
             {chrome.action.kind === "filters" ? (
               <SlidersHorizontal className="size-5" />
+            ) : chrome.action.kind === "back" ? (
+              <ArrowLeft className="size-5" />
             ) : (
               <Plus className="size-5" />
             )}

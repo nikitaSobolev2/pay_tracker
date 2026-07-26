@@ -3,7 +3,20 @@
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  endOfDay,
+  endOfMonth,
+  endOfYear,
+  format,
+  startOfDay,
+  startOfMonth,
+  startOfYear,
+  subDays,
+  subMonths,
+  subYears,
+} from "date-fns";
 
+import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
 import {
@@ -13,7 +26,7 @@ import {
   TopCategoriesCard,
   VsPreviousPeriodCard,
 } from "@/features/charts/money-summary-cards";
-import { TimelineChart } from "@/features/charts/timeline-chart";
+import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import { MobileTransactionFiltersSheet } from "@/features/transactions/mobile-transaction-filters-sheet";
 import {
   filterStatesEqual,
@@ -25,12 +38,16 @@ import {
   filtersAreDefault,
   isSingleDayDatePreset,
   supportsPreviousPeriod,
+  type DateFilterPreset,
 } from "@/features/transactions/transaction-filter.types";
 import {
   TransactionFilters,
   type TransactionFilterState,
 } from "@/features/transactions/transaction-filters";
-import { TransactionTable } from "@/features/transactions/transaction-table";
+import {
+  TransactionTable,
+  type TransactionTableSort,
+} from "@/features/transactions/transaction-table";
 import {
   transactionTypeFromSearchParam,
   transactionTypeToSearchParam,
@@ -86,6 +103,9 @@ export function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+  const [restorableDatePreset, setRestorableDatePreset] =
+    useState<DateFilterPreset | null>(null);
+  const [tableSort, setTableSort] = useState<TransactionTableSort>(null);
 
   const filtersBlockRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -104,22 +124,38 @@ export function TransactionsPage() {
     return {
       ...dateParams,
       type: pageType,
-      debtRoles: filters.debtRoles.length ? filters.debtRoles : undefined,
+      kinds: filters.kinds.length ? filters.kinds : undefined,
       categoryIds: filters.categoryIds.length ? filters.categoryIds : undefined,
       counterpartyIds: filters.counterpartyIds.length
         ? filters.counterpartyIds
         : undefined,
       hideUncategorized: filters.hideUncategorized ? true : undefined,
+      sortBy: tableSort?.sortBy,
+      sortDir: tableSort?.sortDir,
     };
-  }, [filters, pageType]);
+  }, [filters, pageType, tableSort]);
 
   const showVsPrevious = supportsPreviousPeriod(filters.datePreset);
   const showAvgPerDay = !isSingleDayDatePreset(filters.datePreset);
+  const previousDateRange = previousDateRangeFor(filters.datePreset);
+  const applyPreviousPeriod = useCallback(() => {
+    if (!previousDateRange) {
+      return;
+    }
+    setFilters((current) => ({
+      ...current,
+      datePreset: {
+        kind: "absolute",
+        startDate: previousDateRange.startDate,
+        endDate: previousDateRange.endDate,
+      },
+    }));
+  }, [previousDateRange]);
 
   const heatmapFilters = useMemo(
     () => ({
       type: pageType,
-      debtRoles: filters.debtRoles.length ? filters.debtRoles : undefined,
+      kinds: filters.kinds.length ? filters.kinds : undefined,
       categoryIds: filters.categoryIds.length ? filters.categoryIds : undefined,
       counterpartyIds: filters.counterpartyIds.length
         ? filters.counterpartyIds
@@ -163,6 +199,17 @@ export function TransactionsPage() {
 
   const setMobilePageChrome = useMobilePageChromeStore((state) => state.setChrome);
 
+  const restoreDateFilter = useCallback(() => {
+    if (!restorableDatePreset) {
+      return;
+    }
+    setFilters((current) => ({
+      ...current,
+      datePreset: restorableDatePreset,
+    }));
+    setRestorableDatePreset(null);
+  }, [restorableDatePreset]);
+
   useEffect(() => {
     setMobilePageChrome({
       typeFilter: {
@@ -175,10 +222,18 @@ export function TransactionsPage() {
         onClick: () => setFiltersModalOpen(true),
         label: tTransaction("filters"),
       },
+      backAction: restorableDatePreset
+        ? {
+            onClick: restoreDateFilter,
+            label: tTransaction("getBack"),
+          }
+        : undefined,
     });
     return () => setMobilePageChrome(null);
   }, [
     filtersActive,
+    restorableDatePreset,
+    restoreDateFilter,
     setMobilePageChrome,
     setTypeFilter,
     tTransaction,
@@ -279,7 +334,10 @@ export function TransactionsPage() {
         <TransactionFilters
           pageType={pageType}
           value={filters}
-          onChange={setFilters}
+          onChange={(next) => {
+            setRestorableDatePreset(null);
+            setFilters(next);
+          }}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
         />
@@ -290,7 +348,10 @@ export function TransactionsPage() {
         onOpenChange={setFiltersModalOpen}
         pageType={pageType}
         value={filters}
-        onChange={setFilters}
+        onChange={(next) => {
+          setRestorableDatePreset(null);
+          setFilters(next);
+        }}
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-stretch">
@@ -331,10 +392,11 @@ export function TransactionsPage() {
             hideComparison={!showVsPrevious}
             details={
               showVsPrevious
-                ? periodComparisonDetails(
+                ? avgComparisonDetails(
                     stats?.avgPerTransactionVsPrevious ?? EMPTY_COMPARISON,
-                    tHome("thisPeriod"),
                     tHome("previousPeriod"),
+                    tHome("change"),
+                    previousDateRange ? applyPreviousPeriod : undefined,
                   )
                 : undefined
             }
@@ -342,10 +404,10 @@ export function TransactionsPage() {
         </div>
         <div
           className={cn(
-            "overflow-hidden transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
+            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
             showAvgPerDay
               ? SUMMARY_CARD_SHELL
-              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 opacity-0 md:max-h-none",
+              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
           )}
         >
           <MoneyValueCard
@@ -357,10 +419,11 @@ export function TransactionsPage() {
             hideComparison={!showVsPrevious}
             details={
               showVsPrevious
-                ? periodComparisonDetails(
+                ? avgComparisonDetails(
                     stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON,
-                    tHome("thisPeriod"),
                     tHome("previousPeriod"),
+                    tHome("change"),
+                    previousDateRange ? applyPreviousPeriod : undefined,
                   )
                 : undefined
             }
@@ -368,10 +431,10 @@ export function TransactionsPage() {
         </div>
         <div
           className={cn(
-            "overflow-hidden transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
+            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
             showVsPrevious
               ? SUMMARY_CARD_SHELL
-              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 opacity-0 md:max-h-none",
+              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
           )}
         >
           <VsPreviousPeriodCard
@@ -386,12 +449,15 @@ export function TransactionsPage() {
               }
             }
             dateRangeType={stats?.dateRangeType ?? DateRangeType.Month}
+            onPreviousPeriodClick={
+              previousDateRange ? applyPreviousPeriod : undefined
+            }
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-stretch">
-        <div className="min-w-0 lg:col-span-1">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
+        <div className="min-w-0">
           <TopCategoriesCard
             title={categoryChartTitle(typeFilter, t, tHome)}
             description={
@@ -404,7 +470,7 @@ export function TransactionsPage() {
             className="h-full"
           />
         </div>
-        <div className="min-w-0 lg:col-span-1">
+        <div className="min-w-0">
           <CategoryPieChart
             title={
               typeFilter === "all"
@@ -422,21 +488,20 @@ export function TransactionsPage() {
             className="h-full"
           />
         </div>
-        <div className="min-w-0 lg:col-span-2">
-          <TimelineChart
-            title={
-              typeFilter === "all"
-                ? t("timelineIncomeSpending")
-                : tHome("timeline")
-            }
-            loading={loadingStats}
-            points={stats?.timeline ?? []}
-            currency={stats?.displayCurrency ?? "RUB"}
-            mode={timelineModeForFilter(typeFilter)}
-            className="h-full min-w-0"
-          />
-        </div>
       </div>
+
+      <TimelineWithDrilldown
+        title={
+          typeFilter === "all"
+            ? t("timelineIncomeSpending")
+            : tHome("timeline")
+        }
+        loading={loadingStats}
+        points={stats?.timeline ?? []}
+        currency={stats?.displayCurrency ?? "RUB"}
+        mode={timelineModeForFilter(typeFilter)}
+        filters={heatmapFilters}
+      />
 
       <ActivityHeatmapCard
         title={tCharts("activity")}
@@ -457,10 +522,74 @@ export function TransactionsPage() {
         loading={initialLoading}
         loadingMore={loadingMore}
         onChanged={() => void reloadFirstPage()}
+        sort={tableSort}
+        onSortChange={setTableSort}
+        onDateClick={(date) =>
+          setFilters((current) => {
+            setRestorableDatePreset(current.datePreset);
+            return {
+              ...current,
+              datePreset: {
+                kind: "absolute",
+                startDate: date,
+                endDate: date,
+              },
+            };
+          })
+        }
       />
       <div ref={sentinelRef} className="h-6 w-full" aria-hidden={!hasMore} />
+
+      {restorableDatePreset ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 hidden justify-center md:flex">
+          <Button
+            type="button"
+            className="pointer-events-auto rounded-full px-6 shadow-lg"
+            onClick={restoreDateFilter}
+          >
+            {tTransaction("getBack")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function previousDateRangeFor(
+  preset: TransactionFilterState["datePreset"],
+): { startDate: string; endDate: string } | null {
+  const today = new Date();
+  const toKey = (date: Date) => format(date, "yyyy-MM-dd");
+  if (preset.kind === "all_time") return null;
+  if (preset.kind === "calendar") {
+    if (preset.range === DateRangeType.Day) {
+      const date = subDays(today, 1);
+      return { startDate: toKey(startOfDay(date)), endDate: toKey(endOfDay(date)) };
+    }
+    if (preset.range === DateRangeType.Month) {
+      const date = subMonths(today, 1);
+      return { startDate: toKey(startOfMonth(date)), endDate: toKey(endOfMonth(date)) };
+    }
+    const date = subYears(today, 1);
+    return { startDate: toKey(startOfYear(date)), endDate: toKey(endOfYear(date)) };
+  }
+  if (preset.kind === "absolute") {
+    const start = new Date(`${preset.startDate}T00:00:00`);
+    const end = new Date(`${preset.endDate}T00:00:00`);
+    const length = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    return {
+      startDate: toKey(subDays(start, length)),
+      endDate: toKey(subDays(end, length)),
+    };
+  }
+  const end = subDays(today, preset.n);
+  if (preset.unit === "days") {
+    return { startDate: toKey(subDays(end, preset.n - 1)), endDate: toKey(end) };
+  }
+  if (preset.unit === "months") {
+    return { startDate: toKey(startOfMonth(subMonths(end, preset.n - 1))), endDate: toKey(endOfMonth(end)) };
+  }
+  return { startDate: toKey(startOfYear(subYears(end, preset.n - 1))), endDate: toKey(endOfYear(end)) };
 }
 
 function categoryChartTitle(
@@ -526,19 +655,18 @@ function appendUniqueTransactions(
   return [...current, ...appended];
 }
 
-function periodComparisonDetails(
+function avgComparisonDetails(
   comparison: PeriodComparison,
-  thisPeriodLabel: string,
   previousPeriodLabel: string,
-): Array<{ readonly label: string; readonly value: string }> {
+  changeLabel: string,
+  onPreviousPeriodClick?: () => void,
+): Array<{
+  readonly label: string;
+  readonly value: string;
+  readonly valueClassName?: string;
+  readonly onClick?: () => void;
+}> {
   return [
-    {
-      label: thisPeriodLabel,
-      value: formatChartMoney(
-        comparison.current.amount,
-        comparison.current.currency,
-      ),
-    },
     {
       label: previousPeriodLabel,
       value: comparison.previous
@@ -547,6 +675,29 @@ function periodComparisonDetails(
             comparison.previous.currency,
           )
         : "—",
+      onClick: onPreviousPeriodClick,
+    },
+    {
+      label: changeLabel,
+      value:
+        comparison.deltaAmount != null
+          ? formatChartMoney(
+              comparison.deltaAmount,
+              comparison.current.currency,
+            )
+          : "—",
+      valueClassName: avgChangeClassName(comparison.deltaAmount),
     },
   ];
+}
+
+function avgChangeClassName(deltaAmount: string | null): string | undefined {
+  if (deltaAmount == null) {
+    return undefined;
+  }
+  const delta = Number(deltaAmount);
+  if (!Number.isFinite(delta) || delta === 0) {
+    return undefined;
+  }
+  return delta > 0 ? "text-rose-400" : "text-emerald-400";
 }

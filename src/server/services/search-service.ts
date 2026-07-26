@@ -4,7 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { classifySearchQuery } from "@/lib/search/query-classify";
-import { TransactionDebtRole } from "@/types/enums";
+import { TransactionKind } from "@/types/enums";
 
 import { toCategoryDtos } from "./category-service";
 import { convertRubToDisplay } from "./exchange-rate-service";
@@ -269,13 +269,13 @@ async function searchDebtsForCounterparties(
       userId: input.userId,
       isDeleted: false,
       counterpartyId: { in: ids },
-      debtRole: {
-        in: [TransactionDebtRole.Lend, TransactionDebtRole.Borrow],
+      kind: {
+        in: [TransactionKind.Loan, TransactionKind.Debt],
       },
     },
     select: {
       counterpartyId: true,
-      debtRole: true,
+      kind: true,
       amount: true,
       fxRateDate: true,
       counterparty: { select: { id: true, name: true } },
@@ -300,9 +300,9 @@ async function searchDebtsForCounterparties(
       lend: [],
       borrow: [],
     };
-    if (row.debtRole === TransactionDebtRole.Lend) {
+    if (row.kind === TransactionKind.Loan) {
       bucket.lend.push(row);
-    } else if (row.debtRole === TransactionDebtRole.Borrow) {
+    } else if (row.kind === TransactionKind.Debt) {
       bucket.borrow.push(row);
     }
     byParty.set(row.counterpartyId, bucket);
@@ -521,7 +521,7 @@ async function mapTxHits(
       originalAmount: row.originalAmount.toString(),
       inputCurrency: row.inputCurrency,
       occurredAt: row.occurredAt.toISOString(),
-      debtRole: row.debtRole,
+      transactionKind: row.kind,
       counterpartyName: row.counterparty?.name ?? null,
       categoryPaths: row.categories.map(
         (link) => pathById.get(link.category.id) ?? link.category.title,

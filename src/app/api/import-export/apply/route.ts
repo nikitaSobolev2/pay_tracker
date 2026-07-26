@@ -5,7 +5,7 @@ import { handleRouteError } from "@/lib/route-handler";
 import { requireUser } from "@/lib/session";
 import { zodEnumFromConst } from "@/lib/zod-helpers";
 import { applyImport } from "@/server/services/csv-import-export-service";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 const rowSchema = z.object({
   id: z.string().nullable().optional(),
@@ -14,7 +14,7 @@ const rowSchema = z.object({
   inputCurrency: z.string().min(3).max(3),
   title: z.string().nullable().optional(),
   occurredAt: z.string().datetime(),
-  debtRole: zodEnumFromConst(TransactionDebtRole).nullable().optional(),
+  kind: zodEnumFromConst(TransactionKind).default(TransactionKind.Default),
   counterparty: z.string().nullable().optional(),
   categories: z.array(z.string()).optional(),
 });

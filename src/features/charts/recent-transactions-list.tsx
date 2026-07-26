@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/charts/stat-card";
 import { ConfirmDeleteDialog } from "@/features/transactions/confirm-delete-dialog";
 import { TransactionMobileList } from "@/features/transactions/transaction-mobile-list";
+import { useRouter } from "@/i18n/navigation";
 import {
   bulkDeleteTransactions,
   deleteTransaction,
@@ -27,17 +28,22 @@ const SKELETON_COUNT = 3;
 
 type RecentTransactionsListProps = {
   readonly dateRangeType: DateRangeType;
+  readonly startDate?: string;
+  readonly endDate?: string;
   readonly periodTotalAmount: MoneyAmount;
   readonly periodTotalLoading?: boolean;
 };
 
 export function RecentTransactionsList({
   dateRangeType,
+  startDate,
+  endDate,
   periodTotalAmount,
   periodTotalLoading = false,
 }: RecentTransactionsListProps) {
   const t = useTranslations("home");
   const tCommon = useTranslations("common");
+  const router = useRouter();
   const openEditTransactionModal = useUiStore(
     (state) => state.openEditTransactionModal,
   );
@@ -62,6 +68,18 @@ export function RecentTransactionsList({
   hasMoreRef.current = hasMore;
   pageRef.current = page;
 
+  const listQuery = useCallback(
+    (page: number) =>
+      listTransactions({
+        ...(startDate && endDate
+          ? { startDate, endDate }
+          : { dateRangeType }),
+        page,
+        pageSize: PAGE_SIZE,
+      }),
+    [dateRangeType, endDate, startDate],
+  );
+
   const reloadFirstPage = useCallback(async () => {
     requestLockRef.current = true;
     setInitialLoading(true);
@@ -73,11 +91,7 @@ export function RecentTransactionsList({
     setSelected([]);
 
     try {
-      const result = await listTransactions({
-        dateRangeType,
-        page: 1,
-        pageSize: PAGE_SIZE,
-      });
+      const result = await listQuery(1);
       setItems(result.items);
       setPage(result.page);
       setTotal(result.total);
@@ -91,7 +105,7 @@ export function RecentTransactionsList({
       setInitialLoading(false);
       requestLockRef.current = false;
     }
-  }, [dateRangeType]);
+  }, [listQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,11 +121,7 @@ export function RecentTransactionsList({
       setSelected([]);
 
       try {
-        const result = await listTransactions({
-          dateRangeType,
-          page: 1,
-          pageSize: PAGE_SIZE,
-        });
+        const result = await listQuery(1);
         if (cancelled) {
           return;
         }
@@ -151,7 +161,7 @@ export function RecentTransactionsList({
         onTransactionsChanged,
       );
     };
-  }, [dateRangeType, reloadFirstPage]);
+  }, [listQuery, reloadFirstPage]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -174,11 +184,7 @@ export function RecentTransactionsList({
         requestLockRef.current = true;
         setLoadingMore(true);
 
-        listTransactions({
-          dateRangeType,
-          page: nextPage,
-          pageSize: PAGE_SIZE,
-        })
+        listQuery(nextPage)
           .then((result) => {
             setItems((current) =>
               appendUniqueTransactions(current, result.items),
@@ -203,7 +209,7 @@ export function RecentTransactionsList({
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [dateRangeType, initialLoading]);
+  }, [initialLoading, listQuery]);
 
   function toggleOne(id: string) {
     setSelected((prev) =>
@@ -310,6 +316,11 @@ export function RecentTransactionsList({
           onToggleOne={toggleOne}
           onEnterSelection={enterSelection}
           onEdit={openEditTransactionModal}
+          onDateClick={(date) =>
+            router.push(
+              `/transactions?startDate=${encodeURIComponent(date)}&endDate=${encodeURIComponent(date)}`,
+            )
+          }
           onSoftDeleted={(id) => {
             setSelected((prev) => prev.filter((item) => item !== id));
           }}

@@ -1,4 +1,4 @@
-import { TransactionDebtRole } from "@/types/enums";
+import { TransactionKind } from "@/types/enums";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** Treat balances within this RUB epsilon as settled. */
@@ -6,7 +6,7 @@ const ZERO_EPSILON = 0.005;
 
 export type DebtEpisodeEvent = {
   readonly occurredAt: Date;
-  readonly debtRole: typeof TransactionDebtRole.Lend | typeof TransactionDebtRole.Borrow;
+  readonly kind: typeof TransactionKind.Loan | typeof TransactionKind.Debt;
   /** Canonical RUB amount (always positive). */
   readonly amountRub: number | string;
 };
@@ -26,7 +26,7 @@ function signedDelta(event: DebtEpisodeEvent): number {
   if (!Number.isFinite(amount)) {
     return 0;
   }
-  return event.debtRole === TransactionDebtRole.Lend ? amount : -amount;
+  return event.kind === TransactionKind.Loan ? amount : -amount;
 }
 
 function balanceSign(balance: number): -1 | 0 | 1 {

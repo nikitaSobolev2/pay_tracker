@@ -1,4 +1,4 @@
-import type { TransactionDebtRole, TransactionType } from "@/types/enums";
+import type { TransactionKind, TransactionType } from "@/types/enums";
 
 export type CsvExportResult = {
   filename: string;
@@ -20,7 +20,7 @@ export type CsvImportRow = {
   inputCurrency: string;
   title?: string | null;
   occurredAt: string;
-  debtRole?: TransactionDebtRole | null;
+  kind: TransactionKind;
   counterparty?: string | null;
   categories?: string[];
 };

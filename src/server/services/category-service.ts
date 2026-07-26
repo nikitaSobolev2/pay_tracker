@@ -21,6 +21,7 @@ type CategoryRow = {
   title: string;
   type: TransactionType;
   parentCategoryId: string | null;
+  keywords?: string[];
 };
 
 export async function listCategories(
@@ -94,6 +95,7 @@ export async function createCategory(
         title,
         type: input.type,
         parentCategoryId,
+        keywords: normalizeKeywords(input.keywords),
       },
     });
     const [dto] = await toCategoryDtos([row]);
@@ -124,6 +126,10 @@ export async function updateCategory(
     input.parentCategoryId !== undefined
       ? input.parentCategoryId
       : existing.parentCategoryId;
+  const nextKeywords =
+    input.keywords !== undefined
+      ? normalizeKeywords(input.keywords)
+      : existing.keywords ?? [];
 
   if (nextParentId) {
     await assertValidParent(
@@ -153,6 +159,7 @@ export async function updateCategory(
       data: {
         title: nextTitle,
         parentCategoryId: nextParentId,
+        keywords: nextKeywords,
       },
     });
     const [dto] = await toCategoryDtos([row]);
@@ -163,6 +170,16 @@ export async function updateCategory(
       "Category already exists for this type",
     );
   }
+}
+
+function normalizeKeywords(keywords: string[] | undefined): string[] {
+  return [
+    ...new Set(
+      (keywords ?? [])
+        .map((keyword) => keyword.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export async function deleteCategory(input: DeleteCategoryInput): Promise<void> {
@@ -219,6 +236,7 @@ export async function toCategoryDtos(
       type: row.type,
       parentCategoryId: row.parentCategoryId,
       path: joinCategoryPath(titles),
+      keywords: row.keywords ?? [],
     };
   });
 }

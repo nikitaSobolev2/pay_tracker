@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
+import { Link } from "@/i18n/navigation";
 import {
   formatLeafCategoryLabel,
   leafCategoriesOnly,
@@ -16,22 +17,21 @@ type TransactionListPrimaryProps = {
   readonly item: TransactionDto;
   readonly className?: string;
   readonly selected?: boolean;
+  readonly onDateClick?: (date: string) => void;
 };
 
 export function TransactionListPrimary({
   item,
   className,
   selected = false,
+  onDateClick,
 }: TransactionListPrimaryProps) {
   const t = useTranslations("transaction");
   const formatReadableDateTime = useReadableDateTime();
   const isSpending = item.type === TransactionType.Spending;
   const title =
     item.title || (isSpending ? t("spending") : t("earning"));
-  const categoriesLabel = leafCategoriesOnly(item.categories)
-    .map(formatLeafCategoryLabel)
-    .filter(Boolean)
-    .join(" · ");
+  const categories = leafCategoriesOnly(item.categories);
 
   return (
     <div
@@ -44,14 +44,39 @@ export function TransactionListPrimary({
       <p className="truncate text-[15px] font-medium leading-snug text-foreground">
         {title}
       </p>
-      {categoriesLabel ? (
+      {categories.length ? (
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {categoriesLabel}
+          {categories.map((category, index) => (
+            <span key={category.id}>
+              {index ? " · " : null}
+              <Link
+                href={`/categories/${category.id}`}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="hover:underline"
+              >
+                {formatLeafCategoryLabel(category)}
+              </Link>
+            </span>
+          ))}
         </p>
       ) : null}
-      <p className="mt-0.5 text-xs text-muted-foreground/80">
-        {formatReadableDateTime(item.occurredAt)}
-      </p>
+      {onDateClick ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDateClick(item.occurredAt.slice(0, 10));
+          }}
+          className="mt-0.5 text-xs text-muted-foreground/80 hover:underline"
+        >
+          {formatReadableDateTime(item.occurredAt)}
+        </button>
+      ) : (
+        <p className="mt-0.5 text-xs text-muted-foreground/80">
+          {formatReadableDateTime(item.occurredAt)}
+        </p>
+      )}
     </div>
   );
 }

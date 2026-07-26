@@ -6,7 +6,45 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from "react";
+
+/**
+ * Recharts sets tabIndex=-1 on the surface SVG. That keeps it out of tab order
+ * but still click-focusable, which draws a focus ring around axis ticks.
+ * `attachKey` should change when the chart DOM mounts/remounts (e.g. data length).
+ */
+export function useStripChartFocus(
+  containerRef: RefObject<HTMLElement | null>,
+  attachKey: string | number = 0,
+) {
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) {
+      return;
+    }
+    const strip = () => {
+      for (const element of node.querySelectorAll<SVGElement | HTMLElement>(
+        "svg.recharts-surface, .recharts-wrapper",
+      )) {
+        element.removeAttribute("tabindex");
+        element.setAttribute("focusable", "false");
+        if ("blur" in element) {
+          element.blur();
+        }
+      }
+    };
+    strip();
+    const observer = new MutationObserver(strip);
+    observer.observe(node, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ["tabindex"],
+    });
+    return () => observer.disconnect();
+  }, [attachKey, containerRef]);
+}
 
 const DRAG_THRESHOLD_PX = 4;
 const TOUCH_LOCK_THRESHOLD_PX = 3;
@@ -225,9 +263,30 @@ export function useContainedHorizontalScroll(
     }
   }, []);
 
+  const scrollIndexIntoCenter = useCallback(
+    (index: number, count: number) => {
+      const node = scrollRef.current;
+      if (!node || count <= 0 || index < 0 || index >= count) {
+        return;
+      }
+      const maxScroll = Math.max(0, node.scrollWidth - node.clientWidth);
+      if (maxScroll <= 0) {
+        return;
+      }
+      const ratio = count === 1 ? 0.5 : index / (count - 1);
+      const pointX = ratio * node.scrollWidth;
+      node.scrollLeft = Math.max(
+        0,
+        Math.min(pointX - node.clientWidth / 2, maxScroll),
+      );
+    },
+    [],
+  );
+
   return {
     scrollRef,
     isDragging,
+    scrollIndexIntoCenter,
     onPointerDown: enablePointerDrag ? onPointerDown : undefined,
     onPointerMove: enablePointerDrag ? onPointerMove : undefined,
     onPointerUp: enablePointerDrag ? onPointerUp : undefined,

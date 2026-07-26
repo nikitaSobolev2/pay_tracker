@@ -12,16 +12,21 @@ export function createCategory(
   title: string,
   type: TransactionType,
   parentCategoryId?: string | null,
+  keywords?: string[],
 ) {
   return apiFetch<{ category: TransactionCategoryDto }>("/api/categories", {
     method: "POST",
-    body: { title, type, parentCategoryId },
+    body: { title, type, parentCategoryId, keywords },
   });
 }
 
 export function updateCategory(
   id: string,
-  input: { title?: string; parentCategoryId?: string | null },
+  input: {
+    title?: string;
+    parentCategoryId?: string | null;
+    keywords?: string[];
+  },
 ) {
   return apiFetch<{ category: TransactionCategoryDto }>(
     `/api/categories/${id}`,

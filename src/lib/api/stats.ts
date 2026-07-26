@@ -11,7 +11,7 @@ import type {
 } from "@/server/services/stats-service.types";
 import type {
   DateRangeType,
-  TransactionDebtRole,
+  TransactionKind,
   TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
@@ -23,15 +23,22 @@ export type ListStatsParams = {
   startDate?: string;
   endDate?: string;
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
 };
 
-export function fetchOverviewStats(dateRangeType: DateRangeType) {
+export function fetchOverviewStats(
+  dateRangeType: DateRangeType,
+  range?: { readonly startDate: string; readonly endDate: string },
+) {
   return apiFetch<OverviewStats>(
-    `/api/stats/overview${buildQuery({ dateRangeType })}`,
+    `/api/stats/overview${buildQuery({
+      dateRangeType,
+      startDate: range?.startDate,
+      endDate: range?.endDate,
+    })}`,
   );
 }
 
@@ -44,7 +51,7 @@ export function fetchTransactionStats(params: ListStatsParams = {}) {
       startDate: params.startDate,
       endDate: params.endDate,
       type: params.type,
-      debtRoles: params.debtRoles?.join(","),
+      kinds: params.kinds?.join(","),
       categoryIds: params.categoryIds?.join(","),
       counterpartyIds: params.counterpartyIds?.join(","),
       hideUncategorized: params.hideUncategorized ? "true" : undefined,
@@ -54,7 +61,7 @@ export function fetchTransactionStats(params: ListStatsParams = {}) {
 
 export type ActivityHeatmapParams = {
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
@@ -64,7 +71,7 @@ export function fetchActivityHeatmap(params: ActivityHeatmapParams = {}) {
   return apiFetch<ActivityHeatmap>(
     `/api/stats/activity${buildQuery({
       type: params.type,
-      debtRoles: params.debtRoles?.join(","),
+      kinds: params.kinds?.join(","),
       categoryIds: params.categoryIds?.join(","),
       counterpartyIds: params.counterpartyIds?.join(","),
       hideUncategorized: params.hideUncategorized ? "true" : undefined,

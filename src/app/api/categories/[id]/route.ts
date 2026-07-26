@@ -12,10 +12,13 @@ const updateBodySchema = z
   .object({
     title: z.string().min(1).max(100).optional(),
     parentCategoryId: z.string().min(1).nullable().optional(),
+    keywords: z.array(z.string().min(1).max(100)).max(50).optional(),
   })
   .refine(
     (value) =>
-      value.title !== undefined || value.parentCategoryId !== undefined,
+      value.title !== undefined ||
+      value.parentCategoryId !== undefined ||
+      value.keywords !== undefined,
     { message: "At least one field is required" },
   );
 
@@ -33,6 +36,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       categoryId: id,
       title: body.title,
       parentCategoryId: body.parentCategoryId,
+      keywords: body.keywords,
     });
     return jsonOk({ category });
   } catch (error) {

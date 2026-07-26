@@ -14,7 +14,7 @@ import {
   listCounterparties,
   type CounterpartyDto,
 } from "@/lib/api/counterparties";
-import { DateRangeType, TransactionDebtRole, TransactionType } from "@/types/enums";
+import { DateRangeType, TransactionType } from "@/types/enums";
 import type { TransactionCategoryDto } from "@/types/transaction";
 
 type TransactionTranslator = ReturnType<typeof useTranslations<"transaction">>;
@@ -45,7 +45,7 @@ export function cloneFilterState(
 ): TransactionFilterState {
   return {
     datePreset: { ...state.datePreset },
-    debtRoles: [...state.debtRoles],
+    kinds: [...state.kinds],
     categoryIds: [...state.categoryIds],
     counterpartyIds: [...state.counterpartyIds],
     hideUncategorized: state.hideUncategorized,
@@ -133,25 +133,14 @@ export function useFilterCategories(pageType?: TransactionType): {
   return { categories, loading };
 }
 
-/** Loads counterparties scoped to the selected debt roles (or all). */
-export function useFilterCounterparties(
-  showLend: boolean,
-  showBorrow: boolean,
-): CounterpartyDto[] {
+/** Loads all counterparties available for filtering. */
+export function useFilterCounterparties(): CounterpartyDto[] {
   const [counterparties, setCounterparties] = useState<CounterpartyDto[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const results =
-        showLend || showBorrow
-          ? await Promise.all(
-              [
-                ...(showLend ? [TransactionDebtRole.Lend] : []),
-                ...(showBorrow ? [TransactionDebtRole.Borrow] : []),
-              ].map((debtRole) => listCounterparties({ debtRole })),
-            )
-          : [await listCounterparties({})];
+      const results = [await listCounterparties({})];
 
       if (!cancelled) {
         const map = new Map<string, CounterpartyDto>();
@@ -167,7 +156,7 @@ export function useFilterCounterparties(
     return () => {
       cancelled = true;
     };
-  }, [showLend, showBorrow]);
+  }, []);
 
   return counterparties;
 }

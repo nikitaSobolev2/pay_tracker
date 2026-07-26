@@ -1,6 +1,6 @@
 import {
   DateRangeType,
-  type TransactionDebtRole,
+  type TransactionKind,
 } from "@/types/enums";
 
 export type RollingRangeUnit = "days" | "months" | "years";
@@ -19,7 +19,7 @@ export type DateFilterPreset =
 
 export type TransactionFilterState = {
   datePreset: DateFilterPreset;
-  debtRoles: TransactionDebtRole[];
+  kinds: TransactionKind[];
   categoryIds: string[];
   counterpartyIds: string[];
   /** When true, exclude transactions with no categories from list + charts. */
@@ -28,7 +28,7 @@ export type TransactionFilterState = {
 
 export const DEFAULT_TRANSACTION_FILTERS: TransactionFilterState = {
   datePreset: { kind: "calendar", range: DateRangeType.Month },
-  debtRoles: [],
+  kinds: [],
   categoryIds: [],
   counterpartyIds: [],
   hideUncategorized: false,
@@ -111,7 +111,7 @@ export function filtersAreDefault(filters: TransactionFilterState): boolean {
   return (
     filters.datePreset.kind === "calendar" &&
     filters.datePreset.range === DateRangeType.Month &&
-    filters.debtRoles.length === 0 &&
+    filters.kinds.length === 0 &&
     filters.categoryIds.length === 0 &&
     filters.counterpartyIds.length === 0 &&
     !filters.hideUncategorized

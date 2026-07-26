@@ -76,7 +76,6 @@ export function ResponsiveDialogBody({
     <div
       className={cn(
         "min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-5",
-        "sm:flex-none sm:max-h-[calc(92svh-11rem)]",
         className,
       )}
       {...props}
@@ -91,7 +90,7 @@ export function ResponsiveDialogFooter({
   return (
     <DialogFooter
       className={cn(
-        "sticky bottom-0 z-20 mx-0 mb-0 shrink-0 gap-2 rounded-none border-t bg-muted/50 p-4 sm:rounded-b-2xl sm:gap-2",
+        "relative z-20 mx-0 mb-0 shrink-0 flex-col gap-2 rounded-none border-t bg-muted/50 p-4 sm:flex-row sm:rounded-b-2xl sm:gap-2",
         className,
       )}
       {...props}

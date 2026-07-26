@@ -1,6 +1,8 @@
 import type {
   DateRangeType,
-  TransactionDebtRole,
+  SortDirection,
+  TransactionKind,
+  TransactionSortBy,
   TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
@@ -13,7 +15,7 @@ export type CreateTransactionInput = {
   inputCurrency: string;
   title?: string | null;
   occurredAt: Date;
-  debtRole?: TransactionDebtRole | null;
+  kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
   idempotencyKey: string;
@@ -28,7 +30,7 @@ export type UpdateTransactionInput = {
   inputCurrency?: string;
   title?: string | null;
   occurredAt?: Date;
-  debtRole?: TransactionDebtRole | null;
+  kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
 };
@@ -43,10 +45,12 @@ export type ListTransactionsInput = {
   startDate?: string;
   endDate?: string;
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  sortBy?: TransactionSortBy;
+  sortDir?: SortDirection;
   page?: number;
   pageSize?: number;
 };
@@ -61,4 +65,12 @@ export type ListTransactionsResult = {
 export type BulkDeleteTransactionsInput = {
   userId: string;
   ids: string[];
+};
+
+export type TitleSuggestionsInput = {
+  userId: string;
+  displayCurrency: string;
+  query: string;
+  type?: TransactionType;
+  limit?: number;
 };

@@ -10,6 +10,8 @@ import type { MoneyAmount, PeriodComparison } from "@/server/services/stats-serv
 
 import {
   AMOUNT_CLASS,
+  comparisonTrendClassName,
+  MONEY_CARD_CONTENT_CLASS,
   MoneyCardSkeleton,
   PeriodChangeIndicator,
   signedAmountClassName,
@@ -60,6 +62,7 @@ export function IncomeVsSpendingsCard({
       }
       loading={loading}
       className="h-full"
+      contentClassName={MONEY_CARD_CONTENT_CLASS}
       skeleton={
         <MoneyCardSkeleton
           showBadge={!hideComparison}
@@ -69,7 +72,14 @@ export function IncomeVsSpendingsCard({
         />
       }
     >
-      <div className={cn(AMOUNT_CLASS, signedAmountClassName(net.amount))}>
+      <div
+        className={cn(
+          AMOUNT_CLASS,
+          comparison && !hideComparison
+            ? comparisonTrendClassName(comparison, "higherIsBetter")
+            : signedAmountClassName(net.amount),
+        )}
+      >
         {formatChartMoney(net.amount, net.currency)}
       </div>
       {comparison ? (
@@ -79,11 +89,9 @@ export function IncomeVsSpendingsCard({
           hide={hideComparison}
         />
       ) : null}
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        {t("netBalanceHint")}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("netBalanceHint")}</p>
 
-      <div className="mt-auto space-y-4 pt-5">
+      <div className="mt-auto space-y-4">
         <AmountRow
           label={t("income")}
           amount={formatChartMoney(income.amount, income.currency)}

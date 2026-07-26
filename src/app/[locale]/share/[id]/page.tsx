@@ -5,9 +5,14 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LocaleSelect } from "@/components/locale-select";
+import {
+  SharedChartType,
+  type SharedChartPayload,
+} from "@/features/share/shared-chart-payload";
 import { SharedChartView } from "@/features/share/shared-chart-view";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { fetchPublicShare } from "@/lib/api/shares";
+import { cn } from "@/lib/utils";
 import type { PublicSharedChartDto } from "@/server/services/shared-chart-service";
 
 export default function PublicSharedChartPage() {
@@ -79,7 +84,12 @@ export default function PublicSharedChartPage() {
                 {share.title}
               </h1>
             ) : null}
-            <div className="w-full">
+            <div
+              className={cn(
+                "mx-auto w-full",
+                sharedChartWidthClass(share.payload),
+              )}
+            >
               <SharedChartView payload={share.payload} shareId={share.id} />
             </div>
           </>
@@ -87,4 +97,20 @@ export default function PublicSharedChartPage() {
       </main>
     </div>
   );
+}
+
+function sharedChartWidthClass(payload: SharedChartPayload): string {
+  switch (payload.type) {
+    case SharedChartType.MoneyValue:
+    case SharedChartType.VsPrevious:
+      return "max-w-md";
+    case SharedChartType.IncomeVsSpendings:
+    case SharedChartType.PeriodTotals:
+    case SharedChartType.CurrencyBreakdown:
+      return "max-w-lg";
+    case SharedChartType.DebtSummary:
+      return "max-w-3xl";
+    default:
+      return "max-w-5xl";
+  }
 }

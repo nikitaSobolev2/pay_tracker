@@ -5,11 +5,11 @@ import { handleRouteError } from "@/lib/route-handler";
 import { requireUser } from "@/lib/session";
 import { zodEnumFromConst } from "@/lib/zod-helpers";
 import { getActivityHeatmap } from "@/server/services/stats-service";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 const querySchema = z.object({
   type: zodEnumFromConst(TransactionType).optional(),
-  debtRoles: z.array(zodEnumFromConst(TransactionDebtRole)).optional(),
+  kinds: z.array(zodEnumFromConst(TransactionKind)).optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
   counterpartyIds: z.array(z.string().min(1)).optional(),
   hideUncategorized: z.boolean().optional(),
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = querySchema.parse({
       type: searchParams.get("type") ?? undefined,
-      debtRoles: parseCsvParam(searchParams.get("debtRoles")),
+      kinds: parseCsvParam(searchParams.get("kinds")),
       categoryIds: parseCsvParam(searchParams.get("categoryIds")),
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:

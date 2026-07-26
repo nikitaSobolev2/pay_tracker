@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { zodEnumFromConst } from "@/lib/zod-helpers";
-import { DateRangeType, TransactionType } from "@/types/enums";
+import {
+  DateRangeType,
+  TransactionKind,
+  TransactionType,
+} from "@/types/enums";
 
 export const SharedChartType = {
   Timeline: "timeline",
@@ -69,7 +73,7 @@ const heatmapDaySchema = z.object({
 const heatmapFiltersSchema = z
   .object({
     type: zodEnumFromConst(TransactionType).optional(),
-    debtRoles: z.array(z.string()).optional(),
+    kinds: z.array(zodEnumFromConst(TransactionKind)).optional(),
     categoryIds: z.array(z.string()).optional(),
     counterpartyIds: z.array(z.string()).optional(),
     hideUncategorized: z.boolean().optional(),
@@ -84,6 +88,7 @@ export const sharedChartPayloadSchema = z.discriminatedUnion("type", [
     points: z.array(timelinePointSchema),
     currency: z.string(),
     mode: z.enum(["dual", "spending", "earning"]).optional(),
+    filters: heatmapFiltersSchema,
   }),
   z.object({
     type: z.literal(SharedChartType.CategoryPie),

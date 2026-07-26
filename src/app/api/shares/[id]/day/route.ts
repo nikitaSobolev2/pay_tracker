@@ -2,13 +2,30 @@ import { z } from "zod";
 
 import { jsonOk } from "@/lib/api-response";
 import { handleRouteError } from "@/lib/route-handler";
-import { getPublicHeatmapShareContext } from "@/server/services/shared-chart-service";
+import { getPublicShareDrilldownContext } from "@/server/services/shared-chart-service";
 import { getListPageStats } from "@/server/services/stats-service";
-import { TransactionDebtRole, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
-const querySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const querySchema = z
+  .object({
+    date: dateSchema.optional(),
+    startDate: dateSchema.optional(),
+    endDate: dateSchema.optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.date) {
+      return;
+    }
+    if (!value.startDate || !value.endDate) {
+      context.addIssue({
+        code: "custom",
+        message: "Provide date, or both startDate and endDate",
+        path: ["date"],
+      });
+    }
+  });
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -20,12 +37,14 @@ export async function GET(request: Request, context: RouteContext) {
     const { searchParams } = new URL(request.url);
     const query = querySchema.parse({
       date: searchParams.get("date") ?? undefined,
+      startDate: searchParams.get("startDate") ?? undefined,
+      endDate: searchParams.get("endDate") ?? undefined,
     });
-    const share = await getPublicHeatmapShareContext(id);
+    const share = await getPublicShareDrilldownContext(id);
     const filters = share.payload.filters;
-    const debtRoles = (filters?.debtRoles ?? []).filter(
-      (role): role is (typeof TransactionDebtRole)[keyof typeof TransactionDebtRole] =>
-        role === TransactionDebtRole.Lend || role === TransactionDebtRole.Borrow,
+    const kinds = (filters?.kinds ?? []).filter(
+      (kind): kind is TransactionKind =>
+        Object.values(TransactionKind).includes(kind as TransactionKind),
     );
     const type =
       filters?.type === TransactionType.Spending ||
@@ -33,14 +52,17 @@ export async function GET(request: Request, context: RouteContext) {
         ? filters.type
         : undefined;
 
+    const startDate = query.date ?? query.startDate!;
+    const endDate = query.date ?? query.endDate!;
+
     const stats = await getListPageStats({
       userId: share.userId,
       timezone: share.timezone,
       displayCurrency: share.displayCurrency,
-      startDate: query.date,
-      endDate: query.date,
+      startDate,
+      endDate,
       type,
-      debtRoles: debtRoles.length ? debtRoles : undefined,
+      kinds: kinds.length > 0 ? kinds : undefined,
       categoryIds: filters?.categoryIds,
       counterpartyIds: filters?.counterpartyIds,
       hideUncategorized: filters?.hideUncategorized,

@@ -12,7 +12,7 @@ import type {
   ActivityHeatmapDay,
   ActivityHeatmapInput,
 } from "../stats-service.types";
-import { TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 /** GitHub-style grid: trailing 53 columns × 7 rows, aligned to Monday. */
 const WEEKS = 52;
@@ -32,7 +32,7 @@ export async function getActivityHeatmap(
     userId: input.userId,
     timezone: input.timezone,
     type: input.type,
-    debtRoles: input.debtRoles,
+    kinds: input.kinds,
     categoryIds: input.categoryIds,
     counterpartyIds: input.counterpartyIds,
   });
@@ -40,7 +40,13 @@ export async function getActivityHeatmap(
 
   const rows = await prisma.transaction.findMany({
     where,
-    select: { occurredAt: true, type: true, amount: true, fxRateDate: true },
+    select: {
+      occurredAt: true,
+      type: true,
+      kind: true,
+      amount: true,
+      fxRateDate: true,
+    },
   });
 
   const earning = new Map<string, Decimal>();
@@ -61,12 +67,17 @@ export async function getActivityHeatmap(
       row.fxRateDate,
     );
     const amount = toDecimal(display.amount);
-    if (row.type === TransactionType.Earning) {
+    if (
+      row.type === TransactionType.Earning &&
+      row.kind !== TransactionKind.Refund
+    ) {
       const next = (earning.get(key) ?? toDecimal(0)).plus(amount);
       earning.set(key, next);
       maxEarning = Decimal.max(maxEarning, next);
-    } else {
-      const next = (spending.get(key) ?? toDecimal(0)).plus(amount);
+    } else if (row.type === TransactionType.Spending) {
+      const delta =
+        row.kind === TransactionKind.Refund ? amount.neg() : amount;
+      const next = (spending.get(key) ?? toDecimal(0)).plus(delta);
       spending.set(key, next);
       maxSpending = Decimal.max(maxSpending, next);
     }

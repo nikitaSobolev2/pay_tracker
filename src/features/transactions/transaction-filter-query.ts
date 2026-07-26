@@ -7,8 +7,8 @@ import {
 } from "@/features/transactions/transaction-filter.types";
 import {
   DateRangeType,
-  TransactionDebtRole,
-  type TransactionDebtRole as DebtRole,
+  TransactionKind,
+  type TransactionKind as DebtRole,
 } from "@/types/enums";
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,7 +19,7 @@ const FILTER_PARAM_KEYS = [
   "rollingN",
   "startDate",
   "endDate",
-  "debtRoles",
+  "kinds",
   "categoryIds",
   "counterpartyIds",
   "hideUncategorized",
@@ -34,8 +34,8 @@ const CALENDAR_RANGES = new Set<string>([
 const ROLLING_UNITS = new Set<RollingRangeUnit>(["days", "months", "years"]);
 
 const DEBT_ROLES = new Set<string>([
-  TransactionDebtRole.Lend,
-  TransactionDebtRole.Borrow,
+  TransactionKind.Loan,
+  TransactionKind.Debt,
 ]);
 
 type SearchParamsReader = {
@@ -48,7 +48,7 @@ export function filtersFromSearchParams(
 ): TransactionFilterState {
   return {
     datePreset: datePresetFromSearchParams(params),
-    debtRoles: parseDebtRoles(params.get("debtRoles")),
+    kinds: parseDebtRoles(params.get("kinds")),
     categoryIds: parseCsv(params.get("categoryIds")),
     counterpartyIds: parseCsv(params.get("counterpartyIds")),
     hideUncategorized: params.get("hideUncategorized") === "true",
@@ -66,8 +66,8 @@ export function writeFiltersToSearchParams(
 
   writeDatePreset(params, filters.datePreset);
 
-  if (filters.debtRoles.length > 0) {
-    params.set("debtRoles", filters.debtRoles.join(","));
+  if (filters.kinds.length > 0) {
+    params.set("kinds", filters.kinds.join(","));
   }
   if (filters.categoryIds.length > 0) {
     params.set("categoryIds", filters.categoryIds.join(","));
@@ -86,7 +86,7 @@ export function filterStatesEqual(
 ): boolean {
   return (
     isDatePresetActive(left.datePreset, right.datePreset) &&
-    sameIdList(left.debtRoles, right.debtRoles) &&
+    sameIdList(left.kinds, right.kinds) &&
     sameIdList(left.categoryIds, right.categoryIds) &&
     sameIdList(left.counterpartyIds, right.counterpartyIds) &&
     left.hideUncategorized === right.hideUncategorized

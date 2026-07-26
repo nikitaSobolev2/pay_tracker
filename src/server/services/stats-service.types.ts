@@ -1,6 +1,6 @@
 import type {
   DateRangeType,
-  TransactionDebtRole,
+  TransactionKind,
   TransactionType,
 } from "@/types/enums";
 
@@ -53,7 +53,7 @@ export type ActivityHeatmapInput = {
   timezone: string;
   displayCurrency: string;
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
@@ -183,6 +183,9 @@ export type OverviewStatsInput = {
   timezone: string;
   displayCurrency: string;
   dateRangeType: DateRangeType;
+  /** Inclusive YYYY-MM-DD window; when set, overrides calendar preset bounds. */
+  startDate?: string;
+  endDate?: string;
 };
 
 export type ListPageStatsInput = {
@@ -195,7 +198,7 @@ export type ListPageStatsInput = {
   startDate?: string;
   endDate?: string;
   type?: TransactionType;
-  debtRoles?: TransactionDebtRole[];
+  kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;

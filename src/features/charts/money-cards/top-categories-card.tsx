@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import {
-  categoryBarClass,
+  categorySliceFill,
   categoryTypeBadgeClass,
   sliceIdentityKey,
 } from "@/lib/category-chart-style";
@@ -79,7 +79,10 @@ export function TopCategoriesCard({
               )}
               className="group/category space-y-1.5"
             >
-              <div className="flex items-center justify-between gap-3 text-sm">
+              <div
+                className="flex items-center justify-between gap-3 text-sm"
+                title={`${item.title}: ${formatChartMoney(item.amount, currency)} · ${item.percent.toFixed(1)}%`}
+              >
                 <span className="min-w-0 truncate font-medium">
                   {item.title}
                 </span>
@@ -104,10 +107,10 @@ export function TopCategoriesCard({
                 <div
                   className={cn(
                     "h-full rounded-full",
-                    categoryBarClass(item.type),
                   )}
                   style={{
                     width: `${Math.min(100, Math.max(0, item.percent))}%`,
+                    backgroundColor: categorySliceFill(item.type, index),
                   }}
                 />
               </div>
@@ -115,7 +118,7 @@ export function TopCategoriesCard({
                 {formatChartMoney(item.amount, currency)}
               </div>
               {item.children.length > 0 ? (
-                <ul className="hidden space-y-1 rounded-xl border border-border/50 bg-popover p-2.5 group-hover/category:block">
+                <ul className="space-y-1 rounded-xl border border-border/50 bg-muted/25 p-2.5">
                   {item.children.map((child, childIndex) => (
                     <li
                       key={sliceIdentityKey(
@@ -125,6 +128,7 @@ export function TopCategoriesCard({
                         childIndex,
                       )}
                       className="flex items-center justify-between gap-3 text-xs"
+                      title={`${child.title}: ${formatChartMoney(child.amount, currency)} · ${child.percent.toFixed(1)}%`}
                     >
                       <span className="min-w-0 truncate text-muted-foreground">
                         {child.title}
@@ -132,7 +136,7 @@ export function TopCategoriesCard({
                       <span className="shrink-0 tabular-nums">
                         {formatChartMoney(child.amount, currency)}
                         <span className="ml-1 text-muted-foreground">
-                          {child.percent.toFixed(0)}%
+                          {parentRelativePercent(child.amount, item.amount).toFixed(0)}%
                         </span>
                       </span>
                     </li>
@@ -145,4 +149,9 @@ export function TopCategoriesCard({
       )}
     </StatCard>
   );
+}
+
+function parentRelativePercent(childAmount: string, parentAmount: string): number {
+  const parent = Number(parentAmount);
+  return parent > 0 ? (Number(childAmount) / parent) * 100 : 0;
 }

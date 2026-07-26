@@ -8,7 +8,11 @@ import {
 } from "@/lib/dates";
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { DateRangeType, TransactionType } from "@/types/enums";
+import {
+  DateRangeType,
+  TransactionKind,
+  TransactionType,
+} from "@/types/enums";
 
 import { hasMultipleCurrenciesForUser } from "../exchange-rate-service";
 import type {
@@ -81,12 +85,31 @@ export async function getListPageStats(
       hasMultipleCurrenciesForUser(input.userId),
     ]);
 
-  const spendingTotal = await sumDisplay(
-    rows.filter((row) => row.type === TransactionType.Spending),
-    input.displayCurrency,
+  const spendingTotal = (
+    await sumDisplay(
+      rows.filter(
+        (row) =>
+          row.type === TransactionType.Spending &&
+          row.kind !== TransactionKind.Refund,
+      ),
+      input.displayCurrency,
+    )
+  ).minus(
+    await sumDisplay(
+      rows.filter(
+        (row) =>
+          row.type === TransactionType.Spending &&
+          row.kind === TransactionKind.Refund,
+      ),
+      input.displayCurrency,
+    ),
   );
   const earningTotal = await sumDisplay(
-    rows.filter((row) => row.type === TransactionType.Earning),
+    rows.filter(
+      (row) =>
+        row.type === TransactionType.Earning &&
+        row.kind !== TransactionKind.Refund,
+    ),
     input.displayCurrency,
   );
   const scopedTotal = input.type

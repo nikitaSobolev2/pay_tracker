@@ -94,7 +94,7 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
       <Button
         type="button"
         variant="outline"
-        className="ml-1 h-8 min-w-0 max-w-48 shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground lg:max-w-56 xl:max-w-64"
+        className="ml-1 h-8 w-full max-w-[12.5rem] justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground sm:max-w-[14rem]"
         onClick={onOpenSearch}
         aria-label={tSearch("shortcut")}
       >

@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 
 import { createTransaction } from "@/lib/api/transactions";
 import type { FastQueueItem } from "@/stores/fast-transaction-queue.types";
-import { FastQueueStatus, TransactionType } from "@/types/enums";
+import { FastQueueStatus, TransactionKind, TransactionType } from "@/types/enums";
 
 type FastQueueStore = {
   items: FastQueueItem[];
@@ -72,7 +72,7 @@ export const useFastTransactionQueueStore = create<FastQueueStore>()(
             originalAmount: item.amount,
             inputCurrency: item.currency,
             occurredAt: item.occurredAt,
-            debtRole: null,
+            kind: TransactionKind.Default,
             categoryIds: [],
             idempotencyKey: item.idempotencyKey,
           });

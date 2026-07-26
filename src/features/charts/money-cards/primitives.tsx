@@ -13,12 +13,43 @@ export type TrendSense = "higherIsBetter" | "lowerIsBetter";
 export const AMOUNT_CLASS =
   "whitespace-nowrap text-5xl font-semibold tracking-tight tabular-nums md:text-6xl";
 
+/** Shared vertical rhythm for amount → badge → hint → footer blocks. */
+export const MONEY_CARD_CONTENT_CLASS = "gap-5";
+
 export function signedAmountClassName(amount: string): string | undefined {
   const value = Number(amount);
   if (!Number.isFinite(value) || value === 0) {
     return undefined;
   }
   return value > 0 ? "text-emerald-400" : "text-rose-400";
+}
+
+/** Matches PeriodChangeIndicator arrow/percent colors for the hero amount. */
+export function comparisonTrendClassName(
+  comparison: PeriodComparison,
+  sense: TrendSense = "higherIsBetter",
+): string | undefined {
+  const percent = comparison.deltaPercent;
+  if (percent === null && comparison.deltaAmount === null) {
+    return undefined;
+  }
+  const direction = resolveTrendDirection(percent, comparison.deltaAmount);
+  if (direction === "flat") {
+    return undefined;
+  }
+  return isPositiveTrend(direction, sense)
+    ? "text-emerald-400"
+    : "text-rose-400";
+}
+
+/**
+ * Colors "this period" the same as the hero amount / arrow / percent badge.
+ */
+export function thisPeriodVsPreviousClassName(
+  comparison: PeriodComparison,
+  sense: TrendSense = "higherIsBetter",
+): string | undefined {
+  return comparisonTrendClassName(comparison, sense);
 }
 
 export function MoneyCardSkeleton({
@@ -34,17 +65,23 @@ export function MoneyCardSkeleton({
   readonly detailStyle?: "list" | "bars";
 }) {
   return (
-    <div className={cn("flex h-full flex-col", detailRows > 0 && "min-h-40")}>
+    <div
+      className={cn(
+        "flex h-full flex-col",
+        MONEY_CARD_CONTENT_CLASS,
+        detailRows > 0 && "min-h-40",
+      )}
+    >
       <Skeleton className="h-12 w-44 max-w-full md:h-14 md:w-52" />
       {showBadge ? (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Skeleton className="size-7 rounded-full" />
           <Skeleton className="h-7 w-16 rounded-full" />
         </div>
       ) : null}
-      {showHint ? <Skeleton className="mt-1.5 h-4 w-40 max-w-full" /> : null}
+      {showHint ? <Skeleton className="h-4 w-40 max-w-full" /> : null}
       {detailRows > 0 && detailStyle === "bars" ? (
-        <div className="mt-auto space-y-4 pt-5">
+        <div className="mt-auto space-y-4">
           {Array.from({ length: detailRows }, (_, index) => (
             <div key={`bar-skeleton-${index}`} className="space-y-1.5">
               <div className="flex items-baseline justify-between gap-3">
@@ -164,7 +201,7 @@ export function PeriodChangeIndicator({
   const positive = isPositiveTrend(direction, sense);
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {direction !== "flat" ? (
         <span
           className={cn(
