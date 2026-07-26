@@ -14,6 +14,7 @@ import {
   Sun,
   Tags,
   Users,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
@@ -78,6 +79,7 @@ export function AppSidebar() {
   const t = useTranslations("nav");
   const tApp = useTranslations("app");
   const tAuth = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const tHeader = useTranslations("header");
   const pathname = usePathname();
   const router = useRouter();
@@ -123,11 +125,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="flex shrink-0 items-center p-3 group-data-[collapsible=icon]:p-2">
+      <SidebarHeader className="flex shrink-0 flex-row items-center gap-2 p-3 group-data-[collapsible=icon]:p-2">
         <Link
           href="/"
           onClick={handleNavigate}
-          className="flex w-full min-w-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:self-center"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:self-center"
         >
           <span
             aria-hidden
@@ -151,6 +153,16 @@ export function AppSidebar() {
             {tApp("name")}
           </span>
         </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0 rounded-xl md:hidden [&_svg]:size-5!"
+          onClick={() => setOpenMobile(false)}
+          aria-label={tCommon("close")}
+        >
+          <X />
+        </Button>
       </SidebarHeader>
       <SidebarContent className="flex-1">
         <SidebarGroup className="mt-auto px-2 py-1 md:mt-0">
@@ -199,7 +211,7 @@ export function AppSidebar() {
             );
           })}
           <SidebarMenuItem>
-            <div className="flex items-center justify-start gap-2 px-0.5">
+            <div className="flex w-full items-center gap-2 px-0.5">
               <Button
                 type="button"
                 variant="ghost"
@@ -228,6 +240,16 @@ export function AppSidebar() {
                 ) : (
                   <LogOut />
                 )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="ml-auto size-11 shrink-0 rounded-xl [&_svg]:size-5!"
+                onClick={() => setOpenMobile(false)}
+                aria-label={tCommon("close")}
+              >
+                <X />
               </Button>
             </div>
           </SidebarMenuItem>

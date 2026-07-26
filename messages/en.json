@@ -56,7 +56,8 @@
     "deny": "Deny",
     "export": "Export CSV",
     "import": "Import CSV",
-    "search": "Search"
+    "search": "Search",
+    "close": "Close"
   },
   "dateRange": {
     "day": "This day",
