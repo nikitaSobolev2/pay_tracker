@@ -36,6 +36,23 @@ Or run with no arguments for an interactive menu.
 
 `install` reports Docker/Compose/daemon status, starts the daemon if needed, and only installs Compose if Docker is present without it. After `install`, log out and back in (or run `newgrp docker`) so your user can use Docker without `sudo`.
 
+### HTTPS (nginx + Let's Encrypt)
+
+The Docker app listens on port **3000**. For `https://your.domain` on 80/443:
+
+```bash
+chmod +x scripts/setup-nginx.sh
+sudo ./scripts/setup-nginx.sh setup
+```
+
+Interactive prompts: domain, optional `www`, app port, Let's Encrypt email. Then set `BETTER_AUTH_URL=https://your.domain` and run `./scripts/deploy-ubuntu.sh redeploy`.
+
+| Command | Purpose |
+|---------|---------|
+| `sudo ./scripts/setup-nginx.sh setup` | Install nginx/certbot, proxy, TLS certificate |
+| `sudo ./scripts/setup-nginx.sh status` | nginx + certificate status |
+| `sudo ./scripts/setup-nginx.sh renew` | Renew certificates now |
+
 ### What `configure` asks for
 
 - Public app URL (`BETTER_AUTH_URL`, e.g. `https://pay.example.com`)
