@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDeleteAccountDialog } from "@/features/settings/confirm-delete-account-dialog";
 import { CsvImportDialog } from "@/features/settings/csv-import-dialog";
 import { TimezoneCombobox } from "@/features/settings/timezone-combobox";
 import { useAppUser } from "@/hooks/use-app-user";
@@ -56,6 +57,7 @@ export function SettingsPage() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -130,9 +132,6 @@ export function SettingsPage() {
   }
 
   async function handleDeleteAccount() {
-    if (!window.confirm(t("deleteAccountConfirm"))) {
-      return;
-    }
     setDeleting(true);
     try {
       await deleteAccount();
@@ -140,7 +139,6 @@ export function SettingsPage() {
       router.replace("/login");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed");
-    } finally {
       setDeleting(false);
     }
   }
@@ -300,15 +298,20 @@ export function SettingsPage() {
             variant="destructive"
             className={actionButtonClassName}
             disabled={deleting}
-            onClick={() => void handleDeleteAccount()}
+            onClick={() => setDeleteOpen(true)}
           >
-            {deleting ? <Loader2 className="animate-spin" /> : null}
             {t("deleteAccount")}
           </Button>
         </SettingsZone>
       </div>
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ConfirmDeleteAccountDialog
+        open={deleteOpen}
+        loading={deleting}
+        onOpenChange={setDeleteOpen}
+        onConfirm={() => void handleDeleteAccount()}
+      />
     </div>
   );
 }

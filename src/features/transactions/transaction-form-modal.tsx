@@ -8,15 +8,16 @@ import { v4 as uuidv4 } from "uuid";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogHeaderInner,
+} from "@/components/ui/responsive-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryChipPicker } from "@/features/transactions/category-chip-picker";
 import { CounterpartyAutocomplete } from "@/features/transactions/counterparty-autocomplete";
@@ -179,22 +180,13 @@ export function TransactionFormModal() {
         }
       }}
     >
-      <DialogContent
-        className={cn(
-          "flex flex-col gap-0 overflow-hidden p-0",
-          // Mobile: full-bleed — use vw so scroll-lock gutter does not leave a right strip
-          "top-0 right-0 bottom-0 left-0 h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 rounded-none",
-          "sm:top-1/2 sm:right-auto sm:bottom-auto sm:left-1/2 sm:h-auto sm:max-h-[92svh] sm:w-full sm:max-w-xl",
-          "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
-        )}
-        showCloseButton
-      >
-        <div className="sticky top-0 z-20 shrink-0 border-b border-border/60 bg-popover">
-          <DialogHeader className="gap-3 px-4 pt-4 pr-12 sm:px-5">
+      <ResponsiveDialogContent showCloseButton>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogHeaderInner>
             <DialogTitle className="text-xl font-semibold tracking-tight">
               {modalTitle}
             </DialogTitle>
-          </DialogHeader>
+          </ResponsiveDialogHeaderInner>
           {!isEditing ? (
             <div className="px-4 pt-3 pb-3 sm:px-5">
               <Tabs
@@ -215,7 +207,7 @@ export function TransactionFormModal() {
                   }
                 }}
               >
-                <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl p-0.5">
+                <TabsList className="grid h-12 w-full grid-cols-2 rounded-xl p-1 md:h-11">
                   <TabsTrigger
                     value={TransactionFormMode.Spending}
                     className="rounded-lg px-4 text-sm"
@@ -234,15 +226,9 @@ export function TransactionFormModal() {
           ) : (
             <div className="pb-3" />
           )}
-        </div>
+        </ResponsiveDialogHeader>
 
-        <div
-          className={cn(
-            "min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-5",
-            // Desktop: scroll only this region; header/footer stay outside the scrollport.
-            "sm:flex-none sm:max-h-[calc(92svh-11rem)]",
-          )}
-        >
+        <ResponsiveDialogBody>
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("title")}</Label>
             <Input
@@ -372,9 +358,9 @@ export function TransactionFormModal() {
               />
             </div>
           </div>
-        </div>
+        </ResponsiveDialogBody>
 
-        <DialogFooter className="sticky bottom-0 z-20 mx-0 mb-0 shrink-0 gap-2 rounded-none border-t bg-muted/50 p-4 sm:rounded-b-2xl sm:gap-2">
+        <ResponsiveDialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -392,8 +378,8 @@ export function TransactionFormModal() {
             {saving ? <Loader2 className="animate-spin" /> : null}
             {tCommon("save")}
           </Button>
-        </DialogFooter>
-      </DialogContent>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
     </Dialog>
   );
 }

@@ -6,6 +6,7 @@ import {
   Monitor,
   Moon,
   Plus,
+  Search,
   Settings,
   Smartphone,
   Sun,
@@ -27,7 +28,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { SearchSpotlight } from "@/features/search/search-spotlight";
 import { useAppUser } from "@/hooks/use-app-user";
 import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -36,10 +36,16 @@ import { useUiStore } from "@/stores/ui.store";
 import { AppTheme, TransactionFormMode } from "@/types/enums";
 
 const PROFILE_ITEM_CLASS =
-  "min-h-14 gap-3 rounded-xl px-3.5 py-3.5 text-base font-medium md:min-h-11 md:gap-2.5 md:rounded-lg md:px-3 md:py-2.5 md:text-sm [&_svg]:size-5 md:[&_svg]:size-4";
+  "min-h-11 gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium [&_svg]:size-4";
 
-export function AppHeader() {
+type AppHeaderProps = {
+  readonly onOpenSearch: () => void;
+};
+
+/** Desktop top header (md+). Mobile uses MobileNavIsland. */
+export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const t = useTranslations("header");
+  const tSearch = useTranslations("search");
   const tAuth = useTranslations("auth");
   const tNav = useTranslations("nav");
   const { theme, setTheme } = useTheme();
@@ -79,38 +85,52 @@ export function AppHeader() {
   const ThemeIcon = themeIconFor(theme);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:px-4">
-      <SidebarTrigger />
+    <header className="sticky top-0 z-30 hidden h-14 min-w-0 items-center gap-2 overflow-x-clip border-b bg-background/90 px-3 backdrop-blur md:flex md:px-4">
+      <SidebarTrigger className="shrink-0" />
       <Separator
         orientation="vertical"
-        className="mr-1 hidden h-auto self-stretch sm:block"
+        className="mr-1 hidden h-auto self-stretch md:block"
       />
-      <SearchSpotlight className="ml-1 shrink-0" />
-      <ExchangeRatesDisplay className="ml-1 hidden md:flex" />
+      <Button
+        type="button"
+        variant="outline"
+        className="ml-1 h-8 min-w-0 max-w-48 shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground lg:max-w-56 xl:max-w-64"
+        onClick={onOpenSearch}
+        aria-label={tSearch("shortcut")}
+      >
+        <Search className="size-4 shrink-0" />
+        <span className="truncate text-sm">{tSearch("shortcut")}</span>
+        <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground xl:inline">
+          ⌘K
+        </kbd>
+      </Button>
+      <ExchangeRatesDisplay className="ml-1 hidden min-w-0 shrink xl:flex" />
 
       <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
         <Button
           size="sm"
           variant="outline"
-          className="h-9 shrink gap-1 px-2.5 text-xs sm:h-8 sm:px-3 sm:text-sm"
+          className="h-8 min-w-0 shrink gap-1 px-2.5 text-xs xl:px-3 xl:text-sm"
           onClick={() => openTransactionModal(TransactionFormMode.Spending)}
         >
-          <Plus data-icon="inline-start" className="size-3.5 sm:size-4" />
-          <span>{t("addSpending")}</span>
+          <Plus data-icon="inline-start" className="size-4 shrink-0" />
+          <span className="truncate xl:hidden">{t("spending")}</span>
+          <span className="hidden truncate xl:inline">{t("addSpending")}</span>
         </Button>
         <Button
           size="sm"
-          className="h-9 shrink gap-1 px-2.5 text-xs sm:h-8 sm:px-3 sm:text-sm"
+          className="h-8 min-w-0 shrink gap-1 px-2.5 text-xs xl:px-3 xl:text-sm"
           onClick={() => openTransactionModal(TransactionFormMode.Earning)}
         >
-          <Plus data-icon="inline-start" className="size-3.5 sm:size-4" />
-          <span>{t("addEarning")}</span>
+          <Plus data-icon="inline-start" className="size-4 shrink-0" />
+          <span className="truncate xl:hidden">{t("earning")}</span>
+          <span className="hidden truncate xl:inline">{t("addEarning")}</span>
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="hidden md:inline-flex"
+          className="hidden shrink-0 lg:inline-flex"
           onClick={cycleTheme}
           aria-label={t("theme")}
         >
@@ -121,57 +141,59 @@ export function AppHeader() {
           )}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-11 rounded-full md:size-9"
-              />
-            }
-          >
-            <Avatar className="size-9 md:size-8">
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={8}
-            className="flex min-w-64 flex-col gap-1 rounded-2xl p-2 md:min-w-56 md:rounded-xl md:p-1.5"
-          >
-            <DropdownMenuLabel className="px-3.5 py-2.5 text-sm md:px-3 md:py-1.5 md:text-xs">
-              {user?.username ?? t("profile")}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="my-1.5 md:my-1" />
-            <DropdownMenuItem
-              className={PROFILE_ITEM_CLASS}
-              onClick={() => router.push("/devices")}
+        <div className="hidden shrink-0 lg:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 rounded-full"
+                />
+              }
             >
-              <Smartphone />
-              {tNav("devices")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className={PROFILE_ITEM_CLASS}
-              onClick={() => router.push("/settings")}
+              <Avatar className="size-8">
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="flex min-w-56 flex-col gap-1 rounded-xl p-1.5"
             >
-              <Settings />
-              {tNav("settings")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className={cn(PROFILE_ITEM_CLASS, "text-destructive")}
-              onClick={() => void handleLogout()}
-              disabled={loggingOut}
-            >
-              {loggingOut ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <LogOut />
-              )}
-              {tAuth("logout")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuLabel className="px-3 py-1.5 text-xs">
+                {user?.username ?? t("profile")}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem
+                className={PROFILE_ITEM_CLASS}
+                onClick={() => router.push("/devices")}
+              >
+                <Smartphone />
+                {tNav("devices")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={PROFILE_ITEM_CLASS}
+                onClick={() => router.push("/settings")}
+              >
+                <Settings />
+                {tNav("settings")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={cn(PROFILE_ITEM_CLASS, "text-destructive")}
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
+              >
+                {loggingOut ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <LogOut />
+                )}
+                {tAuth("logout")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

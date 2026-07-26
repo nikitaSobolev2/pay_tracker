@@ -35,13 +35,24 @@ import { TransactionType } from "@/types/enums";
 
 type SearchSpotlightProps = {
   readonly className?: string;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
+  /** When true, only the command dialog is rendered (trigger lives elsewhere). */
+  readonly hideTrigger?: boolean;
 };
 
-export function SearchSpotlight({ className }: SearchSpotlightProps) {
+export function SearchSpotlight({
+  className,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+}: SearchSpotlightProps) {
   const t = useTranslations("search");
   const tTx = useTranslations("transaction");
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 200);
   const [loading, setLoading] = useState(false);
@@ -51,12 +62,12 @@ export function SearchSpotlight({ className }: SearchSpotlightProps) {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setOpen((current) => !current);
+        setOpen(!open);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open, setOpen]);
 
   useEffect(() => {
     if (!open) {
@@ -112,23 +123,24 @@ export function SearchSpotlight({ className }: SearchSpotlightProps) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        className={cn(
-          "size-9 shrink-0 rounded-xl border-border/70 bg-card/40 p-0 text-muted-foreground",
-          "md:h-8 md:w-64 md:justify-start md:gap-2 md:px-3",
-          className,
-        )}
-        onClick={() => setOpen(true)}
-        aria-label={t("shortcut")}
-      >
-        <Search className="size-4 shrink-0" />
-        <span className="hidden truncate text-sm md:inline">{t("shortcut")}</span>
-        <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:inline">
-          ⌘K
-        </kbd>
-      </Button>
+      {hideTrigger ? null : (
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-8 w-full min-w-0 max-w-64 justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground",
+            className,
+          )}
+          onClick={() => setOpen(true)}
+          aria-label={t("shortcut")}
+        >
+          <Search className="size-4 shrink-0" />
+          <span className="truncate text-sm">{t("shortcut")}</span>
+          <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground xl:inline">
+            ⌘K
+          </kbd>
+        </Button>
+      )}
 
       <CommandDialog
         open={open}
@@ -141,12 +153,19 @@ export function SearchSpotlight({ className }: SearchSpotlightProps) {
         }}
         title={t("shortcut")}
         description={t("placeholder")}
-        className="top-[10%] w-[calc(100%-1rem)] max-w-none sm:top-1/4 sm:max-w-2xl md:max-w-3xl"
+        className={cn(
+          // Mobile: bottom sheet; desktop: centered top panel
+          "top-auto bottom-0 left-1/2 w-full max-w-none -translate-x-1/2 translate-y-0",
+          "max-h-[min(85dvh,40rem)] rounded-t-2xl rounded-b-none",
+          "sm:top-1/4 sm:bottom-auto sm:max-h-none sm:max-w-2xl sm:rounded-xl md:max-w-3xl",
+        )}
       >
         <Command
           shouldFilter={false}
           className={cn(
-            "rounded-xl",
+            "max-sm:rounded-none sm:rounded-xl",
+            // Mobile: results above input (thumb-friendly near keyboard / island)
+            "max-sm:flex-col-reverse",
             "[&_[data-slot=command-item]]:min-h-12 [&_[data-slot=command-item]]:gap-3 [&_[data-slot=command-item]]:px-3 [&_[data-slot=command-item]]:py-3 [&_[data-slot=command-item]]:text-base",
             "sm:[&_[data-slot=command-item]]:min-h-0 sm:[&_[data-slot=command-item]]:gap-2 sm:[&_[data-slot=command-item]]:px-2 sm:[&_[data-slot=command-item]]:py-1.5 sm:[&_[data-slot=command-item]]:text-sm",
             "[&_[data-slot=command-item]_svg]:size-5 sm:[&_[data-slot=command-item]_svg]:size-4",
@@ -158,11 +177,15 @@ export function SearchSpotlight({ className }: SearchSpotlightProps) {
             value={query}
             onValueChange={setQuery}
             placeholder={t("placeholder")}
-            wrapperClassName="p-2 pb-1 sm:p-1.5 sm:pb-0"
+            wrapperClassName={cn(
+              "p-2 pb-1 sm:p-1.5 sm:pb-0",
+              "max-sm:border-t max-sm:border-border/60",
+              "max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            )}
             inputGroupClassName="h-14! rounded-xl! *:data-[slot=input-group-addon]:pl-3! sm:h-11! [&_svg]:size-5 sm:[&_svg]:size-4"
             className="text-base sm:text-sm"
           />
-          <CommandList className="max-h-[min(70dvh,36rem)] sm:max-h-[min(28rem,60vh)]">
+          <CommandList className="max-h-[min(55dvh,28rem)] sm:max-h-[min(28rem,60vh)]">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-10 text-base text-muted-foreground sm:py-8 sm:text-sm">
                 <Loader2 className="size-5 animate-spin sm:size-4" />

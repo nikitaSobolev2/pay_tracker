@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -20,6 +19,7 @@ import {
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
 import { IncomeVsSpendingsCard } from "@/features/charts/money-summary-cards";
 import { StatCard } from "@/features/charts/stat-card";
+import { useContainedHorizontalScroll } from "@/features/charts/use-contained-horizontal-scroll";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import { fetchActivityHeatmap, fetchTransactionStats } from "@/lib/api/stats";
 import type { ActivityHeatmapParams } from "@/lib/api/stats";
@@ -66,7 +66,6 @@ export function ActivityHeatmapCard({
   const [selected, setSelected] = useState<string | null>(null);
   const [dayStats, setDayStats] = useState<ListPageStats | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filterKey = JSON.stringify(filters ?? {});
   const isSharedView = Boolean(sharedData || shareId);
@@ -125,14 +124,10 @@ export function ActivityHeatmapCard({
   const maxEarning = Number(data?.maxEarning ?? "0");
   const maxSpending = Number(data?.maxSpending ?? "0");
   const columnCount = columns.length;
-
-  useEffect(() => {
-    const node = scrollRef.current;
-    if (!node || !data) {
-      return;
-    }
-    node.scrollLeft = node.scrollWidth;
-  }, [data, columnCount]);
+  const scrollResetKey = `${data?.days.length ?? 0}:${columnCount}:${filterKey}`;
+  const { scrollRef } = useContainedHorizontalScroll(scrollResetKey, {
+    enablePointerDrag: false,
+  });
 
   const selectDay = useCallback(
     (date: string, earning: number, spending: number) => {
@@ -205,7 +200,7 @@ export function ActivityHeatmapCard({
               <div className="space-y-3">
                 <div
                   ref={scrollRef}
-                  className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] md:overflow-visible"
+                  className="touch-none overflow-x-auto overscroll-contain scrollbar-none md:overflow-visible md:touch-auto"
                 >
                   <div
                     className="inline-block min-w-full space-y-2 md:block md:w-full md:space-y-3"
@@ -500,7 +495,7 @@ function Legend({
 function HeatmapSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto md:overflow-visible">
+      <div className="overflow-x-auto scrollbar-none md:overflow-visible">
         <div
           className="inline-block min-w-full space-y-2 md:block md:w-full md:space-y-3"
           style={

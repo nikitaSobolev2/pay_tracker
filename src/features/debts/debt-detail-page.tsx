@@ -297,8 +297,8 @@ export function DebtDetailPage({ counterpartyId }: DebtDetailPageProps) {
                   <Button
                     type="button"
                     size="icon"
-                    variant="outline"
-                    className="size-9 rounded-xl text-destructive"
+                    variant="destructive"
+                    className="size-9 rounded-xl"
                     onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 className="size-4" />

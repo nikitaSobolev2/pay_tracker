@@ -5,6 +5,7 @@ import { TransactionDebtRole } from "@/types/enums";
 
 import type {
   CounterpartyDto,
+  CreateCounterpartyInput,
   DeleteCounterpartyInput,
   FindOrCreateCounterpartyInput,
   ListAllCounterpartiesInput,
@@ -58,6 +59,27 @@ export async function findOrCreateCounterparty(
   const existing = await findByNameInsensitive(input.userId, name);
   if (existing) {
     return existing;
+  }
+
+  return prisma.userCounterparty.create({
+    data: {
+      userId: input.userId,
+      name,
+    },
+    select: { id: true, name: true },
+  });
+}
+
+export async function createCounterparty(
+  input: CreateCounterpartyInput,
+): Promise<CounterpartyDto> {
+  const name = normalizeCounterpartyName(input.name);
+  const existing = await findByNameInsensitive(input.userId, name);
+  if (existing) {
+    throw new AppServiceError(
+      ApiErrorCode.Conflict,
+      "Counterparty already exists",
+    );
   }
 
   return prisma.userCounterparty.create({

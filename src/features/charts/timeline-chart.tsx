@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { Area, AreaChart, XAxis } from "recharts";
 import { useLocale, useTranslations } from "next-intl";
+import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/charts/stat-card";
+import { useContainedHorizontalScroll } from "@/features/charts/use-contained-horizontal-scroll";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import { formatBucketLabel } from "@/lib/chart-format";
 import { formatChartMoney } from "@/lib/money";
@@ -93,6 +95,18 @@ export function TimelineChart({
     spendingLabel: t("spendingLabel"),
   });
 
+  const scrollResetKey = useMemo(
+    () => `${data.length}:${points.map((point) => point.bucket).join("|")}`,
+    [data.length, points],
+  );
+  const {
+    scrollRef,
+    isDragging,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+  } = useContainedHorizontalScroll(scrollResetKey);
+
   return (
     <StatCard
       title={title}
@@ -133,7 +147,17 @@ export function TimelineChart({
       {data.length === 0 ? (
         <EmptyChartState label={tCharts("noTransactions")} />
       ) : (
-        <div className="-mb-2 overflow-x-auto overscroll-x-contain">
+        <div
+          ref={scrollRef}
+          className={cn(
+            "-mb-2 touch-none overflow-x-auto overscroll-contain scrollbar-none",
+            isDragging ? "cursor-grabbing" : "cursor-grab",
+          )}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+        >
           <ChartContainer
             config={config}
             className="aspect-auto h-56 w-full"
@@ -240,29 +264,29 @@ export function TimelineChart({
               ) : null}
             </AreaChart>
           </ChartContainer>
-          {mode === "dual" ? (
-            <div className="flex flex-wrap items-center justify-center gap-4 px-4 pb-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-emerald-400" />
-                {t("income")}
-                <span className="tabular-nums text-emerald-400">
-                  {formatChartMoney(String(totalEarning), currency)}
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-rose-400" />
-                {t("spendingLabel")}
-                <span className="tabular-nums text-rose-400">
-                  {formatChartMoney(String(totalSpending), currency)}
-                </span>
-              </span>
-              <span className="tabular-nums">
-                Σ {formatChartMoney(String(totalActivity), currency)}
-              </span>
-            </div>
-          ) : null}
         </div>
       )}
+      {data.length > 0 && mode === "dual" ? (
+        <div className="flex flex-wrap items-center justify-center gap-4 px-4 pb-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            {t("income")}
+            <span className="tabular-nums text-emerald-400">
+              {formatChartMoney(String(totalEarning), currency)}
+            </span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-rose-400" />
+            {t("spendingLabel")}
+            <span className="tabular-nums text-rose-400">
+              {formatChartMoney(String(totalSpending), currency)}
+            </span>
+          </span>
+          <span className="tabular-nums">
+            Σ {formatChartMoney(String(totalActivity), currency)}
+          </span>
+        </div>
+      ) : null}
     </StatCard>
   );
 }

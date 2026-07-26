@@ -213,7 +213,7 @@ export function TransactionTable({
                         </Button>
                         <Button
                           size="icon"
-                          variant="ghost"
+                          variant="destructive"
                           className="size-10"
                           onClick={() => requestDelete([item.id])}
                         >

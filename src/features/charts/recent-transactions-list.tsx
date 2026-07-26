@@ -199,9 +199,7 @@ export function RecentTransactionsList({
       ) : null}
 
       {!initialLoading && items.length === 0 && !error ? (
-        <div className="text-sm text-muted-foreground">
-          No recent transactions
-        </div>
+        <div className="text-sm text-muted-foreground">{t("noRecent")}</div>
       ) : null}
 
       {items.length > 0 ? (

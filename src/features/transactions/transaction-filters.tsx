@@ -507,11 +507,11 @@ export function TransactionFilters({
           </>
         )}
 
-        <FilterCheckboxChip
-          checked={value.hideUncategorized}
+        <FilterToggleChip
+          pressed={value.hideUncategorized}
           label={t("hideUncategorized")}
-          onCheckedChange={(checked) =>
-            onChange({ ...value, hideUncategorized: checked })
+          onPressedChange={(pressed) =>
+            onChange({ ...value, hideUncategorized: pressed })
           }
         />
 
@@ -584,34 +584,29 @@ function FilterMenuChip({
   );
 }
 
-function FilterCheckboxChip({
-  checked,
+function FilterToggleChip({
+  pressed,
   label,
-  onCheckedChange,
+  onPressedChange,
 }: {
-  readonly checked: boolean;
+  readonly pressed: boolean;
   readonly label: string;
-  readonly onCheckedChange: (checked: boolean) => void;
+  readonly onPressedChange: (pressed: boolean) => void;
 }) {
   return (
-    <label
+    <button
+      type="button"
+      aria-pressed={pressed}
       className={cn(
-        "inline-flex h-10 max-w-72 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors",
-        checked
+        "inline-flex h-10 max-w-72 cursor-pointer items-center rounded-full border px-3.5 text-sm font-medium transition-colors",
+        pressed
           ? "border-foreground/25 bg-foreground text-background"
           : "border-border/70 bg-card/60 text-foreground hover:bg-muted/40",
       )}
+      onClick={() => onPressedChange(!pressed)}
     >
-      <Checkbox
-        checked={checked}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-        className={cn(
-          checked &&
-            "border-background data-checked:border-background data-checked:bg-background data-checked:text-foreground",
-        )}
-      />
       <span className="truncate">{label}</span>
-    </label>
+    </button>
   );
 }
 

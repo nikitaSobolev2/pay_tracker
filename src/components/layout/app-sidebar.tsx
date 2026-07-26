@@ -21,7 +21,6 @@ import { useEffect, useState } from "react";
 
 import { ExchangeRatesDisplay } from "@/components/layout/exchange-rates-display";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
   Sidebar,
@@ -45,12 +44,17 @@ const NAV_ITEMS = [
   { href: "/shared-charts", key: "sharedCharts", icon: Share2 },
   { href: "/categories", key: "categories", icon: Tags },
   { href: "/counterparties", key: "counterparties", icon: Users },
-  { href: "/settings", key: "settings", icon: Settings },
 ] as const;
+
+const SETTINGS_ITEM = {
+  href: "/settings",
+  key: "settings",
+  icon: Settings,
+} as const;
 
 const MOBILE_ACCOUNT_ITEMS = [
   { href: "/devices", key: "devices", icon: Smartphone },
-  { href: "/settings", key: "settings", icon: Settings },
+  SETTINGS_ITEM,
 ] as const;
 
 function isNavItemActive(pathname: string, href: string): boolean {
@@ -119,7 +123,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="flex items-center p-3 group-data-[collapsible=icon]:p-2">
+      <SidebarHeader className="flex shrink-0 items-center p-3 group-data-[collapsible=icon]:p-2">
         <Link
           href="/"
           onClick={handleNavigate}
@@ -148,10 +152,10 @@ export function AppSidebar() {
           </span>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup className="px-2 py-1">
+      <SidebarContent className="flex-1">
+        <SidebarGroup className="mt-auto px-2 py-1 md:mt-0">
           <SidebarGroupContent className="text-base">
-            <SidebarMenu className="gap-1.5">
+            <SidebarMenu className="gap-1">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -163,7 +167,7 @@ export function AppSidebar() {
                       isActive={isNavItemActive(pathname, item.href)}
                       tooltip={t(item.key)}
                       size="lg"
-                      className="h-14 gap-3 rounded-xl px-3.5 text-lg font-medium md:h-12 md:text-base [&_svg]:size-6 md:[&_svg]:size-5 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:rounded-xl"
+                      className="h-12 gap-3 rounded-xl px-3.5 text-base font-medium md:h-12 md:text-base [&_svg]:size-5 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:rounded-xl"
                     >
                       <Icon />
                       <span>{t(item.key)}</span>
@@ -175,9 +179,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="gap-3 border-t border-sidebar-border p-3 md:hidden">
+      <SidebarFooter className="gap-2 border-t border-sidebar-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
         <ExchangeRatesDisplay className="flex w-full justify-center" />
-        <SidebarMenu className="gap-1.5">
+        <SidebarMenu className="gap-1">
           {MOBILE_ACCOUNT_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
@@ -186,7 +190,7 @@ export function AppSidebar() {
                   render={<Link href={item.href} onClick={handleNavigate} />}
                   isActive={isNavItemActive(pathname, item.href)}
                   size="lg"
-                  className="h-14 gap-3 rounded-xl px-3.5 text-lg font-medium [&_svg]:size-6"
+                  className="h-11 gap-3 rounded-xl px-3 text-base font-medium [&_svg]:size-5"
                 >
                   <Icon />
                   <span>{t(item.key)}</span>
@@ -195,12 +199,12 @@ export function AppSidebar() {
             );
           })}
           <SidebarMenuItem>
-            <div className="flex items-stretch gap-2">
+            <div className="flex items-center justify-start gap-2 px-0.5">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-14 shrink-0 rounded-xl [&_svg]:size-6!"
+                className="size-11 shrink-0 rounded-xl [&_svg]:size-5!"
                 onClick={cycleTheme}
                 aria-label={tHeader("theme")}
               >
@@ -210,20 +214,21 @@ export function AppSidebar() {
                   <Sun className="opacity-0" aria-hidden />
                 )}
               </Button>
-              <Separator orientation="vertical" className="h-auto self-stretch" />
-              <SidebarMenuButton
-                size="lg"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
                 disabled={loggingOut}
                 onClick={() => void handleLogout()}
-                className="h-14 min-w-0 flex-1 gap-3 rounded-xl px-3.5 text-lg font-medium text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-6"
+                aria-label={tAuth("logout")}
+                className="size-11 shrink-0 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-5!"
               >
                 {loggingOut ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <LogOut />
                 )}
-                <span>{tAuth("logout")}</span>
-              </SidebarMenuButton>
+              </Button>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

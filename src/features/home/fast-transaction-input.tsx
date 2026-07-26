@@ -287,7 +287,7 @@ function CurrencyIconSelect({
           <SelectItem
             key={currencyCode}
             value={currencyCode}
-            className="justify-center py-3 text-3xl font-medium"
+            className="justify-center py-4 text-3xl font-medium sm:py-3"
           >
             <span className="inline-flex min-w-10 justify-center">
               {getCurrencySymbol(currencyCode)}

@@ -106,7 +106,7 @@ export function SharedChartsPage() {
               key={item.id}
               className="rounded-2xl border border-border/60 bg-card/90 p-4"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium">
@@ -133,12 +133,11 @@ export function SharedChartsPage() {
                     {shareUrl(item.id)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon"
-                    className="size-10 rounded-xl"
+                    className="h-11 w-full gap-2 rounded-xl sm:h-10 sm:w-auto sm:px-3"
                     aria-label={t("copy")}
                     onClick={() => {
                       void handleCopy(item.id);
@@ -162,11 +161,12 @@ export function SharedChartsPage() {
                         )}
                       />
                     </span>
+                    <span className="sm:hidden">{t("copy")}</span>
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-xl"
+                    className="h-11 w-full gap-2 rounded-xl sm:h-10 sm:w-auto"
                     disabled={busyId === item.id}
                     onClick={() => {
                       void handleTogglePublic(item);
@@ -186,9 +186,8 @@ export function SharedChartsPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-10 rounded-xl text-muted-foreground"
+                    variant="destructive"
+                    className="h-11 w-full gap-2 rounded-xl sm:h-10 sm:w-auto sm:px-3"
                     aria-label={tCommon("delete")}
                     disabled={busyId === item.id}
                     onClick={() => {
@@ -196,6 +195,7 @@ export function SharedChartsPage() {
                     }}
                   >
                     <Trash2 className="size-4" />
+                    <span className="sm:hidden">{tCommon("delete")}</span>
                   </Button>
                 </div>
               </div>

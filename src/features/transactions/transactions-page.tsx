@@ -1,11 +1,9 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
 import {
@@ -34,7 +32,6 @@ import {
 } from "@/features/transactions/transaction-filters";
 import { TransactionTable } from "@/features/transactions/transaction-table";
 import {
-  TransactionTypeSwitcher,
   transactionTypeFromSearchParam,
   transactionTypeToSearchParam,
   type TransactionTypeFilter,
@@ -48,6 +45,7 @@ import type {
   ListPageStats,
   PeriodComparison,
 } from "@/server/services/stats-service.types";
+import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 import { DateRangeType, TransactionType } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
@@ -69,6 +67,7 @@ export function TransactionsPage() {
   const tHome = useTranslations("home");
   const tCharts = useTranslations("charts");
   const tTransaction = useTranslations("transaction");
+  const tNav = useTranslations("nav");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -162,6 +161,30 @@ export function TransactionsPage() {
     [filters, router],
   );
 
+  const setMobilePageChrome = useMobilePageChromeStore((state) => state.setChrome);
+
+  useEffect(() => {
+    setMobilePageChrome({
+      typeFilter: {
+        value: typeFilter,
+        onChange: setTypeFilter,
+      },
+      action: {
+        kind: "filters",
+        active: filtersActive,
+        onClick: () => setFiltersModalOpen(true),
+        label: tTransaction("filters"),
+      },
+    });
+    return () => setMobilePageChrome(null);
+  }, [
+    filtersActive,
+    setMobilePageChrome,
+    setTypeFilter,
+    tTransaction,
+    typeFilter,
+  ]);
+
   const reloadFirstPage = useCallback(async () => {
     requestLockRef.current = true;
     setInitialLoading(true);
@@ -243,32 +266,11 @@ export function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-14 z-20 -mx-3 border-b border-border/40 bg-background/95 px-3 py-2 backdrop-blur md:hidden">
-        <div className="flex items-center gap-2">
-          <TransactionTypeSwitcher
-            compact
-            className="min-w-0 flex-1"
-            value={typeFilter}
-            onChange={setTypeFilter}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="relative h-9 shrink-0 gap-1.5 rounded-lg px-3"
-            onClick={() => setFiltersModalOpen(true)}
-          >
-            <SlidersHorizontal className="size-4" />
-            <span>{tTransaction("filters")}</span>
-            {filtersActive ? (
-              <span
-                aria-hidden
-                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-foreground"
-              />
-            ) : null}
-          </Button>
-        </div>
-      </div>
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {tNav("transactions")}
+        </h1>
+      </header>
 
       <div
         ref={filtersBlockRef}

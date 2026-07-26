@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DateRangeTypeSwitcher } from "@/components/date-range-type-switcher";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
@@ -16,17 +16,31 @@ import { RecentTransactionsList } from "@/features/charts/recent-transactions-li
 import { TimelineChart } from "@/features/charts/timeline-chart";
 import { FastTransactionInput } from "@/features/home/fast-transaction-input";
 import { FastTransactionQueueTable } from "@/features/home/fast-transaction-queue-table";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useRouter } from "@/i18n/navigation";
 import { fetchOverviewStats } from "@/lib/api/stats";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { OverviewStats } from "@/server/services/stats-service.types";
+import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 import { DateRangeType } from "@/types/enums";
+
+const DATE_RANGE_OPTIONS = [
+  DateRangeType.Day,
+  DateRangeType.Month,
+  DateRangeType.Year,
+  DateRangeType.AllTime,
+] as const;
 
 export function HomeDashboard() {
   const t = useTranslations("home");
   const tCharts = useTranslations("charts");
+  const tDateRange = useTranslations("dateRange");
   const router = useRouter();
+  const isMobile = useIsMobile();
+  const setMobilePageChrome = useMobilePageChromeStore((state) => state.setChrome);
+  const dateRangeSentinelRef = useRef<HTMLDivElement>(null);
+  const [dateRangeOutOfView, setDateRangeOutOfView] = useState(false);
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>(
     DateRangeType.Month,
   );
@@ -56,6 +70,96 @@ export function HomeDashboard() {
       window.removeEventListener("paytracker:transactions-changed", onChanged);
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setDateRangeOutOfView(false);
+      return;
+    }
+
+    const sentinel = dateRangeSentinelRef.current;
+    if (!sentinel) return;
+
+    function updateScrolledPast() {
+      const node = dateRangeSentinelRef.current;
+      if (!node) {
+        setDateRangeOutOfView(false);
+        return;
+      }
+      const rect = node.getBoundingClientRect();
+      // Only when the in-page filter has fully left above the viewport.
+      // Below-the-fold (not reached yet): bottom > 0 → stay hidden in island.
+      setDateRangeOutOfView(rect.bottom <= 0);
+    }
+
+    updateScrolledPast();
+
+    const scrollTargets: Array<Element | Window> = [window];
+    let ancestor: HTMLElement | null = sentinel.parentElement;
+    while (ancestor) {
+      const { overflowY } = window.getComputedStyle(ancestor);
+      if (
+        overflowY === "auto" ||
+        overflowY === "scroll" ||
+        overflowY === "overlay"
+      ) {
+        scrollTargets.push(ancestor);
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    for (const target of scrollTargets) {
+      target.addEventListener("scroll", updateScrolledPast, { passive: true });
+    }
+    window.addEventListener("resize", updateScrolledPast);
+
+    const observer = new IntersectionObserver(updateScrolledPast, {
+      threshold: [0, 1],
+    });
+    observer.observe(sentinel);
+
+    return () => {
+      for (const target of scrollTargets) {
+        target.removeEventListener("scroll", updateScrolledPast);
+      }
+      window.removeEventListener("resize", updateScrolledPast);
+      observer.disconnect();
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !dateRangeOutOfView) {
+      setMobilePageChrome(null);
+      return () => setMobilePageChrome(null);
+    }
+
+    setMobilePageChrome({
+      segmentFilter: {
+        value: dateRangeType,
+        options: DATE_RANGE_OPTIONS.map((option) => ({
+          value: option,
+          label: tDateRange(option),
+        })),
+        onChange: (next) => {
+          if (
+            next === DateRangeType.Day ||
+            next === DateRangeType.Month ||
+            next === DateRangeType.Year ||
+            next === DateRangeType.AllTime
+          ) {
+            setDateRangeType(next);
+          }
+        },
+      },
+    });
+    return () => setMobilePageChrome(null);
+  }, [
+    dateRangeOutOfView,
+    dateRangeType,
+    isMobile,
+    setMobilePageChrome,
+    tDateRange,
+  ]);
 
   const avgDailyComparison = stats?.avgDailySpendVsPrevious ?? {
     current: { amount: "0", currency: "RUB" },
@@ -92,7 +196,10 @@ export function HomeDashboard() {
         }
       />
 
-      <div className="sticky top-14 z-20 -mx-3 border-b border-border/40 bg-background/90 px-3 py-2 backdrop-blur md:-mx-6 md:px-6">
+      <div
+        ref={dateRangeSentinelRef}
+        className="-mx-3 border-b border-border/40 bg-background/90 px-3 py-2 backdrop-blur md:sticky md:top-14 md:z-20 md:-mx-6 md:px-6"
+      >
         <DateRangeTypeSwitcher
           value={dateRangeType}
           onChange={setDateRangeType}
@@ -144,7 +251,11 @@ export function HomeDashboard() {
             amount={
               stats?.avgDailySpend ?? { amount: "0", currency: "RUB" }
             }
-            amountClassName="text-rose-400"
+            amountClassName={
+              Number(stats?.avgDailySpend?.amount ?? 0) > 0
+                ? "text-rose-400"
+                : undefined
+            }
             comparison={avgDailyComparison}
             comparisonSense="lowerIsBetter"
             hideComparison={dateRangeType === DateRangeType.AllTime}

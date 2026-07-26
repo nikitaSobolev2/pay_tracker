@@ -159,8 +159,8 @@ export function DevicesSessionsList() {
 
                   <Button
                     type="button"
-                    variant="outline"
-                    className="shrink-0"
+                    variant="destructive"
+                    className="h-12 w-full shrink-0 gap-2 rounded-xl text-base sm:h-10 sm:w-auto sm:text-sm"
                     disabled={isCurrent || revokingToken === session.token}
                     onClick={() => void handleRevoke(session.token)}
                   >

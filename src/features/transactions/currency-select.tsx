@@ -44,7 +44,7 @@ export function CurrencySelect({
       </SelectTrigger>
       <SelectContent>
         {currencies.map((currency) => (
-          <SelectItem key={currency} value={currency} className="text-base">
+          <SelectItem key={currency} value={currency}>
             {currency}
           </SelectItem>
         ))}

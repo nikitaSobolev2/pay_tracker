@@ -22,6 +22,13 @@ export function listCounterparties(
   );
 }
 
+export function createCounterparty(name: string) {
+  return apiFetch<{ counterparty: CounterpartyDto }>("/api/counterparties", {
+    method: "POST",
+    body: { name },
+  });
+}
+
 export function updateCounterparty(id: string, name: string) {
   return apiFetch<{ counterparty: CounterpartyDto }>(
     `/api/counterparties/${id}`,

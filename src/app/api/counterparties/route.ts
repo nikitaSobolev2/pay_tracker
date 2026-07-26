@@ -5,6 +5,7 @@ import { handleRouteError } from "@/lib/route-handler";
 import { requireUser } from "@/lib/session";
 import { zodEnumFromConst } from "@/lib/zod-helpers";
 import {
+  createCounterparty,
   listAllCounterparties,
   searchCounterparties,
 } from "@/server/services/counterparty-service";
@@ -17,6 +18,10 @@ const querySchema = z.object({
     .enum(["true", "false", "1", "0"])
     .optional()
     .transform((value) => value === "true" || value === "1"),
+});
+
+const createBodySchema = z.object({
+  name: z.string().min(1).max(200),
 });
 
 export async function GET(request: Request) {
@@ -38,6 +43,20 @@ export async function GET(request: Request) {
         });
 
     return jsonOk({ counterparties });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await requireUser();
+    const body = createBodySchema.parse(await request.json());
+    const counterparty = await createCounterparty({
+      userId: user.id,
+      name: body.name,
+    });
+    return jsonOk({ counterparty }, { status: 201 });
   } catch (error) {
     return handleRouteError(error);
   }

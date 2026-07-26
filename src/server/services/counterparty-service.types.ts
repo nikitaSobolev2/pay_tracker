@@ -21,6 +21,11 @@ export type FindOrCreateCounterpartyInput = {
   name: string;
 };
 
+export type CreateCounterpartyInput = {
+  userId: string;
+  name: string;
+};
+
 export type UpdateCounterpartyInput = {
   userId: string;
   counterpartyId: string;

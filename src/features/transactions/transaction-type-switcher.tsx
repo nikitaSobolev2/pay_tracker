@@ -85,8 +85,10 @@ export function TransactionTypeSwitcher({
     >
       <TabsList
         className={cn(
-          "w-full",
-          compact ? "h-9" : "h-10 rounded-xl p-1 md:h-12",
+          "h-12 w-full rounded-xl p-1 md:w-full",
+          compact
+            ? "rounded-full md:h-12"
+            : "md:h-12 md:rounded-xl",
         )}
       >
         {OPTIONS.map((option) => (
@@ -95,7 +97,7 @@ export function TransactionTypeSwitcher({
             value={option.value}
             className={cn(
               compact
-                ? "px-2 text-xs sm:text-sm"
+                ? "rounded-full px-2.5 text-sm"
                 : "rounded-lg px-3 text-sm md:px-4 md:text-base",
             )}
           >
@@ -151,13 +153,9 @@ export function TransactionTypeSelect({
           )}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent align="start" className="min-w-52 p-1.5">
+      <SelectContent align="start" className="min-w-52">
         {SELECT_OPTIONS.map((option) => (
-          <SelectItem
-            key={option.value}
-            value={option.value}
-            className="rounded-lg py-2.5 pr-10 pl-3"
-          >
+          <SelectItem key={option.value} value={option.value}>
             <TypeOptionLabel icon={option.icon} label={t(option.labelKey)} />
           </SelectItem>
         ))}

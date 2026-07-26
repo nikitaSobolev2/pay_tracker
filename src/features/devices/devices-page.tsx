@@ -123,14 +123,15 @@ export function DevicesPage() {
             type="button"
             variant="ghost"
             size="icon"
+            className="size-12 shrink-0 rounded-xl sm:size-10"
             onClick={() => void refreshTransfer()}
             disabled={loading}
             aria-label={t("refreshCode")}
           >
             {loading ? (
-              <Loader2 className="animate-spin" />
+              <Loader2 className="size-5 animate-spin sm:size-4" />
             ) : (
-              <RefreshCw />
+              <RefreshCw className="size-5 sm:size-4" />
             )}
           </Button>
         </div>

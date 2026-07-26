@@ -26,6 +26,7 @@ export function DateRangeTypeSwitcher({
   return (
     <div className="flex w-full justify-center">
       <Tabs
+        className="w-full md:w-auto"
         value={value}
         onValueChange={(next) => {
           if (
@@ -38,12 +39,12 @@ export function DateRangeTypeSwitcher({
           }
         }}
       >
-        <TabsList className="h-9 rounded-lg p-0.5 md:h-14 md:rounded-xl md:p-1">
+        <TabsList className="h-12 w-full rounded-xl p-1 md:h-14 md:w-fit md:rounded-xl md:p-1">
           {OPTIONS.map((option) => (
             <TabsTrigger
               key={option}
               value={option}
-              className="px-2.5 text-sm md:min-w-24 md:px-5 md:text-base md:font-medium"
+              className="rounded-lg px-2 text-sm font-medium md:min-w-24 md:px-5 md:text-base"
             >
               {t(option)}
             </TabsTrigger>

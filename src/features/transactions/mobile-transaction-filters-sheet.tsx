@@ -432,16 +432,18 @@ export function MobileTransactionFiltersSheet({
                   }))
                 }
               />
-              <ToggleRow
-                checked={draft.hideUncategorized}
-                label={t("hideUncategorized")}
-                onCheckedChange={() =>
-                  setDraft((current) => ({
-                    ...current,
-                    hideUncategorized: !current.hideUncategorized,
-                  }))
-                }
-              />
+              <div className="mt-4">
+                <ToggleRow
+                  checked={draft.hideUncategorized}
+                  label={t("hideUncategorized")}
+                  onCheckedChange={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      hideUncategorized: !current.hideUncategorized,
+                    }))
+                  }
+                />
+              </div>
             </FilterSection>
           </div>
 

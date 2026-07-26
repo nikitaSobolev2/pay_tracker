@@ -1,19 +1,20 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Loader2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogHeaderInner,
+} from "@/components/ui/responsive-dialog";
 import { createShare, updateShare } from "@/lib/api/shares";
 import { cn } from "@/lib/utils";
 import { useShareChartStore } from "@/stores/share-chart.store";
@@ -126,18 +127,27 @@ export function ShareChartModal() {
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("shareChart")}</DialogTitle>
-        </DialogHeader>
+      <ResponsiveDialogContent size="md" showCloseButton>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogHeaderInner>
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              {t("shareChart")}
+            </DialogTitle>
+          </ResponsiveDialogHeaderInner>
+          <div className="pb-3" />
+        </ResponsiveDialogHeader>
 
-        <div className="space-y-4">
+        <ResponsiveDialogBody className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground" htmlFor="share-title">
+            <label
+              className="text-sm font-medium"
+              htmlFor="share-title"
+            >
               {t("titleOptional")}
             </label>
             <Input
               id="share-title"
+              className="h-12 rounded-xl text-base md:h-11"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               onBlur={() => {
@@ -150,7 +160,7 @@ export function ShareChartModal() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground" htmlFor="share-link">
+            <label className="text-sm font-medium" htmlFor="share-link">
               {t("link")}
             </label>
             <div className="flex items-center gap-2">
@@ -158,24 +168,20 @@ export function ShareChartModal() {
                 id="share-link"
                 readOnly
                 value={creating ? t("creatingLink") : shareUrl}
-                className="h-8 font-mono text-xs"
+                className="h-12 rounded-xl font-mono text-xs md:h-11"
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="size-8 shrink-0"
+                className="size-12 shrink-0 rounded-xl md:size-11"
                 aria-label={t("copy")}
                 disabled={!shareUrl || creating}
                 onClick={() => {
                   void handleCopy();
                 }}
               >
-                <span
-                  className={cn(
-                    "relative inline-flex size-4 items-center justify-center",
-                  )}
-                >
+                <span className="relative inline-flex size-4 items-center justify-center">
                   <Copy
                     className={cn(
                       "absolute size-4 transition-all duration-200",
@@ -197,12 +203,13 @@ export function ShareChartModal() {
             </div>
             <p className="text-xs text-muted-foreground">{t("publicHint")}</p>
           </div>
-        </div>
+        </ResponsiveDialogBody>
 
-        <DialogFooter className="gap-2 sm:justify-end">
+        <ResponsiveDialogFooter>
           <Button
             type="button"
             variant="outline"
+            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
             onClick={closeShare}
             disabled={publishing}
           >
@@ -210,15 +217,17 @@ export function ShareChartModal() {
           </Button>
           <Button
             type="button"
+            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
             onClick={() => {
               void handlePublish();
             }}
             disabled={!shareId || creating || publishing}
           >
+            {publishing ? <Loader2 className="animate-spin" /> : null}
             {publishing ? t("publishing") : t("makePublic")}
           </Button>
-        </DialogFooter>
-      </DialogContent>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
     </Dialog>
   );
 }
