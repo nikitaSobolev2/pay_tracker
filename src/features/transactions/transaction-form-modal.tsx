@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 
@@ -84,6 +84,7 @@ export function TransactionFormModal() {
   const [selectedChipId, setSelectedChipId] = useState<DateQuickChipId | null>(
     null,
   );
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const transactionType =
     transactionFormMode === TransactionFormMode.Spending
@@ -133,7 +134,13 @@ export function TransactionFormModal() {
   }, [form]);
 
   function resetKeepOpen() {
-    setForm(emptyForm(form.currency || defaultCurrency));
+    const currency = form.currency || defaultCurrency;
+    const occurredAt = form.occurredAt;
+    setForm({
+      ...emptyForm(currency),
+      occurredAt,
+    });
+    bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSave() {
@@ -230,7 +237,7 @@ export function TransactionFormModal() {
           )}
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody>
+        <ResponsiveDialogBody ref={bodyRef}>
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("title")}</Label>
             <Input
