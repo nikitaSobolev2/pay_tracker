@@ -130,6 +130,7 @@ export function CsvImportDialog({
                       <TableHead>#</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Type</TableHead>
+                      <TableHead>Kind</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Errors</TableHead>
                     </TableRow>
@@ -140,6 +141,7 @@ export function CsvImportDialog({
                         <TableCell>{row.index + 1}</TableCell>
                         <TableCell>{row.status}</TableCell>
                         <TableCell>{row.row?.type ?? "—"}</TableCell>
+                        <TableCell>{row.row?.kind ?? "—"}</TableCell>
                         <TableCell>
                           {row.row
                             ? `${row.row.originalAmount} ${row.row.inputCurrency}`

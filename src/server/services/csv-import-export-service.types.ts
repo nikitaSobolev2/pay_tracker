@@ -1,4 +1,4 @@
-import type { TransactionKind, TransactionType } from "@/types/enums";
+import type { ParsedCsvTransactionRow } from "@/lib/csv-transaction-row";
 
 export type CsvExportResult = {
   filename: string;
@@ -13,17 +13,7 @@ export const CsvPreviewRowStatus = {
 export type CsvPreviewRowStatus =
   (typeof CsvPreviewRowStatus)[keyof typeof CsvPreviewRowStatus];
 
-export type CsvImportRow = {
-  id?: string | null;
-  type: TransactionType;
-  originalAmount: string;
-  inputCurrency: string;
-  title?: string | null;
-  occurredAt: string;
-  kind: TransactionKind;
-  counterparty?: string | null;
-  categories?: string[];
-};
+export type CsvImportRow = ParsedCsvTransactionRow;
 
 export type CsvPreviewRow = {
   index: number;

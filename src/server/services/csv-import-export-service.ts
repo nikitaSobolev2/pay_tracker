@@ -1,31 +1,29 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import Papa from "papaparse";
 
+import { joinCsvCategories } from "@/lib/csv-categories";
 import {
-  joinCsvCategories,
-  splitCsvCategories,
-} from "@/lib/csv-categories";
+  buildCsvDuplicateHash,
+  parseCsvImportRow,
+} from "@/lib/csv-transaction-row";
 import { AppServiceError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
-import {
-  TransactionKind,
-  TransactionType,
-} from "@/types/enums";
+import type { TransactionType } from "@/types/enums";
 
 import { findOrCreateCategoryByPath, toCategoryDtos } from "./category-service";
 import type {
   CsvApplyInput,
   CsvApplyResult,
   CsvExportResult,
-  CsvImportRow,
   CsvPreviewResult,
   CsvPreviewRow,
 } from "./csv-import-export-service.types";
 import { CsvPreviewRowStatus } from "./csv-import-export-service.types";
 import { createTransaction } from "./transaction-service";
 
+/** Matches current Transaction model (+ categories as path list). */
 const CSV_COLUMNS = [
   "id",
   "type",
@@ -106,12 +104,25 @@ export async function previewImport(
 
   const existing = await prisma.transaction.findMany({
     where: { userId, isDeleted: false },
-    include: { counterparty: true },
+    include: {
+      counterparty: true,
+      categories: { include: { category: true } },
+    },
   });
+  const uniqueCategories = new Map(
+    existing.flatMap((row) =>
+      row.categories.map((link) => [link.category.id, link.category] as const),
+    ),
+  );
+  const categoryDtos = await toCategoryDtos([...uniqueCategories.values()]);
+  const pathByCategoryId = new Map(
+    categoryDtos.map((dto) => [dto.id, dto.path]),
+  );
+
   const existingIds = new Set(existing.map((row) => row.id));
   const existingHashes = new Set(
     existing.map((row) =>
-      buildDuplicateHash({
+      buildCsvDuplicateHash({
         type: row.type,
         originalAmount: row.originalAmount.toString(),
         inputCurrency: row.inputCurrency,
@@ -119,13 +130,17 @@ export async function previewImport(
         title: row.title,
         kind: row.kind,
         counterparty: row.counterparty?.name ?? null,
+        categories: row.categories.map(
+          (link) =>
+            pathByCategoryId.get(link.category.id) ?? link.category.title,
+        ),
       }),
     ),
   );
 
   const rows: CsvPreviewRow[] = parsed.data.map((raw, index) => {
     const errors: string[] = [];
-    const row = parseImportRow(raw, errors);
+    const row = parseCsvImportRow(raw, errors);
     if (!row || errors.length > 0) {
       return {
         index,
@@ -148,13 +163,14 @@ export async function previewImport(
       };
     }
 
-    const hash = buildDuplicateHash(row);
+    const hash = buildCsvDuplicateHash(row);
     if (existingHashes.has(hash)) {
       return {
         index,
         status: CsvPreviewRowStatus.Duplicate,
         errors: [],
-        duplicateReason: "Matching type/amount/currency/date/title/debt fields",
+        duplicateReason:
+          "Matching type/amount/currency/date/title/kind/categories",
         row,
         raw,
       };
@@ -252,86 +268,6 @@ export async function applyImport(
   }
 
   return { importedCount, skippedCount, errors };
-}
-
-function parseImportRow(
-  raw: Record<string, string>,
-  errors: string[],
-): CsvImportRow | null {
-  const typeRaw = (raw.type ?? "").trim().toUpperCase();
-  if (
-    typeRaw !== TransactionType.Spending &&
-    typeRaw !== TransactionType.Earning
-  ) {
-    errors.push("Invalid type");
-  }
-
-  const originalAmount = (
-    raw.originalAmount ||
-    raw.amount ||
-    ""
-  ).trim();
-  if (!originalAmount) {
-    errors.push("Amount is required");
-  }
-
-  const inputCurrency = (raw.inputCurrency || "RUB").trim().toUpperCase();
-  const occurredAt = (raw.occurredAt || "").trim();
-  if (!occurredAt || Number.isNaN(Date.parse(occurredAt))) {
-    errors.push("Invalid occurredAt");
-  }
-
-  const kindRaw = (raw.kind || "").trim().toUpperCase();
-  let kind: TransactionKind = TransactionKind.Default;
-  if (kindRaw) {
-    if (
-      kindRaw !== TransactionKind.Loan &&
-      kindRaw !== TransactionKind.Debt &&
-      kindRaw !== TransactionKind.Default &&
-      kindRaw !== TransactionKind.Refund
-    ) {
-      errors.push("Invalid kind");
-    } else {
-      kind = kindRaw;
-    }
-  }
-
-  if (errors.length > 0) {
-    return null;
-  }
-
-  return {
-    id: (raw.id || "").trim() || null,
-    type: typeRaw as TransactionType,
-    originalAmount,
-    inputCurrency,
-    title: (raw.title || "").trim() || null,
-    occurredAt: new Date(occurredAt).toISOString(),
-    kind,
-    counterparty: (raw.counterparty || "").trim() || null,
-    categories: splitCsvCategories(raw.categories || ""),
-  };
-}
-
-function buildDuplicateHash(input: {
-  type: TransactionType;
-  originalAmount: string;
-  inputCurrency: string;
-  occurredAt: string;
-  title?: string | null;
-  kind: TransactionKind;
-  counterparty?: string | null;
-}): string {
-  const payload = [
-    input.type,
-    input.originalAmount,
-    input.inputCurrency.toUpperCase(),
-    new Date(input.occurredAt).toISOString(),
-    input.title ?? "",
-    input.kind,
-    input.counterparty ?? "",
-  ].join("|");
-  return createHash("sha256").update(payload).digest("hex");
 }
 
 async function resolveCategoryIds(
