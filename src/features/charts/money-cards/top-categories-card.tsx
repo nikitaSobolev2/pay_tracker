@@ -1,22 +1,39 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
-import { Badge } from "@/components/ui/badge";
+import {
+  ChartContainer,
+  ChartTooltip,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryChildrenDetails } from "@/features/charts/category-children-details";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import {
   categorySliceFill,
-  categoryTypeBadgeClass,
   sliceIdentityKey,
 } from "@/lib/category-chart-style";
 import { formatChartMoney } from "@/lib/money";
-import { cn } from "@/lib/utils";
 import type { CategorySlice } from "@/server/services/stats-service.types";
 import { TransactionType } from "@/types/enums";
 
-import { CategoryListSkeleton } from "./primitives";
+type TopCategoryBar = {
+  readonly chartKey: string;
+  readonly label: string;
+  readonly amount: number;
+  readonly fill: string;
+  readonly slice: CategorySlice;
+};
+
+const chartConfig = {
+  amount: { label: "Amount" },
+} satisfies ChartConfig;
+
+const LABEL_MAX_CHARS = 10;
 
 export function TopCategoriesCard({
   title,
@@ -28,20 +45,39 @@ export function TopCategoriesCard({
   className,
   disableShare = false,
 }: {
-  title: string;
-  description?: string;
-  loading?: boolean;
-  items: CategorySlice[];
-  currency: string;
-  showTypeHints?: boolean;
-  className?: string;
-  disableShare?: boolean;
+  readonly title: string;
+  readonly description?: string;
+  readonly loading?: boolean;
+  readonly items: CategorySlice[];
+  readonly currency: string;
+  readonly showTypeHints?: boolean;
+  readonly className?: string;
+  readonly disableShare?: boolean;
 }) {
   const tCharts = useTranslations("charts");
-  const mixedTypes =
-    showTypeHints &&
-    items.some((item) => item.type === TransactionType.Earning) &&
-    items.some((item) => item.type === TransactionType.Spending);
+  const tTx = useTranslations("transaction");
+
+  const data = useMemo(() => {
+    const typeCounts = { spending: 0, earning: 0 };
+    return items.map((slice, index): TopCategoryBar => {
+      const withinType =
+        slice.type === TransactionType.Earning
+          ? typeCounts.earning++
+          : typeCounts.spending++;
+      return {
+        chartKey: sliceIdentityKey(
+          slice.categoryId,
+          slice.type,
+          slice.title,
+          index,
+        ),
+        label: truncateLabel(slice.title),
+        amount: Number(slice.amount),
+        fill: categorySliceFill(slice.type, withinType),
+        slice,
+      };
+    });
+  }, [items]);
 
   return (
     <StatCard
@@ -61,104 +97,128 @@ export function TopCategoriesCard({
       }
       loading={loading}
       className={className}
-      skeleton={<CategoryListSkeleton />}
+      bleed
+      skeleton={<Skeleton className="mx-2 mb-2 h-56 w-[calc(100%-1rem)]" />}
     >
-      {items.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
+      {data.length === 0 ? (
+        <div className="px-6 pb-6 text-sm text-muted-foreground">
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {items.map((item, index) => (
-            <CategoryBarRow
-              key={sliceIdentityKey(
-                item.categoryId,
-                item.type,
-                item.title,
-                index,
-              )}
-              item={item}
-              index={index}
-              currency={currency}
-              showTypeBadge={mixedTypes}
+        <ChartContainer config={chartConfig} className="h-56 w-full px-2">
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              tick={{ fontSize: 11 }}
             />
-          ))}
-        </ul>
+            <YAxis
+              type="number"
+              tickLine={false}
+              axisLine={false}
+              width={36}
+              tick={{ fontSize: 11 }}
+              tickFormatter={(value) => compactAxisTick(Number(value))}
+            />
+            <ChartTooltip
+              cursor={{ fill: "var(--muted)", opacity: 0.35 }}
+              content={
+                <TopCategoriesTooltip
+                  currency={currency}
+                  showTypeHints={showTypeHints}
+                  earningLabel={tTx("earning")}
+                  spendingLabel={tTx("spending")}
+                />
+              }
+            />
+            <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={48}>
+              {data.map((entry) => (
+                <Cell key={entry.chartKey} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
       )}
     </StatCard>
   );
 }
 
-function CategoryBarRow({
-  item,
-  index,
+function TopCategoriesTooltip({
+  active,
+  payload,
   currency,
-  showTypeBadge,
+  showTypeHints,
+  earningLabel,
+  spendingLabel,
 }: {
-  readonly item: CategorySlice;
-  readonly index: number;
+  readonly active?: boolean;
+  readonly payload?: ReadonlyArray<{ payload?: TopCategoryBar }>;
   readonly currency: string;
-  readonly showTypeBadge: boolean;
+  readonly showTypeHints: boolean;
+  readonly earningLabel: string;
+  readonly spendingLabel: string;
 }) {
-  const tTx = useTranslations("transaction");
-  const hasChildren = item.children.length > 0;
-  const amountLabel = formatChartMoney(item.amount, currency);
+  if (!active || !payload?.length) {
+    return null;
+  }
+  const row = payload[0]?.payload as TopCategoryBar | undefined;
+  if (!row) {
+    return null;
+  }
+  const { slice } = row;
+  const typeLabel =
+    slice.type === TransactionType.Earning ? earningLabel : spendingLabel;
 
   return (
-    <li
-      className="group/category space-y-1.5"
-      tabIndex={hasChildren ? 0 : undefined}
-      title={`${item.title}: ${amountLabel} · ${item.percent.toFixed(1)}%`}
-    >
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="min-w-0 truncate font-medium">{item.title}</span>
-        {showTypeBadge ? (
-          <Badge
-            variant="outline"
-            className={cn(
-              "shrink-0 rounded-full px-1.5 text-[10px] font-medium",
-              categoryTypeBadgeClass(item.type),
-            )}
-          >
-            {item.type === TransactionType.Earning
-              ? tTx("earning")
-              : tTx("spending")}
-          </Badge>
+    <div className="grid min-w-48 gap-2 rounded-lg border border-border/50 bg-background px-2.5 py-2 text-xs shadow-xl">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 font-medium">{slice.title}</div>
+        {showTypeHints ? (
+          <span className="shrink-0 text-muted-foreground">{typeLabel}</span>
         ) : null}
-        <span className="shrink-0 tabular-nums text-muted-foreground">
-          {item.percent.toFixed(0)}%
+      </div>
+      <div className="flex justify-between gap-4 tabular-nums">
+        <span className="text-muted-foreground">
+          {slice.percent.toFixed(1)}%
+        </span>
+        <span className="font-mono font-medium">
+          {formatChartMoney(slice.amount, currency)}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full"
-          style={{
-            width: `${Math.min(100, Math.max(0, item.percent))}%`,
-            backgroundColor: categorySliceFill(item.type, index),
-          }}
+      {slice.children.length > 0 ? (
+        <CategoryChildrenDetails
+          slice={slice}
+          currency={currency}
+          className="border-t border-border/40 pt-2"
         />
-      </div>
-      <div className="text-xs tabular-nums text-muted-foreground">
-        {amountLabel}
-      </div>
-      {hasChildren ? (
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows,opacity] duration-150",
-            "grid-rows-[0fr] opacity-0",
-            "group-hover/category:grid-rows-[1fr] group-hover/category:opacity-100",
-            "group-focus-within/category:grid-rows-[1fr] group-focus-within/category:opacity-100",
-          )}
-        >
-          <div className="overflow-hidden">
-            <CategoryChildrenDetails
-              slice={item}
-              currency={currency}
-              className="rounded-xl border border-border/50 bg-muted/25 p-2.5"
-            />
-          </div>
-        </div>
       ) : null}
-    </li>
+    </div>
   );
+}
+
+function truncateLabel(title: string): string {
+  if (title.length <= LABEL_MAX_CHARS) {
+    return title;
+  }
+  return `${title.slice(0, LABEL_MAX_CHARS - 1)}…`;
+}
+
+function compactAxisTick(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(absolute >= 10_000_000 ? 0 : 1)}M`;
+  }
+  if (absolute >= 1_000) {
+    return `${(value / 1_000).toFixed(absolute >= 10_000 ? 0 : 1)}k`;
+  }
+  return String(Math.round(value));
 }
