@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageUp, ScanLine } from "lucide-react";
+import { ImageUp, Loader2, ScanLine } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -22,13 +22,19 @@ type QrScannerInstance = {
   destroy: () => void;
 };
 
+type CameraPhase = "idle" | "starting" | "ready" | "denied";
+
 /** Opens a camera/image QR scanner and approves the scanned sign-in in place. */
-export function ScanQrButton({ onResolved }: { readonly onResolved?: () => void }) {
+export function ScanQrButton({
+  onResolved,
+}: {
+  readonly onResolved?: () => void;
+}) {
   const t = useTranslations("qrApproval");
   const [open, setOpen] = useState(false);
   const [scannedToken, setScannedToken] = useState<string | null>(null);
-  const [cameraError, setCameraError] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [cameraPhase, setCameraPhase] = useState<CameraPhase>("idle");
   const scannerRef = useRef<QrScannerInstance | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -44,34 +50,40 @@ export function ScanQrButton({ onResolved }: { readonly onResolved?: () => void 
     [t],
   );
 
+  // Base UI portals unmount dialog content while closed, so the <video> only
+  // appears after open — wait for the callback ref instead of racing useEffect.
   useEffect(() => {
-    if (!open || scannedToken) {
-      return;
-    }
-    const videoElement = videoRef.current;
-    if (!videoElement) {
+    if (!open || scannedToken || !videoEl) {
       return;
     }
 
     let cancelled = false;
-    setCameraError(false);
+    setCameraPhase("starting");
 
     async function startScanner() {
       try {
         const QrScanner = (await import("qr-scanner")).default;
-        if (cancelled) {
+        if (cancelled || !videoEl) {
           return;
         }
         const scanner = new QrScanner(
-          videoElement!,
+          videoEl,
           (result: { data: string }) => handleDecodedText(result.data),
-          { highlightScanRegion: true, highlightCodeOutline: true },
+          {
+            preferredCamera: "environment",
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            returnDetailedScanResult: true,
+          },
         );
         scannerRef.current = scanner;
         await scanner.start();
+        if (!cancelled) {
+          setCameraPhase("ready");
+        }
       } catch {
         if (!cancelled) {
-          setCameraError(true);
+          setCameraPhase("denied");
         }
       }
     }
@@ -84,7 +96,7 @@ export function ScanQrButton({ onResolved }: { readonly onResolved?: () => void 
       scannerRef.current?.destroy();
       scannerRef.current = null;
     };
-  }, [open, scannedToken, handleDecodedText]);
+  }, [open, scannedToken, videoEl, handleDecodedText]);
 
   async function handleImageFile(file: File | null) {
     if (!file) {
@@ -103,7 +115,8 @@ export function ScanQrButton({ onResolved }: { readonly onResolved?: () => void 
 
   function reset() {
     setScannedToken(null);
-    setCameraError(false);
+    setCameraPhase("idle");
+    setVideoEl(null);
   }
 
   return (
@@ -144,15 +157,22 @@ export function ScanQrButton({ onResolved }: { readonly onResolved?: () => void 
             />
           ) : (
             <div className="space-y-4">
-              <div className="overflow-hidden rounded-2xl border border-border/60 bg-black/40">
+              <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-black">
                 <video
-                  ref={videoRef}
+                  ref={setVideoEl}
                   className="aspect-square w-full object-cover"
                   playsInline
                   muted
+                  autoPlay
                 />
+                {cameraPhase === "starting" || cameraPhase === "idle" ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
+                    <Loader2 className="size-7 animate-spin" />
+                    <p className="text-sm">{t("startingCamera")}</p>
+                  </div>
+                ) : null}
               </div>
-              {cameraError ? (
+              {cameraPhase === "denied" ? (
                 <p className="text-sm text-muted-foreground">
                   {t("cameraDenied")}
                 </p>

@@ -58,6 +58,7 @@
     "backHome": "Go home",
     "scanQr": "Scan QR",
     "scanCameraHint": "Point your camera at the sign-in QR code.",
+    "startingCamera": "Starting camera…",
     "scanFromImage": "Scan from image",
     "cameraDenied": "Camera unavailable. Scan from an image instead.",
     "invalidQr": "This QR code is not a valid sign-in request.",

@@ -17,6 +17,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  // Devices page calls listSessions, which uses freshSessionMiddleware.
+  // Default freshAge (1 day) blocks listing after the session ages out.
+  session: {
+    freshAge: 0,
+  },
   plugins: [username(), loginTransferPlugin(), qrApprovalPlugin()],
   user: {
     additionalFields: {
