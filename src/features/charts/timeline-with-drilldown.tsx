@@ -178,13 +178,13 @@ export function TimelineWithDrilldown({
     <div
       className={cn(
         "flex flex-col gap-3",
-        !stackDrilldown && "lg:flex-row lg:items-start",
+        !stackDrilldown && "lg:flex-row lg:items-stretch",
         selectedBucket && "rounded-2xl bg-muted/35 p-3",
       )}
     >
       <div
         className={cn(
-          "min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
+          "flex min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
           stackDrilldown
             ? "w-full"
             : selectedBucket
@@ -196,7 +196,7 @@ export function TimelineWithDrilldown({
           title={title}
           loading={loading}
           bleed
-          className="min-w-0"
+          className="h-full min-w-0 flex-1"
           sharePayload={
             disableShare || loading || points.length === 0
               ? null
@@ -211,34 +211,40 @@ export function TimelineWithDrilldown({
           }
         >
           {data.length === 0 ? (
-            <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">
+            <div className="flex min-h-56 flex-1 items-center justify-center text-sm text-muted-foreground">
               {tCharts("noTransactions")}
             </div>
           ) : (
             <div
-              ref={scrollRef}
               className={cn(
-                "-mb-2 touch-none select-none overflow-x-auto overscroll-contain scrollbar-none",
-                isDragging ? "cursor-grabbing" : "cursor-pointer",
+                "relative -mb-2 min-h-56 flex-1",
+                selectedBucket && "mb-0",
               )}
-              onMouseDownCapture={(event) => {
-                // Capture before the SVG default-focuses (tabIndex=-1 is still click-focusable).
-                event.preventDefault();
-              }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
             >
-              <ChartContainer
-                config={config}
-                className="aspect-auto h-56 w-full cursor-pointer outline-none [&_.recharts-active-dot]:cursor-pointer [&_.recharts-dot]:cursor-pointer [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg]:cursor-pointer [&_svg]:outline-none"
-                style={
-                  data.length > 12
-                    ? { minWidth: `${Math.max(data.length * 40, 320)}px` }
-                    : undefined
-                }
+              <div
+                ref={scrollRef}
+                className={cn(
+                  "absolute inset-0 touch-none select-none overflow-x-auto overscroll-contain scrollbar-none",
+                  isDragging ? "cursor-grabbing" : "cursor-pointer",
+                )}
+                onMouseDownCapture={(event) => {
+                  // Capture before the SVG default-focuses (tabIndex=-1 is still click-focusable).
+                  event.preventDefault();
+                }}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
               >
+                <ChartContainer
+                  config={config}
+                  className="aspect-auto h-full min-h-full w-full cursor-pointer outline-none [&_.recharts-active-dot]:cursor-pointer [&_.recharts-dot]:cursor-pointer [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg]:cursor-pointer [&_svg]:outline-none"
+                  style={
+                    data.length > 12
+                      ? { minWidth: `${Math.max(data.length * 40, 320)}px` }
+                      : undefined
+                  }
+                >
                 <AreaChart
                   data={data}
                   margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
@@ -340,10 +346,11 @@ export function TimelineWithDrilldown({
                   ) : null}
                 </AreaChart>
               </ChartContainer>
+              </div>
             </div>
           )}
           {selectedBucket ? (
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2 flex shrink-0 justify-center">
               <Badge variant="secondary" className="rounded-full">
                 {selectedLabel}
               </Badge>
@@ -362,7 +369,7 @@ export function TimelineWithDrilldown({
         >
           <div
             className={cn(
-              "min-w-0 animate-in fade-in-0 duration-500 fill-mode-both",
+              "flex min-w-0 animate-in fade-in-0 duration-500 fill-mode-both",
               stackDrilldown
                 ? "slide-in-from-bottom-3"
                 : "slide-in-from-right-4 lg:basis-1/4 lg:max-w-[25%]",
@@ -375,12 +382,13 @@ export function TimelineWithDrilldown({
               currency={bucketStats?.displayCurrency ?? currency}
               layout="stack"
               showTypeHints
+              className="h-full flex-1"
               disableShare={disableShare}
             />
           </div>
           <div
             className={cn(
-              "min-w-0 animate-in fade-in-0 duration-500 fill-mode-both delay-75",
+              "flex min-w-0 animate-in fade-in-0 duration-500 fill-mode-both delay-75",
               stackDrilldown
                 ? "slide-in-from-bottom-3"
                 : "slide-in-from-right-4 lg:basis-1/4 lg:max-w-[25%]",

@@ -61,7 +61,7 @@ export function IncomeVsSpendingsCard({
             }
       }
       loading={loading}
-      className="h-full"
+      className="h-full min-w-0 flex-1"
       contentClassName={MONEY_CARD_CONTENT_CLASS}
       skeleton={
         <MoneyCardSkeleton
