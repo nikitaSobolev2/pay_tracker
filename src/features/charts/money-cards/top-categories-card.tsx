@@ -110,7 +110,7 @@ export function TopCategoriesCard({
       ) : (
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto min-h-56 w-full flex-1 px-2 pb-2"
+          className="aspect-auto h-56 w-full px-2 pb-2"
         >
           <BarChart
             data={data}
