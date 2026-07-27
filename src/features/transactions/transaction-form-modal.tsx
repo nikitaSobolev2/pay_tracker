@@ -178,16 +178,18 @@ export function TransactionFormModal() {
     setCategoriesManual(false);
     setSuggestionOwned(EMPTY_SUGGESTION_OWNED);
     if (editingTransaction) {
+      const categoryIds = editingTransaction.categories.map((item) => item.id);
       setForm({
         amount: normalizeAmountRaw(editingTransaction.originalAmount),
         currency: editingTransaction.inputCurrency,
         title: editingTransaction.title ?? "",
         occurredAt: new Date(editingTransaction.occurredAt),
-        categoryIds: editingTransaction.categories.map((item) => item.id),
+        categoryIds,
         kind: editingTransaction.kind,
         counterpartyName: editingTransaction.counterpartyName ?? "",
       });
-      setCategoriesManual(true);
+      // Preserve existing categories; allow auto-match only when edit has none.
+      setCategoriesManual(categoryIds.length > 0);
       return;
     }
     setForm(emptyForm(defaultCurrency));
@@ -234,7 +236,7 @@ export function TransactionFormModal() {
   }, [editNeedsCounterparty, editingTransaction, transactionModalOpen]);
 
   useEffect(() => {
-    if (!transactionModalOpen || categoriesManual || isEditing) {
+    if (!transactionModalOpen || categoriesManual) {
       return;
     }
     if (!debouncedTitle.trim()) {
@@ -262,7 +264,6 @@ export function TransactionFormModal() {
     availableCategories,
     categoriesManual,
     debouncedTitle,
-    isEditing,
     transactionModalOpen,
   ]);
 

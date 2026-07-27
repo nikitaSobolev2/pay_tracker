@@ -460,7 +460,7 @@ export function TransactionsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
-        <div className="min-w-0">
+        <div className="flex min-h-0 min-w-0">
           <TopCategoriesCard
             title={categoryChartTitle(typeFilter, t, tHome)}
             description={
@@ -470,10 +470,10 @@ export function TransactionsPage() {
             items={stats?.topCategories ?? []}
             currency={stats?.displayCurrency ?? "RUB"}
             showTypeHints={typeFilter === "all"}
-            className="h-full"
+            className="h-full w-full"
           />
         </div>
-        <div className="min-w-0">
+        <div className="flex min-h-0 min-w-0">
           <CategoryPieChart
             title={
               typeFilter === "all"
@@ -488,7 +488,7 @@ export function TransactionsPage() {
             currency={stats?.displayCurrency ?? "RUB"}
             layout="stack"
             showTypeHints={typeFilter === "all"}
-            className="h-full"
+            className="h-full w-full"
           />
         </div>
       </div>

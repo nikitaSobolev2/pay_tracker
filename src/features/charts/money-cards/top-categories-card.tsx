@@ -97,15 +97,21 @@ export function TopCategoriesCard({
       }
       loading={loading}
       className={className}
+      contentClassName="min-h-0"
       bleed
-      skeleton={<Skeleton className="mx-2 mb-2 h-56 w-[calc(100%-1rem)]" />}
+      skeleton={
+        <Skeleton className="mx-2 mb-2 min-h-56 w-[calc(100%-1rem)] flex-1" />
+      }
     >
       {data.length === 0 ? (
         <div className="px-6 pb-6 text-sm text-muted-foreground">
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <ChartContainer config={chartConfig} className="h-56 w-full px-2">
+        <ChartContainer
+          config={chartConfig}
+          className="aspect-auto min-h-56 w-full flex-1 px-2 pb-2"
+        >
           <BarChart
             data={data}
             margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
