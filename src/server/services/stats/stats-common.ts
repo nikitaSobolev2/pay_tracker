@@ -24,6 +24,7 @@ import { prisma } from "@/lib/prisma";
 import type { TimelineBucket } from "@/lib/timeline-bucket";
 import {
   DateRangeType,
+  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
