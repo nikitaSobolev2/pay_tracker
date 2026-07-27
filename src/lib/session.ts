@@ -2,6 +2,10 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  parseBearerToken,
+  sessionTokenCandidates,
+} from "@/lib/session-token";
 import type { AppUser } from "@/types/auth";
 import { AppLocale, AppTheme } from "@/types/enums";
 
@@ -45,31 +49,63 @@ function toAppUser(user: {
   };
 }
 
-export async function getSessionUser(): Promise<AppUser | null> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session?.user?.id) {
-    return null;
-  }
+const userSelect = {
+  id: true,
+  username: true,
+  name: true,
+  email: true,
+  locale: true,
+  timezone: true,
+  theme: true,
+  defaultCurrency: true,
+} as const;
 
+async function loadAppUserById(userId: string): Promise<AppUser | null> {
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      email: true,
-      locale: true,
-      timezone: true,
-      theme: true,
-      defaultCurrency: true,
-    },
+    where: { id: userId },
+    select: userSelect,
   });
   if (!user) {
     return null;
   }
   return toAppUser(user);
+}
+
+async function getUserByBearerToken(token: string): Promise<AppUser | null> {
+  const now = new Date();
+  for (const candidate of sessionTokenCandidates(token)) {
+    const session = await prisma.session.findUnique({
+      where: { token: candidate },
+      select: {
+        expiresAt: true,
+        userId: true,
+      },
+    });
+    if (!session) {
+      continue;
+    }
+    if (session.expiresAt <= now) {
+      return null;
+    }
+    return loadAppUserById(session.userId);
+  }
+  return null;
+}
+
+export async function getSessionUser(): Promise<AppUser | null> {
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({
+    headers: requestHeaders,
+  });
+  if (session?.user?.id) {
+    return loadAppUserById(session.user.id);
+  }
+
+  const bearerToken = parseBearerToken(requestHeaders.get("authorization"));
+  if (!bearerToken) {
+    return null;
+  }
+  return getUserByBearerToken(bearerToken);
 }
 
 export async function requireUser(): Promise<AppUser> {

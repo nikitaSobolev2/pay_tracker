@@ -1,0 +1,491 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0A70B729601CBDE2CBA66DDB /* QuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A76ED92A4126F33BE502420 /* QuickAddView.swift */; };
+		14B7677399F7D712EAB84D60 /* PayTrackerAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2D919BFD439C34BA8C069A /* PayTrackerAPI.swift */; };
+		27B9939685D2ED7E3C78668B /* PayTrackerOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB0A8498296AD9A2CCE3AE2 /* PayTrackerOverviewWidget.swift */; };
+		2C9E70BD606D17133BBDBCAA /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF75C6AAFA88BDBFF50158F6 /* Models.swift */; };
+		3FAD1B714F1B41B6DB95A3A2 /* PayTrackerAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 429676E29B9278ACEFC4A6B3 /* PayTrackerAppShortcuts.swift */; };
+		48952548B3352FAD277DED8B /* OverviewWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F83FA67D9E40366033E2E5F /* OverviewWidgetViews.swift */; };
+		48DBC18F0EAA6CF90A20A6D2 /* MoneyFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F47BB992D7CF19E3C73FAB5 /* MoneyFormatting.swift */; };
+		520D5888AB0F879F5483C44E /* AppConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2EA38F34343B8215248C52D /* AppConstants.swift */; };
+		658E34BABB1DC08C29BE14E2 /* OpenQuickAddIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F540ED68A8BD865E29FF0D9 /* OpenQuickAddIntent.swift */; };
+		6A6E88230C313F9928581235 /* LinkAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D380C56AE646F99E66A3125 /* LinkAccountView.swift */; };
+		6EAF00333D3C8AEA5C76B652 /* OpenQuickAddIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F540ED68A8BD865E29FF0D9 /* OpenQuickAddIntent.swift */; };
+		7900A686BBE36738DDBC96CF /* MoneyFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F47BB992D7CF19E3C73FAB5 /* MoneyFormatting.swift */; };
+		959AB5833ECA3F57ACB0DD0E /* PayTrackerWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E076615E99E1A43B9868D281 /* PayTrackerWidgetBundle.swift */; };
+		B7555BE4DDFD4B98CC3E022D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF75C6AAFA88BDBFF50158F6 /* Models.swift */; };
+		C9E3C95958B847D77AE3C38E /* PayTrackerAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2D919BFD439C34BA8C069A /* PayTrackerAPI.swift */; };
+		CF69B249103AF5EDEDA36B05 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E75969100AD8687E4ACE33 /* SessionStore.swift */; };
+		D39996DD72D1F7513D8627A1 /* PayTrackerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7CF2EF127439983C29A0BF09 /* PayTrackerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DC62567930D6859FD36262E6 /* PayTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 291318502E9853A9E02CA166 /* PayTrackerApp.swift */; };
+		E234EB4AE6E4BD652630D804 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA51CC71A8DAA51F9283B044 /* RootView.swift */; };
+		E52DCB1F9FC4D1B741AA9233 /* AppConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2EA38F34343B8215248C52D /* AppConstants.swift */; };
+		F744720B33AECBEC903985B1 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E75969100AD8687E4ACE33 /* SessionStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DC68D63AA07BF7304AF33F3F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FF162382BB7DB41839765F2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F69B1204EDF6782C09924813;
+			remoteInfo = PayTrackerWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FC3284F3B674F3DA8271D05E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D39996DD72D1F7513D8627A1 /* PayTrackerWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0F83FA67D9E40366033E2E5F /* OverviewWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewWidgetViews.swift; sourceTree = "<group>"; };
+		1D380C56AE646F99E66A3125 /* LinkAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkAccountView.swift; sourceTree = "<group>"; };
+		291318502E9853A9E02CA166 /* PayTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayTrackerApp.swift; sourceTree = "<group>"; };
+		429676E29B9278ACEFC4A6B3 /* PayTrackerAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayTrackerAppShortcuts.swift; sourceTree = "<group>"; };
+		5F47BB992D7CF19E3C73FAB5 /* MoneyFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyFormatting.swift; sourceTree = "<group>"; };
+		7CF2EF127439983C29A0BF09 /* PayTrackerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PayTrackerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F540ED68A8BD865E29FF0D9 /* OpenQuickAddIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenQuickAddIntent.swift; sourceTree = "<group>"; };
+		8BB0A8498296AD9A2CCE3AE2 /* PayTrackerOverviewWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayTrackerOverviewWidget.swift; sourceTree = "<group>"; };
+		9A76ED92A4126F33BE502420 /* QuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddView.swift; sourceTree = "<group>"; };
+		A2E75969100AD8687E4ACE33 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		AA51CC71A8DAA51F9283B044 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		AD2D919BFD439C34BA8C069A /* PayTrackerAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayTrackerAPI.swift; sourceTree = "<group>"; };
+		AF75C6AAFA88BDBFF50158F6 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B9048C9BCD500F6ACB1C07AC /* PayTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PayTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E076615E99E1A43B9868D281 /* PayTrackerWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayTrackerWidgetBundle.swift; sourceTree = "<group>"; };
+		F2EA38F34343B8215248C52D /* AppConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConstants.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		06C21BED1D34675D4963E7C7 /* PayTracker */ = {
+			isa = PBXGroup;
+			children = (
+				635848E4A404B849CF08B57E /* App */,
+				9CA27FB61F9993AC0E92A8FC /* Shared */,
+				BC93B2DAED7387901104CFDC /* Widget */,
+			);
+			path = PayTracker;
+			sourceTree = "<group>";
+		};
+		3413B7E382A68013F05BE9C0 = {
+			isa = PBXGroup;
+			children = (
+				06C21BED1D34675D4963E7C7 /* PayTracker */,
+				70825E7AFAF02FA08727E4CB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		635848E4A404B849CF08B57E /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1D380C56AE646F99E66A3125 /* LinkAccountView.swift */,
+				291318502E9853A9E02CA166 /* PayTrackerApp.swift */,
+				429676E29B9278ACEFC4A6B3 /* PayTrackerAppShortcuts.swift */,
+				9A76ED92A4126F33BE502420 /* QuickAddView.swift */,
+				AA51CC71A8DAA51F9283B044 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		70825E7AFAF02FA08727E4CB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B9048C9BCD500F6ACB1C07AC /* PayTracker.app */,
+				7CF2EF127439983C29A0BF09 /* PayTrackerWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9CA27FB61F9993AC0E92A8FC /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F2EA38F34343B8215248C52D /* AppConstants.swift */,
+				AF75C6AAFA88BDBFF50158F6 /* Models.swift */,
+				5F47BB992D7CF19E3C73FAB5 /* MoneyFormatting.swift */,
+				7F540ED68A8BD865E29FF0D9 /* OpenQuickAddIntent.swift */,
+				AD2D919BFD439C34BA8C069A /* PayTrackerAPI.swift */,
+				A2E75969100AD8687E4ACE33 /* SessionStore.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		BC93B2DAED7387901104CFDC /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				0F83FA67D9E40366033E2E5F /* OverviewWidgetViews.swift */,
+				8BB0A8498296AD9A2CCE3AE2 /* PayTrackerOverviewWidget.swift */,
+				E076615E99E1A43B9868D281 /* PayTrackerWidgetBundle.swift */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		88668A1D679C4252E3E4CDC8 /* PayTracker */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 97922AF0C3AC8C84D3183CB7 /* Build configuration list for PBXNativeTarget "PayTracker" */;
+			buildPhases = (
+				B75F02F8D98601355F9531CA /* Sources */,
+				FC3284F3B674F3DA8271D05E /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C72F39FC05C1D3E1FAF5C495 /* PBXTargetDependency */,
+			);
+			name = PayTracker;
+			packageProductDependencies = (
+			);
+			productName = PayTracker;
+			productReference = B9048C9BCD500F6ACB1C07AC /* PayTracker.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F69B1204EDF6782C09924813 /* PayTrackerWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC99B93F16E7955399018091 /* Build configuration list for PBXNativeTarget "PayTrackerWidget" */;
+			buildPhases = (
+				E94E8BC2D2ADE558D172081A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PayTrackerWidget;
+			packageProductDependencies = (
+			);
+			productName = PayTrackerWidget;
+			productReference = 7CF2EF127439983C29A0BF09 /* PayTrackerWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3FF162382BB7DB41839765F2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					88668A1D679C4252E3E4CDC8 = {
+						ProvisioningStyle = Automatic;
+					};
+					F69B1204EDF6782C09924813 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1B9ABD95264E685166D9ED53 /* Build configuration list for PBXProject "PayTracker" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3413B7E382A68013F05BE9C0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 70825E7AFAF02FA08727E4CB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				88668A1D679C4252E3E4CDC8 /* PayTracker */,
+				F69B1204EDF6782C09924813 /* PayTrackerWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B75F02F8D98601355F9531CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E52DCB1F9FC4D1B741AA9233 /* AppConstants.swift in Sources */,
+				6A6E88230C313F9928581235 /* LinkAccountView.swift in Sources */,
+				B7555BE4DDFD4B98CC3E022D /* Models.swift in Sources */,
+				48DBC18F0EAA6CF90A20A6D2 /* MoneyFormatting.swift in Sources */,
+				6EAF00333D3C8AEA5C76B652 /* OpenQuickAddIntent.swift in Sources */,
+				14B7677399F7D712EAB84D60 /* PayTrackerAPI.swift in Sources */,
+				DC62567930D6859FD36262E6 /* PayTrackerApp.swift in Sources */,
+				3FAD1B714F1B41B6DB95A3A2 /* PayTrackerAppShortcuts.swift in Sources */,
+				0A70B729601CBDE2CBA66DDB /* QuickAddView.swift in Sources */,
+				E234EB4AE6E4BD652630D804 /* RootView.swift in Sources */,
+				F744720B33AECBEC903985B1 /* SessionStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E94E8BC2D2ADE558D172081A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				520D5888AB0F879F5483C44E /* AppConstants.swift in Sources */,
+				2C9E70BD606D17133BBDBCAA /* Models.swift in Sources */,
+				7900A686BBE36738DDBC96CF /* MoneyFormatting.swift in Sources */,
+				658E34BABB1DC08C29BE14E2 /* OpenQuickAddIntent.swift in Sources */,
+				48952548B3352FAD277DED8B /* OverviewWidgetViews.swift in Sources */,
+				C9E3C95958B847D77AE3C38E /* PayTrackerAPI.swift in Sources */,
+				27B9939685D2ED7E3C78668B /* PayTrackerOverviewWidget.swift in Sources */,
+				959AB5833ECA3F57ACB0DD0E /* PayTrackerWidgetBundle.swift in Sources */,
+				CF69B249103AF5EDEDA36B05 /* SessionStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C72F39FC05C1D3E1FAF5C495 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F69B1204EDF6782C09924813 /* PayTrackerWidget */;
+			targetProxy = DC68D63AA07BF7304AF33F3F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		46C219D5CFAB8213F56C6F38 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PayTracker/Resources/PayTracker.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = L68B26P3AA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PayTracker/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = site.paytracker.mac;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		6661DF7BF0A0E2578A53A0C6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PayTracker/Resources/PayTrackerWidget.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = L68B26P3AA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pay Tracker";
+				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = site.paytracker.mac.widget;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		676C691AEAA77A8E5B33F2BC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		A23A7C05C4FED4FDF92004EB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PayTracker/Resources/PayTrackerWidget.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = L68B26P3AA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pay Tracker";
+				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = site.paytracker.mac.widget;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		DBE554395B80751D9AB5B986 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		DF4F3957355BB660D28C0D33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = PayTracker/Resources/PayTracker.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = L68B26P3AA;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PayTracker/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = site.paytracker.mac;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1B9ABD95264E685166D9ED53 /* Build configuration list for PBXProject "PayTracker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DBE554395B80751D9AB5B986 /* Debug */,
+				676C691AEAA77A8E5B33F2BC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		97922AF0C3AC8C84D3183CB7 /* Build configuration list for PBXNativeTarget "PayTracker" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				46C219D5CFAB8213F56C6F38 /* Debug */,
+				DF4F3957355BB660D28C0D33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CC99B93F16E7955399018091 /* Build configuration list for PBXNativeTarget "PayTrackerWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A23A7C05C4FED4FDF92004EB /* Debug */,
+				6661DF7BF0A0E2578A53A0C6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3FF162382BB7DB41839765F2 /* Project object */;
+}

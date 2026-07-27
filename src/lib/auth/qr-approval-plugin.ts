@@ -56,7 +56,8 @@ export function qrApprovalPlugin(): BetterAuthPlugin {
               });
             }
             await setSessionCookie(ctx, { session, user });
-            return ctx.json({ ok: true as const });
+            // Native clients (macOS widget) read `token` or `set-auth-token`.
+            return ctx.json({ ok: true as const, token: session.token });
           } catch (error) {
             if (isAppServiceError(error)) {
               throw APIError.from("BAD_REQUEST", {

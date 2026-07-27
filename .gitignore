@@ -57,3 +57,10 @@ next-env.d.ts
 
 
 dev/
+
+# macOS / Xcode
+macos/**/xcuserdata/
+macos/**/DerivedData/
+macos/*.xcworkspace/xcuserdata/
+*.moved-aside
+*.xcuserstate

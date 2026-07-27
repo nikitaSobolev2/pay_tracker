@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { username } from "better-auth/plugins";
+import { bearer, username } from "better-auth/plugins";
 
 import { loginTransferPlugin } from "@/lib/auth/login-transfer-plugin";
 import { qrApprovalPlugin } from "@/lib/auth/qr-approval-plugin";
@@ -22,7 +22,12 @@ export const auth = betterAuth({
   session: {
     freshAge: 0,
   },
-  plugins: [username(), loginTransferPlugin(), qrApprovalPlugin()],
+  plugins: [
+    username(),
+    bearer(),
+    loginTransferPlugin(),
+    qrApprovalPlugin(),
+  ],
   user: {
     additionalFields: {
       locale: {
