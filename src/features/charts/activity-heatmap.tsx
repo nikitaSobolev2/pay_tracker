@@ -170,11 +170,11 @@ export function ActivityHeatmapCard({
     >
       <div
         className={cn(
-          "flex min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
+          "min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
           stackDrilldown
             ? "w-full"
             : selected
-              ? "lg:basis-1/2 lg:max-w-[50%]"
+              ? "lg:basis-1/2 lg:max-w-[50%] lg:self-start"
               : "lg:basis-full lg:max-w-full",
         )}
       >
@@ -194,65 +194,63 @@ export function ActivityHeatmapCard({
           }
           loading={loading}
           skeleton={<HeatmapSkeleton />}
-          className="h-full min-w-0 flex-1"
+          className="min-w-0"
         >
           {data && data.days.length > 0 ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <TooltipProvider delay={280}>
-                <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <TooltipProvider delay={280}>
+              <div className="space-y-3">
+                <div
+                  ref={scrollRef}
+                  className="touch-none overflow-x-auto overscroll-contain scrollbar-none md:overflow-visible md:touch-auto"
+                >
                   <div
-                    ref={scrollRef}
-                    className="min-h-0 flex-1 touch-none overflow-x-auto overscroll-contain scrollbar-none md:overflow-visible md:touch-auto"
+                    className="inline-block min-w-full space-y-2 md:block md:w-full md:space-y-3"
+                    style={
+                      {
+                        "--heatmap-cols": columnCount,
+                      } as CSSProperties
+                    }
                   >
+                    <MonthLabels columns={columns} locale={locale} />
                     <div
-                      className="inline-flex min-h-full min-w-full flex-col gap-2 md:flex md:w-full md:gap-3"
-                      style={
-                        {
-                          "--heatmap-cols": columnCount,
-                        } as CSSProperties
-                      }
+                      className={cn(
+                        "grid gap-1 md:gap-0.75",
+                        "grid-rows-7 grid-flow-col",
+                        "grid-cols-[repeat(var(--heatmap-cols),1rem)]",
+                        "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,1fr))]",
+                      )}
                     >
-                      <MonthLabels columns={columns} locale={locale} />
-                      <div
-                        className={cn(
-                          "grid min-h-[7rem] flex-1 gap-1 md:gap-0.75",
-                          "grid-rows-[repeat(7,minmax(1rem,1fr))] grid-flow-col",
-                          "grid-cols-[repeat(var(--heatmap-cols),1rem)]",
-                          "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,1fr))]",
-                        )}
-                      >
-                        {data.days.map((day) => (
-                          <HeatmapCell
-                            key={day.date}
-                            date={day.date}
-                            earning={Number(day.earning)}
-                            spending={Number(day.spending)}
-                            maxEarning={maxEarning}
-                            maxSpending={maxSpending}
-                            currency={currency}
-                            locale={locale}
-                            selected={day.date === selected}
-                            onSelect={selectDay}
-                            incomeLabel={tHome("income")}
-                            spendingLabel={tHome("spendingLabel")}
-                            netLabel={tHome("net")}
-                            emptyLabel={t("noTransactions")}
-                          />
-                        ))}
-                      </div>
+                      {data.days.map((day) => (
+                        <HeatmapCell
+                          key={day.date}
+                          date={day.date}
+                          earning={Number(day.earning)}
+                          spending={Number(day.spending)}
+                          maxEarning={maxEarning}
+                          maxSpending={maxSpending}
+                          currency={currency}
+                          locale={locale}
+                          selected={day.date === selected}
+                          onSelect={selectDay}
+                          incomeLabel={tHome("income")}
+                          spendingLabel={tHome("spendingLabel")}
+                          netLabel={tHome("net")}
+                          emptyLabel={t("noTransactions")}
+                        />
+                      ))}
                     </div>
                   </div>
-                  <Legend
-                    lessLabel={t("less")}
-                    moreLabel={t("more")}
-                    incomeLabel={tHome("income")}
-                    spendingLabel={tHome("spendingLabel")}
-                  />
                 </div>
-              </TooltipProvider>
-            </div>
+                <Legend
+                  lessLabel={t("less")}
+                  moreLabel={t("more")}
+                  incomeLabel={tHome("income")}
+                  spendingLabel={tHome("spendingLabel")}
+                />
+              </div>
+            </TooltipProvider>
           ) : (
-            <div className="flex min-h-40 flex-1 items-center justify-center text-sm text-muted-foreground">
+            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
               {t("noActivity")}
             </div>
           )}
@@ -367,7 +365,7 @@ function HeatmapCell({
             onClick={() => onSelect(date, earning, spending)}
             style={cellStyle(earning, spending, maxEarning, maxSpending)}
             className={cn(
-              "size-4 shrink-0 rounded-[3px] transition-transform duration-150 md:size-auto md:h-full md:min-h-4 md:w-full",
+              "aspect-square size-4 shrink-0 rounded-[3px] transition-transform duration-150 md:size-auto md:w-full",
               hasData ? "cursor-pointer hover:scale-125" : "cursor-default",
               !hasData && "bg-foreground/6",
               selected &&
@@ -457,7 +455,7 @@ function Legend({
   readonly spendingLabel: string;
 }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5">
           <span
@@ -519,7 +517,7 @@ function HeatmapSkeleton() {
             {Array.from({ length: SKELETON_WEEKS * 7 }, (_, index) => (
               <Skeleton
                 key={`heat-${index}`}
-                className="size-4 rounded-[3px] md:aspect-square md:size-auto md:w-full"
+                className="aspect-square size-4 rounded-[3px] md:size-auto md:w-full"
               />
             ))}
           </div>
