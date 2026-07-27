@@ -27,6 +27,10 @@ import {
   TopCategoriesCard,
   VsPreviousPeriodCard,
 } from "@/features/charts/money-summary-cards";
+import {
+  trendDeltaClassName,
+  type TrendSense,
+} from "@/features/charts/money-cards/primitives";
 import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import { MobileTransactionFiltersSheet } from "@/features/transactions/mobile-transaction-filters-sheet";
 import {
@@ -139,6 +143,14 @@ export function TransactionsPage() {
   const showVsPrevious = supportsPreviousPeriod(filters.datePreset);
   const showAvgPerDay = !isSingleDayDatePreset(filters.datePreset);
   const scopedType = typeFilter !== "all";
+  const totalsSense =
+    typeFilter === TransactionType.Spending
+      ? "lowerIsBetter"
+      : "higherIsBetter";
+  const avgSense =
+    typeFilter === TransactionType.Earning
+      ? "higherIsBetter"
+      : "lowerIsBetter";
   const previousDateRange = previousDateRangeFor(filters.datePreset);
   const applyPreviousPeriod = useCallback(() => {
     if (!previousDateRange) {
@@ -380,6 +392,7 @@ export function TransactionsPage() {
               }
             }
             hideComparison={!showVsPrevious}
+            comparisonSense={totalsSense}
             footerMode={scopedType ? "vsPrevious" : "incomeSpending"}
             onPreviousPeriodClick={
               previousDateRange ? applyPreviousPeriod : undefined
@@ -396,7 +409,7 @@ export function TransactionsPage() {
             comparison={
               stats?.avgPerTransactionVsPrevious ?? EMPTY_COMPARISON
             }
-            comparisonSense="lowerIsBetter"
+            comparisonSense={avgSense}
             hideComparison={!showVsPrevious}
             details={
               showVsPrevious
@@ -404,6 +417,7 @@ export function TransactionsPage() {
                     stats?.avgPerTransactionVsPrevious ?? EMPTY_COMPARISON,
                     tHome("previousPeriod"),
                     tHome("change"),
+                    avgSense,
                     previousDateRange ? applyPreviousPeriod : undefined,
                   )
                 : undefined
@@ -423,7 +437,7 @@ export function TransactionsPage() {
             loading={loadingStats}
             amount={stats?.avgPerDay ?? { amount: "0", currency: "RUB" }}
             comparison={stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON}
-            comparisonSense="lowerIsBetter"
+            comparisonSense={avgSense}
             hideComparison={!showVsPrevious}
             details={
               showVsPrevious
@@ -431,6 +445,7 @@ export function TransactionsPage() {
                     stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON,
                     tHome("previousPeriod"),
                     tHome("change"),
+                    avgSense,
                     previousDateRange ? applyPreviousPeriod : undefined,
                   )
                 : undefined
@@ -457,6 +472,7 @@ export function TransactionsPage() {
               }
             }
             dateRangeType={stats?.dateRangeType ?? DateRangeType.Month}
+            comparisonSense={totalsSense}
             onPreviousPeriodClick={
               previousDateRange ? applyPreviousPeriod : undefined
             }
@@ -667,6 +683,7 @@ function avgComparisonDetails(
   comparison: PeriodComparison,
   previousPeriodLabel: string,
   changeLabel: string,
+  sense: TrendSense,
   onPreviousPeriodClick?: () => void,
 ): Array<{
   readonly label: string;
@@ -694,18 +711,7 @@ function avgComparisonDetails(
               comparison.current.currency,
             )
           : "—",
-      valueClassName: avgChangeClassName(comparison.deltaAmount),
+      valueClassName: trendDeltaClassName(comparison.deltaAmount, sense),
     },
   ];
-}
-
-function avgChangeClassName(deltaAmount: string | null): string | undefined {
-  if (deltaAmount == null) {
-    return undefined;
-  }
-  const delta = Number(deltaAmount);
-  if (!Number.isFinite(delta) || delta === 0) {
-    return undefined;
-  }
-  return delta > 0 ? "text-rose-400" : "text-emerald-400";
 }

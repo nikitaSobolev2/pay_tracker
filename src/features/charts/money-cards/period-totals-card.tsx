@@ -18,6 +18,8 @@ import {
   MoneyCardSkeleton,
   PeriodChangeIndicator,
   signedAmountClassName,
+  trendDeltaClassName,
+  type TrendSense,
 } from "./primitives";
 
 /** Keep tiny amounts visible when the other side dominates. */
@@ -30,6 +32,7 @@ export function PeriodTotalsCard({
   stats,
   comparison,
   hideComparison,
+  comparisonSense = "higherIsBetter",
   footerMode = "incomeSpending",
   onPreviousPeriodClick,
   disableShare = false,
@@ -38,6 +41,7 @@ export function PeriodTotalsCard({
   readonly stats: ListPageStats["periodTotals"];
   readonly comparison?: PeriodComparison;
   readonly hideComparison?: boolean;
+  readonly comparisonSense?: TrendSense;
   readonly footerMode?: PeriodTotalsFooterMode;
   readonly onPreviousPeriodClick?: () => void;
   readonly disableShare?: boolean;
@@ -82,7 +86,7 @@ export function PeriodTotalsCard({
         className={cn(
           AMOUNT_CLASS,
           comparison && !hideComparison
-            ? comparisonTrendClassName(comparison, "higherIsBetter")
+            ? comparisonTrendClassName(comparison, comparisonSense)
             : signedAmountClassName(stats.net.amount),
         )}
       >
@@ -91,7 +95,7 @@ export function PeriodTotalsCard({
       {comparison ? (
         <PeriodChangeIndicator
           comparison={comparison}
-          sense="higherIsBetter"
+          sense={comparisonSense}
           hide={hideComparison}
         />
       ) : null}
@@ -177,7 +181,9 @@ export function PeriodTotalsCard({
                 <span
                   className={cn(
                     "font-medium tabular-nums",
-                    delta == null ? undefined : signedAmountClassName(delta),
+                    delta == null
+                      ? undefined
+                      : trendDeltaClassName(delta, comparisonSense),
                   )}
                 >
                   {delta == null || !comparison

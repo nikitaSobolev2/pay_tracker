@@ -15,7 +15,8 @@ import {
   MONEY_CARD_CONTENT_CLASS,
   MoneyCardSkeleton,
   PeriodChangeIndicator,
-  signedAmountClassName,
+  trendDeltaClassName,
+  type TrendSense,
 } from "./primitives";
 
 export function VsPreviousPeriodCard({
@@ -23,6 +24,7 @@ export function VsPreviousPeriodCard({
   loading,
   comparison,
   dateRangeType,
+  comparisonSense = "higherIsBetter",
   onPreviousPeriodClick,
   disableShare = false,
 }: {
@@ -30,6 +32,7 @@ export function VsPreviousPeriodCard({
   loading?: boolean;
   comparison: PeriodComparison;
   dateRangeType: DateRangeType;
+  comparisonSense?: TrendSense;
   onPreviousPeriodClick?: () => void;
   disableShare?: boolean;
 }) {
@@ -62,7 +65,7 @@ export function VsPreviousPeriodCard({
       <div
         className={cn(
           AMOUNT_CLASS,
-          comparisonTrendClassName(comparison, "higherIsBetter"),
+          comparisonTrendClassName(comparison, comparisonSense),
         )}
       >
         {formatChartMoney(
@@ -70,7 +73,7 @@ export function VsPreviousPeriodCard({
           comparison.current.currency,
         )}
       </div>
-      <PeriodChangeIndicator comparison={comparison} sense="higherIsBetter" />
+      <PeriodChangeIndicator comparison={comparison} sense={comparisonSense} />
       <p className="text-sm text-muted-foreground">{t("netChange")}</p>
       <div className="mt-auto space-y-2.5 rounded-xl bg-muted/35 px-4 py-3.5 text-base">
         <button
@@ -94,7 +97,9 @@ export function VsPreviousPeriodCard({
           <span
             className={cn(
               "font-medium tabular-nums",
-              delta === null ? undefined : signedAmountClassName(delta),
+              delta === null
+                ? undefined
+                : trendDeltaClassName(delta, comparisonSense),
             )}
           >
             {delta === null

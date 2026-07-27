@@ -24,6 +24,24 @@ export function signedAmountClassName(amount: string): string | undefined {
   return value > 0 ? "text-emerald-400" : "text-rose-400";
 }
 
+/** Colors a delta amount by whether the move is good under `sense`. */
+export function trendDeltaClassName(
+  deltaAmount: string | null,
+  sense: TrendSense = "higherIsBetter",
+): string | undefined {
+  if (deltaAmount == null) {
+    return undefined;
+  }
+  const delta = Number(deltaAmount);
+  if (!Number.isFinite(delta) || delta === 0) {
+    return undefined;
+  }
+  const direction: TrendDirection = delta > 0 ? "up" : "down";
+  return isPositiveTrend(direction, sense)
+    ? "text-emerald-400"
+    : "text-rose-400";
+}
+
 /** Matches PeriodChangeIndicator arrow/percent colors for the hero amount. */
 export function comparisonTrendClassName(
   comparison: PeriodComparison,
