@@ -18,41 +18,21 @@ export type ParsedCsvTransactionRow = {
   categories?: string[];
 };
 
-const LEGACY_DEBT_ROLE_TO_KIND: Record<string, TransactionKind> = {
-  LEND: TransactionKind.Loan,
-  BORROW: TransactionKind.Debt,
-};
-
 const VALID_KINDS = new Set<string>(Object.values(TransactionKind));
 
-/**
- * Resolves transaction kind from CSV.
- * Prefers `kind`; falls back to legacy `debtRole` (LEND→LOAN, BORROW→DEBT).
- */
 export function resolveCsvTransactionKind(
   raw: Record<string, string>,
   errors: string[],
 ): TransactionKind {
   const kindRaw = (raw.kind || "").trim().toUpperCase();
-  if (kindRaw) {
-    if (!VALID_KINDS.has(kindRaw)) {
-      errors.push("Invalid kind");
-      return TransactionKind.Default;
-    }
-    return kindRaw as TransactionKind;
-  }
-
-  const debtRoleRaw = (raw.debtRole || "").trim().toUpperCase();
-  if (!debtRoleRaw) {
+  if (!kindRaw) {
     return TransactionKind.Default;
   }
-
-  const mapped = LEGACY_DEBT_ROLE_TO_KIND[debtRoleRaw];
-  if (!mapped) {
-    errors.push("Invalid debtRole");
+  if (!VALID_KINDS.has(kindRaw)) {
+    errors.push("Invalid kind");
     return TransactionKind.Default;
   }
-  return mapped;
+  return kindRaw as TransactionKind;
 }
 
 export function parseCsvImportRow(

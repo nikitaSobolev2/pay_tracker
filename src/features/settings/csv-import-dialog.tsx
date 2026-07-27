@@ -23,11 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { applyCsvImport, previewCsvImport } from "@/lib/api/settings";
-import {
-  CsvPreviewRowStatus,
-  type CsvImportRow,
-  type CsvPreviewResult,
-} from "@/server/services/csv-import-export-service.types";
+import type { CsvPreviewResult } from "@/server/services/csv-import-export-service.types";
 
 type CsvImportDialogProps = {
   open: boolean;
@@ -42,6 +38,7 @@ export function CsvImportDialog({
 }: CsvImportDialogProps) {
   const tCommon = useTranslations("common");
   const [preview, setPreview] = useState<CsvPreviewResult | null>(null);
+  const [csvText, setCsvText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -51,6 +48,8 @@ export function CsvImportDialog({
     }
     setLoading(true);
     try {
+      const text = await file.text();
+      setCsvText(text);
       const result = await previewCsvImport(file);
       setPreview(result);
     } catch (error) {
@@ -61,20 +60,22 @@ export function CsvImportDialog({
   }
 
   async function handleApply() {
-    if (!preview) {
+    if (!csvText) {
       return;
     }
-    const rows = preview.rows
-      .filter((row) => row.status === CsvPreviewRowStatus.Valid && row.row)
-      .map((row) => row.row as CsvImportRow);
     setApplying(true);
     try {
-      const result = await applyCsvImport(rows);
+      const result = await applyCsvImport({ csvText });
+      const catalogHint =
+        result.categoriesImported || result.counterpartiesImported
+          ? ` · categories ${result.categoriesImported}, counterparties ${result.counterpartiesImported}`
+          : "";
       toast.success(
-        `Imported ${result.importedCount}, skipped ${result.skippedCount}`,
+        `Imported ${result.importedCount}, skipped ${result.skippedCount}${catalogHint}`,
       );
       onOpenChange(false);
       setPreview(null);
+      setCsvText(null);
       onImported?.();
       window.dispatchEvent(new CustomEvent("paytracker:transactions-changed"));
     } catch (error) {
@@ -84,6 +85,13 @@ export function CsvImportDialog({
     }
   }
 
+  const canApply =
+    Boolean(csvText) &&
+    Boolean(preview) &&
+    (preview!.validCount > 0 ||
+      preview!.catalog.categories > 0 ||
+      preview!.catalog.counterparties > 0);
+
   return (
     <Dialog
       open={open}
@@ -91,6 +99,7 @@ export function CsvImportDialog({
         onOpenChange(next);
         if (!next) {
           setPreview(null);
+          setCsvText(null);
         }
       }}
     >
@@ -121,6 +130,15 @@ export function CsvImportDialog({
                 </Badge>
                 <Badge variant="outline">
                   duplicate: {preview.duplicateCount}
+                </Badge>
+                <Badge variant="outline">
+                  categories: {preview.catalog.categories}
+                </Badge>
+                <Badge variant="outline">
+                  counterparties: {preview.catalog.counterparties}
+                </Badge>
+                <Badge variant="outline">
+                  links: {preview.catalog.links}
                 </Badge>
               </div>
               <div className="max-h-80 overflow-auto rounded-xl border">
@@ -164,13 +182,14 @@ export function CsvImportDialog({
             variant="outline"
             onClick={() => {
               setPreview(null);
+              setCsvText(null);
               onOpenChange(false);
             }}
           >
             {tCommon("deny")}
           </Button>
           <Button
-            disabled={!preview || preview.validCount === 0 || applying}
+            disabled={!canApply || applying}
             onClick={() => void handleApply()}
           >
             {applying ? <Loader2 className="animate-spin" /> : null}

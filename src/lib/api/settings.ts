@@ -1,7 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   CsvApplyResult,
-  CsvImportRow,
   CsvPreviewResult,
 } from "@/server/services/csv-import-export-service.types";
 import type { AppUser } from "@/types/auth";
@@ -40,10 +39,10 @@ export function previewCsvImport(file: File) {
   });
 }
 
-export function applyCsvImport(rows: CsvImportRow[]) {
+export function applyCsvImport(input: { csvText: string }) {
   return apiFetch<CsvApplyResult>("/api/import-export/apply", {
     method: "POST",
-    body: { rows },
+    body: { csvText: input.csvText },
   });
 }
 

@@ -25,6 +25,11 @@ export type CsvPreviewRow = {
 };
 
 export type CsvPreviewResult = {
+  catalog: {
+    categories: number;
+    counterparties: number;
+    links: number;
+  };
   rows: CsvPreviewRow[];
   validCount: number;
   invalidCount: number;
@@ -34,11 +39,13 @@ export type CsvPreviewResult = {
 export type CsvApplyInput = {
   userId: string;
   displayCurrency: string;
-  rows: CsvImportRow[];
+  csvText: string;
 };
 
 export type CsvApplyResult = {
   importedCount: number;
   skippedCount: number;
+  categoriesImported: number;
+  counterpartiesImported: number;
   errors: Array<{ index: number; message: string }>;
 };

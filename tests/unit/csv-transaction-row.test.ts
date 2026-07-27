@@ -27,37 +27,7 @@ describe("resolveCsvTransactionKind", () => {
     assert.deepEqual(errors, []);
   });
 
-  it("maps legacy debtRole LEND to LOAN", () => {
-    const errors: string[] = [];
-    assert.equal(
-      resolveCsvTransactionKind({ debtRole: "LEND" }, errors),
-      TransactionKind.Loan,
-    );
-    assert.deepEqual(errors, []);
-  });
-
-  it("maps legacy debtRole BORROW to DEBT", () => {
-    const errors: string[] = [];
-    assert.equal(
-      resolveCsvTransactionKind({ debtRole: "borrow" }, errors),
-      TransactionKind.Debt,
-    );
-    assert.deepEqual(errors, []);
-  });
-
-  it("prefers kind over debtRole", () => {
-    const errors: string[] = [];
-    assert.equal(
-      resolveCsvTransactionKind(
-        { kind: "DEFAULT", debtRole: "LEND" },
-        errors,
-      ),
-      TransactionKind.Default,
-    );
-    assert.deepEqual(errors, []);
-  });
-
-  it("defaults to DEFAULT when neither column is set", () => {
+  it("defaults to DEFAULT when kind is missing", () => {
     const errors: string[] = [];
     assert.equal(
       resolveCsvTransactionKind({}, errors),
@@ -66,14 +36,10 @@ describe("resolveCsvTransactionKind", () => {
     assert.deepEqual(errors, []);
   });
 
-  it("rejects invalid kind and debtRole", () => {
-    const kindErrors: string[] = [];
-    resolveCsvTransactionKind({ kind: "LEND" }, kindErrors);
-    assert.deepEqual(kindErrors, ["Invalid kind"]);
-
-    const debtErrors: string[] = [];
-    resolveCsvTransactionKind({ debtRole: "LOAN" }, debtErrors);
-    assert.deepEqual(debtErrors, ["Invalid debtRole"]);
+  it("rejects invalid kind", () => {
+    const errors: string[] = [];
+    resolveCsvTransactionKind({ kind: "LEND" }, errors);
+    assert.deepEqual(errors, ["Invalid kind"]);
   });
 });
 
@@ -87,24 +53,17 @@ describe("parseCsvImportRow", () => {
     categories: "Food/Chinese|Transport",
   };
 
-  it("parses modern kind CSV", () => {
+  it("parses transaction row with kind", () => {
     const errors: string[] = [];
-    const row = parseCsvImportRow({ ...base, kind: "LOAN", counterparty: "Ann" }, errors);
+    const row = parseCsvImportRow(
+      { ...base, kind: "LOAN", counterparty: "Ann" },
+      errors,
+    );
     assert.deepEqual(errors, []);
     assert.equal(row?.kind, TransactionKind.Loan);
     assert.equal(row?.type, TransactionType.Spending);
     assert.deepEqual(row?.categories, ["Food/Chinese", "Transport"]);
     assert.equal(row?.counterparty, "Ann");
-  });
-
-  it("parses legacy debtRole CSV", () => {
-    const errors: string[] = [];
-    const row = parseCsvImportRow(
-      { ...base, debtRole: "BORROW", counterparty: "Bob" },
-      errors,
-    );
-    assert.deepEqual(errors, []);
-    assert.equal(row?.kind, TransactionKind.Debt);
   });
 });
 
