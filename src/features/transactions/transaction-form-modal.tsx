@@ -105,6 +105,19 @@ function kindNeedsCounterparty(kind: TransactionKind): boolean {
   return kind === TransactionKind.Loan || kind === TransactionKind.Debt;
 }
 
+function resolveCounterpartyLoadKind(
+  formMode: TransactionFormMode,
+  editing: TransactionDto | null,
+): TransactionKind {
+  if (editing != null && kindNeedsCounterparty(editing.kind)) {
+    return editing.kind;
+  }
+  if (formMode === TransactionFormMode.Spending) {
+    return TransactionKind.Loan;
+  }
+  return TransactionKind.Debt;
+}
+
 type SuggestionOwnedFields = {
   amount: boolean;
   categoryIds: boolean;
@@ -147,7 +160,7 @@ export function TransactionFormModal() {
   >([]);
   const [categoriesReady, setCategoriesReady] = useState(false);
   const [counterparties, setCounterparties] = useState<CounterpartyDto[]>([]);
-  const [counterpartiesReady, setCounterpartiesReady] = useState(true);
+  const [counterpartiesReady, setCounterpartiesReady] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const debouncedTitle = useDebouncedValue(form.title, 200);
 
@@ -158,12 +171,15 @@ export function TransactionFormModal() {
 
   const isEditing = Boolean(editingTransaction);
   const modalTitle = isEditing ? tCommon("edit") : t("addNewTransaction");
-  const editNeedsCounterparty =
+  const counterpartyLoadKind = resolveCounterpartyLoadKind(
+    transactionFormMode,
+    editingTransaction,
+  );
+  const showCounterpartySkeleton =
     isEditing &&
     editingTransaction != null &&
     kindNeedsCounterparty(editingTransaction.kind);
-  const formReady =
-    !isEditing || (categoriesReady && counterpartiesReady);
+  const formReady = categoriesReady && counterpartiesReady;
 
   const kindOptions =
     transactionFormMode === TransactionFormMode.Spending
@@ -203,37 +219,49 @@ export function TransactionFormModal() {
     }
     let cancelled = false;
     setCategoriesReady(false);
-    void listCategories(transactionType).then((result) => {
-      if (!cancelled) {
-        setAvailableCategories(result.categories);
-        setCategoriesReady(true);
-      }
-    });
+    void listCategories(transactionType)
+      .then((result) => {
+        if (!cancelled) {
+          setAvailableCategories(result.categories);
+          setCategoriesReady(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAvailableCategories([]);
+          setCategoriesReady(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
   }, [transactionModalOpen, transactionType]);
 
   useEffect(() => {
-    if (!transactionModalOpen || !editNeedsCounterparty || !editingTransaction) {
+    if (!transactionModalOpen) {
       setCounterparties([]);
-      setCounterpartiesReady(true);
+      setCounterpartiesReady(false);
       return;
     }
     let cancelled = false;
     setCounterpartiesReady(false);
-    void listCounterparties({ kind: editingTransaction.kind }).then(
-      (result) => {
+    void listCounterparties({ kind: counterpartyLoadKind })
+      .then((result) => {
         if (!cancelled) {
           setCounterparties(result.counterparties);
           setCounterpartiesReady(true);
         }
-      },
-    );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCounterparties([]);
+          setCounterpartiesReady(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [editNeedsCounterparty, editingTransaction, transactionModalOpen]);
+  }, [counterpartyLoadKind, transactionModalOpen]);
 
   useEffect(() => {
     if (!transactionModalOpen || categoriesManual) {
@@ -511,7 +539,7 @@ export function TransactionFormModal() {
         <ResponsiveDialogBody ref={bodyRef}>
           {!formReady ? (
             <TransactionFormSkeleton
-              showCounterparty={editNeedsCounterparty}
+              showCounterparty={showCounterpartySkeleton}
             />
           ) : (
             <>
@@ -628,7 +656,9 @@ export function TransactionFormModal() {
                       value={form.counterpartyName}
                       inactive={!kindNeedsCounterparty(form.kind)}
                       chips={
-                        editNeedsCounterparty ? counterparties : undefined
+                        form.kind === counterpartyLoadKind
+                          ? counterparties
+                          : undefined
                       }
                       onChange={(counterpartyName) => {
                         setSuggestionOwned((prev) => ({

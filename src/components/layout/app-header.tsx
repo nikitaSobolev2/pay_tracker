@@ -85,52 +85,50 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const ThemeIcon = themeIconFor(theme);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 overflow-x-clip border-b bg-background/90 px-3 backdrop-blur max-md:hidden md:px-4">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 border-b bg-background/90 py-0 pr-3 pl-2 backdrop-blur max-md:hidden md:pr-4 md:pl-2">
       <SidebarTrigger className="shrink-0" />
       <Separator
         orientation="vertical"
-        className="mr-1 hidden h-auto self-stretch md:block"
+        className="my-2.5"
       />
       <Button
         type="button"
         variant="outline"
-        className="ml-1 h-8 w-full max-w-[12.5rem] justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground sm:max-w-[14rem]"
+        className="ml-1 h-8 w-full min-w-0 max-w-xs shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground sm:max-w-sm lg:max-w-md"
         onClick={onOpenSearch}
         aria-label={tSearch("shortcut")}
       >
         <Search className="size-4 shrink-0" />
         <span className="truncate text-sm">{tSearch("shortcut")}</span>
-        <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground xl:inline">
+        <kbd className="pointer-events-none ml-auto inline shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
           ⌘K
         </kbd>
       </Button>
-      <ExchangeRatesDisplay className="ml-1 hidden min-w-0 shrink xl:flex" />
+      <ExchangeRatesDisplay className="ml-1 flex shrink-0 max-[1299px]:hidden" />
 
-      <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Button
           size="sm"
           variant="outline"
-          className="h-8 min-w-0 shrink gap-1 px-2.5 text-xs xl:px-3 xl:text-sm"
+          className="h-8 shrink-0 gap-1 px-2.5 text-xs sm:px-3 sm:text-sm"
           onClick={() => openTransactionModal(TransactionFormMode.Spending)}
         >
           <Plus data-icon="inline-start" className="size-4 shrink-0" />
-          <span className="truncate xl:hidden">{t("spending")}</span>
-          <span className="hidden truncate xl:inline">{t("addSpending")}</span>
+          <span className="whitespace-nowrap">{t("addSpending")}</span>
         </Button>
         <Button
           size="sm"
-          className="h-8 min-w-0 shrink gap-1 px-2.5 text-xs xl:px-3 xl:text-sm"
+          className="h-8 shrink-0 gap-1 px-2.5 text-xs sm:px-3 sm:text-sm"
           onClick={() => openTransactionModal(TransactionFormMode.Earning)}
         >
           <Plus data-icon="inline-start" className="size-4 shrink-0" />
-          <span className="truncate xl:hidden">{t("earning")}</span>
-          <span className="hidden truncate xl:inline">{t("addEarning")}</span>
+          <span className="whitespace-nowrap">{t("addEarning")}</span>
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="hidden shrink-0 lg:inline-flex"
+          className="shrink-0"
           onClick={cycleTheme}
           aria-label={t("theme")}
         >
@@ -141,14 +139,14 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
           )}
         </Button>
 
-        <div className="hidden shrink-0 lg:block">
+        <div className="shrink-0 max-[1299px]:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-9 rounded-full"
+                  className="size-9 shrink-0 rounded-full"
                 />
               }
             >

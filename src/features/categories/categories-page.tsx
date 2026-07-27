@@ -304,7 +304,7 @@ export function CategoriesPage() {
         </PageTitleWithBack>
         <Button
           type="button"
-          className="hidden h-11 shrink-0 gap-1.5 rounded-xl md:inline-flex"
+          className="h-11 shrink-0 gap-1.5 rounded-xl max-md:hidden"
           onClick={startCreate}
         >
           <Plus className="size-4" />
@@ -315,7 +315,7 @@ export function CategoriesPage() {
       <TransactionTypeSwitcher
         value={typeFilter}
         onChange={setTypeFilter}
-        className="hidden w-full md:block"
+        className="w-full max-md:hidden"
       />
 
       {filterId ? (
@@ -557,7 +557,7 @@ function CategoriesListContent({
         <Button
           type="button"
           variant="outline"
-          className="hidden h-10 gap-1.5 rounded-xl md:inline-flex"
+          className="h-10 gap-1.5 rounded-xl max-md:hidden"
           onClick={onStartCreate}
         >
           <Plus className="size-4" />

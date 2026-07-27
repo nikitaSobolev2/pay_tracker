@@ -345,7 +345,7 @@ export function TransactionsPage() {
 
       <div
         ref={filtersBlockRef}
-        className="hidden -mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur md:sticky md:top-14 md:z-20 md:-mx-6 md:block md:px-6"
+        className="-mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur max-md:hidden md:sticky md:top-14 md:z-20 md:-mx-6 md:px-6"
       >
         <TransactionFilters
           pageType={pageType}
@@ -565,7 +565,7 @@ export function TransactionsPage() {
       <div ref={sentinelRef} className="h-6 w-full" aria-hidden={!hasMore} />
 
       {restorableDatePreset ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 hidden justify-center md:flex">
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center max-md:hidden">
           <Button
             type="button"
             className="pointer-events-auto rounded-full px-6 shadow-lg"

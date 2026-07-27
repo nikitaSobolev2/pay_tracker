@@ -256,7 +256,7 @@ export function TransactionFilters({
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         {typeFilter != null && onTypeFilterChange ? (
           <TransactionTypeSelect
-            className="hidden h-11 shrink-0 md:flex"
+            className="h-11 shrink-0 max-md:hidden"
             value={typeFilter}
             onChange={onTypeFilterChange}
           />

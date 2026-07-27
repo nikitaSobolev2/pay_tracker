@@ -255,6 +255,47 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarFooter className="mt-auto gap-2 border-t border-sidebar-border p-3 max-md:hidden min-[1300px]:hidden group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+        <ExchangeRatesDisplay
+          stacked
+          className="w-full px-1 group-data-[collapsible=icon]:hidden"
+        />
+        <SidebarMenu className="gap-1">
+          {MOBILE_ACCOUNT_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={`mid-account-${item.href}`}>
+                <SidebarMenuButton
+                  render={<Link href={item.href} onClick={handleNavigate} />}
+                  isActive={isNavItemActive(pathname, item.href)}
+                  tooltip={t(item.key)}
+                  size="lg"
+                  className="h-11 gap-3 rounded-xl px-3 text-sm font-medium [&_svg]:size-5 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:rounded-xl"
+                >
+                  <Icon />
+                  <span>{t(item.key)}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              tooltip={tAuth("logout")}
+              size="lg"
+              className="h-11 gap-3 rounded-xl px-3 text-sm font-medium text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:size-5 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:rounded-xl"
+            >
+              {loggingOut ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <LogOut />
+              )}
+              <span>{tAuth("logout")}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

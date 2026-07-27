@@ -23,8 +23,11 @@ function formatChangePercent(changePercent: number): string {
 
 export function ExchangeRatesDisplay({
   className,
+  stacked = false,
 }: {
   readonly className?: string;
+  /** Stack rates vertically and omit · dividers (sidebar). */
+  readonly stacked?: boolean;
 }) {
   const t = useTranslations("header");
   const [rates, setRates] = useState<ExchangeRateQuote[]>([]);
@@ -56,14 +59,15 @@ export function ExchangeRatesDisplay({
   return (
     <div
       className={cn(
-        "min-w-0 items-center gap-2.5 text-xs",
+        "flex min-w-0 items-center gap-2.5 text-xs",
+        stacked && "flex-col items-center gap-1",
         className,
       )}
       title={t("exchangeRatesMonth")}
     >
       {rates.map((rate, index) => (
         <span key={rate.currency} className="inline-flex items-center gap-2">
-          {index > 0 ? (
+          {!stacked && index > 0 ? (
             <span aria-hidden className="text-border">
               ·
             </span>

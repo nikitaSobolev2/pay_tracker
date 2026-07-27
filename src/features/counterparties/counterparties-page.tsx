@@ -225,7 +225,7 @@ export function CounterpartiesPage() {
         </PageTitleWithBack>
         <Button
           type="button"
-          className="hidden h-11 shrink-0 gap-1.5 rounded-xl md:inline-flex"
+          className="h-11 shrink-0 gap-1.5 rounded-xl max-md:hidden"
           onClick={startCreate}
         >
           <Plus className="size-4" />
@@ -240,7 +240,7 @@ export function CounterpartiesPage() {
             setDebtFilter(next);
           }
         }}
-        className="hidden w-full md:block"
+        className="w-full max-md:hidden"
       >
         <TabsList className="h-12 w-full rounded-xl p-1 md:w-full md:h-12">
           <TabsTrigger value="all" className="rounded-lg px-3 text-sm">
@@ -431,7 +431,7 @@ function CounterpartiesListContent({
           <Button
             type="button"
             variant="outline"
-            className="hidden h-10 gap-1.5 rounded-xl md:inline-flex"
+            className="h-10 gap-1.5 rounded-xl max-md:hidden"
             onClick={onStartCreate}
           >
             <Plus className="size-4" />

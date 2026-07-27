@@ -266,16 +266,16 @@ function SidebarTrigger({
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size="icon-sm"
-      className={cn(className)}
+      size="icon"
+      className={cn("shrink-0 self-center", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <MenuIcon className="md:hidden" />
-      <PanelLeftIcon className="hidden md:block" />
+      <MenuIcon className="hidden size-4 max-md:inline" />
+      <PanelLeftIcon className="inline size-4 max-md:hidden" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
