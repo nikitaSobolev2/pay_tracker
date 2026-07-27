@@ -154,6 +154,10 @@ export function ScanQrButton({
             <ApprovalPanel
               token={scannedToken}
               onResolved={() => onResolved?.()}
+              onClose={() => {
+                setOpen(false);
+                reset();
+              }}
             />
           ) : (
             <div className="space-y-4">

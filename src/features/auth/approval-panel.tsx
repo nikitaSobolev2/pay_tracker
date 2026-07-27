@@ -25,6 +25,9 @@ type ApprovalPanelProps = {
   readonly approvalId?: string;
   readonly initialInfo?: QrApprovalInfoDto;
   readonly onResolved?: (outcome: ApprovalOutcome) => void;
+  /** Shown on terminal states (approved / declined / expired / error). */
+  readonly onClose?: () => void;
+  readonly closeLabel?: string;
 };
 
 /** Requester details + Approve/Decline, shared by scan modal, approve page, and incoming list. */
@@ -33,9 +36,12 @@ export function ApprovalPanel({
   approvalId,
   initialInfo,
   onResolved,
+  onClose,
+  closeLabel,
 }: ApprovalPanelProps) {
   const t = useTranslations("qrApproval");
   const tDevice = useTranslations("devices");
+  const tCommon = useTranslations("common");
   const formatDateTime = useReadableDateTime();
   const [info, setInfo] = useState<QrApprovalInfoDto | null>(
     initialInfo ?? null,
@@ -44,6 +50,7 @@ export function ApprovalPanel({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<ApprovalOutcome | null>(null);
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
+  const resolvedCloseLabel = closeLabel ?? tCommon("close");
 
   useEffect(() => {
     if (initialInfo || !token) {
@@ -99,7 +106,14 @@ export function ApprovalPanel({
   }
 
   if (error) {
-    return <ResultMessage tone="error" title={error} />;
+    return (
+      <ResultMessage
+        tone="error"
+        title={error}
+        onClose={onClose}
+        closeLabel={resolvedCloseLabel}
+      />
+    );
   }
 
   const displayState = outcome ?? info?.status ?? "expired";
@@ -110,6 +124,8 @@ export function ApprovalPanel({
         tone="success"
         title={t("approvedTitle")}
         hint={t("approvedHint")}
+        onClose={onClose}
+        closeLabel={resolvedCloseLabel}
       />
     );
   }
@@ -119,11 +135,20 @@ export function ApprovalPanel({
         tone="error"
         title={t("declinedTitle")}
         hint={t("declinedHint")}
+        onClose={onClose}
+        closeLabel={resolvedCloseLabel}
       />
     );
   }
   if (displayState === "expired" || !info) {
-    return <ResultMessage tone="error" title={t("expired")} />;
+    return (
+      <ResultMessage
+        tone="error"
+        title={t("expired")}
+        onClose={onClose}
+        closeLabel={resolvedCloseLabel}
+      />
+    );
   }
 
   const deviceLabel = describeUserAgent(info.requesterUserAgent, {
@@ -196,10 +221,14 @@ function ResultMessage({
   tone,
   title,
   hint,
+  onClose,
+  closeLabel,
 }: {
   readonly tone: "success" | "error";
   readonly title: string;
   readonly hint?: string;
+  readonly onClose?: () => void;
+  readonly closeLabel?: string;
 }) {
   const Icon = tone === "success" ? Check : X;
   return (
@@ -215,6 +244,16 @@ function ResultMessage({
       </div>
       <p className="text-base font-semibold tracking-tight">{title}</p>
       {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
+      {onClose ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-2 h-12 w-full rounded-xl text-base sm:h-11"
+          onClick={onClose}
+        >
+          {closeLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }

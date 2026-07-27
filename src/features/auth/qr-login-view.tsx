@@ -48,11 +48,13 @@ export function QrLoginView() {
   }, [createRequest]);
 
   return (
-    <AuthShell brand={tApp("name")} title={t("qrLoginTitle")}>
-      <div className="flex flex-col items-center gap-6 text-center">
-        <p className="text-sm text-muted-foreground">{tQr("scanHint")}</p>
+    <AuthShell brand={tApp("name")} title={t("loginWithQr")}>
+      <div className="flex w-full flex-col gap-6">
+        <p className="text-center text-sm text-muted-foreground">
+          {tQr("scanHint")}
+        </p>
 
-        <div className="rounded-2xl bg-white p-3">
+        <div className="mx-auto rounded-2xl bg-white p-3 shadow-sm">
           {loading || !request ? (
             <Skeleton className="size-44 rounded-xl" />
           ) : (
@@ -66,13 +68,17 @@ export function QrLoginView() {
             token={request.token}
             onRetry={() => void createRequest()}
           />
-        ) : null}
+        ) : (
+          <div className="flex justify-center py-2">
+            <Skeleton className="h-5 w-48" />
+          </div>
+        )}
 
         <Link
           href="/login"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "h-12 w-full rounded-xl text-base",
+            "inline-flex h-12 min-h-12 w-full items-center justify-center rounded-xl text-base font-medium sm:h-11 sm:min-h-11",
           )}
         >
           {t("backToLogin")}

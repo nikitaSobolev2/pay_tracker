@@ -82,26 +82,24 @@ export default function LoginPage() {
             {loading ? <Loader2 className="animate-spin" /> : null}
             {t("login")}
           </Button>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/login/code"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "inline-flex h-12 min-h-12 w-full items-center justify-center rounded-xl text-base font-medium sm:h-11 sm:min-h-11",
-              )}
-            >
-              {t("loginWithCode")}
-            </Link>
-            <Link
-              href="/login/qr"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "inline-flex h-12 min-h-12 w-full items-center justify-center rounded-xl text-base font-medium sm:h-11 sm:min-h-11",
-              )}
-            >
-              {t("loginWithQr")}
-            </Link>
-          </div>
+          <Link
+            href="/login/code"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "inline-flex h-12 min-h-12 w-full items-center justify-center rounded-xl text-base font-medium sm:h-11 sm:min-h-11",
+            )}
+          >
+            {t("loginWithCode")}
+          </Link>
+          <Link
+            href="/login/qr"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "inline-flex h-12 min-h-12 w-full items-center justify-center rounded-xl text-base font-medium sm:h-11 sm:min-h-11",
+            )}
+          >
+            {t("loginWithQr")}
+          </Link>
           <p className="text-center text-sm text-muted-foreground">
             {t("noAccount")}{" "}
             <Link
