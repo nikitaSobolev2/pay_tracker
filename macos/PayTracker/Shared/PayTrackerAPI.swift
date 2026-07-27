@@ -50,6 +50,14 @@ struct PayTrackerAPI: Sendable {
         )
     }
 
+    func createQrApproval(locale: String = "en") async throws -> QrApprovalRequestDTO {
+        try await post(
+            path: "/api/auth/qr-approval",
+            body: ["locale": locale],
+            authenticated: false
+        )
+    }
+
     func redeemLoginTransfer(code: String, locale: String = "en") async throws -> String {
         let response: RedeemLoginTransferResponseDTO = try await post(
             path: "/api/auth/login-transfer/redeem",
@@ -69,41 +77,97 @@ struct PayTrackerAPI: Sendable {
     }
 
     func redeemApproval(token: String) async throws -> String {
-        let (data, response) = try await rawRequest(
-            method: "POST",
-            path: "/api/auth/qr-approval/redeem",
-            query: nil,
-            body: ["token": token] as [String: String],
-            authenticated: false,
-            extraHeaders: nil
+        try await extractSessionToken(
+            from: try await rawRequest(
+                method: "POST",
+                path: "/api/auth/qr-approval/redeem",
+                query: nil,
+                body: ["token": token] as [String: String],
+                authenticated: false,
+                extraHeaders: nil
+            )
         )
-        try ensureSuccess(response, data: data)
-        if let authToken = response.value(forHTTPHeaderField: "set-auth-token"),
-           !authToken.isEmpty {
-            return authToken
-        }
-        let decoded = try JSONDecoder().decode(RedeemApprovalResponseDTO.self, from: data)
-        guard let sessionToken = decoded.token, !sessionToken.isEmpty else {
-            throw PayTrackerAPIError.httpStatus(response.statusCode, "Missing session token")
-        }
-        return sessionToken
     }
 
-    func signInEmail(email: String, password: String) async throws -> String {
-        let (data, response) = try await rawRequest(
-            method: "POST",
-            path: "/api/auth/sign-in/email",
-            query: nil,
-            body: SignInEmailRequestDTO(email: email, password: password),
-            authenticated: false,
-            extraHeaders: nil
+    func signIn(identifier: String, password: String) async throws -> String {
+        let trimmed = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains("@") {
+            return try await extractSessionToken(
+                from: try await rawRequest(
+                    method: "POST",
+                    path: "/api/auth/sign-in/email",
+                    query: nil,
+                    body: SignInEmailRequestDTO(email: trimmed, password: password),
+                    authenticated: false,
+                    extraHeaders: nil
+                )
+            )
+        }
+        return try await extractSessionToken(
+            from: try await rawRequest(
+                method: "POST",
+                path: "/api/auth/sign-in/username",
+                query: nil,
+                body: SignInUsernameRequestDTO(username: trimmed, password: password),
+                authenticated: false,
+                extraHeaders: nil
+            )
         )
+    }
+
+    private var originHeaderValue: String {
+        var components = URLComponents()
+        components.scheme = baseURL.scheme
+        components.host = baseURL.host
+        components.port = baseURL.port
+        return components.string ?? baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private func extractSessionToken(from result: (Data, HTTPURLResponse)) throws -> String {
+        let (data, response) = result
         try ensureSuccess(response, data: data)
         if let authToken = response.value(forHTTPHeaderField: "set-auth-token"),
            !authToken.isEmpty {
             return authToken
         }
-        throw PayTrackerAPIError.httpStatus(response.statusCode, "Missing set-auth-token header")
+        if let decoded = try? JSONDecoder().decode(RedeemApprovalResponseDTO.self, from: data),
+           let sessionToken = decoded.token,
+           !sessionToken.isEmpty {
+            return sessionToken
+        }
+        if let cookieToken = sessionTokenFromSetCookie(response) {
+            return cookieToken
+        }
+        throw PayTrackerAPIError.httpStatus(response.statusCode, "Missing session token")
+    }
+
+    private func sessionTokenFromSetCookie(_ response: HTTPURLResponse) -> String? {
+        let headers = response.allHeaderFields
+        var cookieLines: [String] = []
+        for (key, value) in headers {
+            let name = String(describing: key).lowercased()
+            if name == "set-cookie" {
+                cookieLines.append(String(describing: value))
+            }
+        }
+        if let single = response.value(forHTTPHeaderField: "Set-Cookie") {
+            cookieLines.append(single)
+        }
+        for line in cookieLines {
+            for part in line.split(separator: ",") {
+                let trimmed = part.trimmingCharacters(in: .whitespaces)
+                if trimmed.lowercased().contains("session_token=")
+                    || trimmed.lowercased().hasPrefix("better-auth.session_token=")
+                    || trimmed.lowercased().contains("__secure-better-auth.session_token=") {
+                    let pair = trimmed.split(separator: ";", maxSplits: 1).first ?? Substring()
+                    if let equals = pair.firstIndex(of: "=") {
+                        let value = String(pair[pair.index(after: equals)...])
+                        if !value.isEmpty { return value }
+                    }
+                }
+            }
+        }
+        return nil
     }
 
     private func get<T: Decodable>(
@@ -197,6 +261,10 @@ struct PayTrackerAPI: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        // Better Auth CSRF rejects requests with a missing Origin (native clients).
+        let origin = originHeaderValue
+        request.setValue(origin, forHTTPHeaderField: "Origin")
+        request.setValue(origin + "/", forHTTPHeaderField: "Referer")
         if let extraHeaders {
             for (key, value) in extraHeaders {
                 request.setValue(value, forHTTPHeaderField: key)

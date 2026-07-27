@@ -42,10 +42,18 @@ The session token is stored in the App Group so widgets can call the API with `A
 
 ## Add Desktop widgets
 
-1. Right-click Desktop → **Edit Widgets** (or open Widget gallery).
-2. Find **Pay Tracker**.
-3. Add Small / Medium / Large.
-4. **Add** on the widget opens Quick Add in the companion app.
+1. In Xcode: set **Team** on **PayTracker** and **PayTrackerWidget** targets.
+2. Signing & Capabilities → add **App Groups** → enable `group.site.paytracker.mac` on both targets.
+3. Product → Clean Build Folder, then ⌘R (run once).
+4. If gallery still empty, register the extension:
+
+```bash
+./macos/scripts/register-widget.sh
+```
+
+5. Desktop → **Edit Widgets** → search **Pay Tracker**.
+
+Widget shows under app name **Pay Tracker**.
 
 ## Layout
 

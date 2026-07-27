@@ -110,6 +110,18 @@ struct SignInEmailRequestDTO: Codable, Sendable {
     let password: String
 }
 
+struct SignInUsernameRequestDTO: Codable, Sendable {
+    let username: String
+    let password: String
+}
+
+struct QrApprovalRequestDTO: Codable, Sendable {
+    let token: String
+    let approvalUrl: String
+    let status: String
+    let expiresAt: String
+}
+
 struct APIErrorBodyDTO: Codable, Sendable {
     struct ErrorPayload: Codable, Sendable {
         let code: String?
