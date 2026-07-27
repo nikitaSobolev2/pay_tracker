@@ -68,7 +68,7 @@ import type {
   PeriodComparison,
 } from "@/server/services/stats-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
-import { DateRangeType, TransactionType } from "@/types/enums";
+import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
 const PAGE_SIZE = 20;
@@ -143,6 +143,10 @@ export function TransactionsPage() {
   const showVsPrevious = supportsPreviousPeriod(filters.datePreset);
   const showAvgPerDay = !isSingleDayDatePreset(filters.datePreset);
   const scopedType = typeFilter !== "all";
+  const kindScopedSpecial =
+    filters.kinds.length === 1 &&
+    filters.kinds[0] !== TransactionKind.Default;
+  const showPeriodTotals = !kindScopedSpecial;
   const totalsSense =
     typeFilter === TransactionType.Spending
       ? "lowerIsBetter"
@@ -371,7 +375,14 @@ export function TransactionsPage() {
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-stretch">
-        <div className={SUMMARY_CARD_SHELL}>
+        <div
+          className={cn(
+            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
+            showPeriodTotals
+              ? SUMMARY_CARD_SHELL
+              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
+          )}
+        >
           <PeriodTotalsCard
             loading={loadingStats}
             stats={

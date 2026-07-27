@@ -18,6 +18,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetFooter,
@@ -58,6 +65,16 @@ type MobileTransactionFiltersSheetProps = {
   readonly onChange: (value: TransactionFilterState) => void;
 };
 
+const KIND_FILTER_ALL = "all";
+
+const KIND_FILTER_OPTIONS = [
+  TransactionKind.Default,
+  TransactionKind.Loan,
+  TransactionKind.Debt,
+  TransactionKind.Refund,
+  TransactionKind.Transfer,
+] as const;
+
 export function MobileTransactionFiltersSheet({
   open,
   onOpenChange,
@@ -68,6 +85,7 @@ export function MobileTransactionFiltersSheet({
   const t = useTranslations("transaction");
   const tDate = useTranslations("dateRange");
   const tCommon = useTranslations("common");
+  const tNav = useTranslations("nav");
   const locale = useLocale();
   const dateLocale = locale.startsWith("ru") ? ru : enUS;
 
@@ -361,67 +379,43 @@ export function MobileTransactionFiltersSheet({
             </FilterSection>
 
             <FilterSection title={t("filterKind")}>
-              <div className="space-y-2">
-                <ToggleRow
-                  checked={draft.kinds.includes(TransactionKind.Default)}
-                  label={t("kindDefault")}
-                  onCheckedChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      kinds: toggleValue(
-                        current.kinds,
-                        TransactionKind.Default,
-                      ),
-                    }))
+              <Select
+                value={draft.kinds[0] ?? KIND_FILTER_ALL}
+                onValueChange={(next) => {
+                  if (next == null || next === KIND_FILTER_ALL) {
+                    setDraft((current) => ({ ...current, kinds: [] }));
+                    return;
                   }
-                />
-                <ToggleRow
-                  checked={draft.kinds.includes(TransactionKind.Loan)}
-                  label={t("kindLoan")}
-                  onCheckedChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      kinds: toggleValue(
-                        current.kinds,
-                        TransactionKind.Loan,
-                      ),
-                    }))
-                  }
-                />
-                <ToggleRow
-                  checked={draft.kinds.includes(TransactionKind.Debt)}
-                  label={t("kindDebt")}
-                  onCheckedChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      kinds: toggleValue(current.kinds, TransactionKind.Debt),
-                    }))
-                  }
-                />
-                <ToggleRow
-                  checked={draft.kinds.includes(TransactionKind.Refund)}
-                  label={t("kindRefund")}
-                  onCheckedChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      kinds: toggleValue(current.kinds, TransactionKind.Refund),
-                    }))
-                  }
-                />
-                <ToggleRow
-                  checked={draft.kinds.includes(TransactionKind.Transfer)}
-                  label={t("kindTransfer")}
-                  onCheckedChange={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      kinds: toggleValue(
-                        current.kinds,
-                        TransactionKind.Transfer,
-                      ),
-                    }))
-                  }
-                />
-              </div>
+                  setDraft((current) => ({
+                    ...current,
+                    kinds: [next as TransactionKind],
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-12 w-full rounded-xl text-base data-[size=default]:h-12">
+                  <SelectValue>
+                    {() =>
+                      draft.kinds.length === 0
+                        ? tNav("all")
+                        : mobileKindLabel(draft.kinds[0]!, t)
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={KIND_FILTER_ALL} className="text-base sm:text-base">
+                    {tNav("all")}
+                  </SelectItem>
+                  {KIND_FILTER_OPTIONS.map((kind) => (
+                    <SelectItem
+                      key={kind}
+                      value={kind}
+                      className="text-base sm:text-base"
+                    >
+                      {mobileKindLabel(kind, t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FilterSection>
 
             {counterparties.length > 0 ? (
@@ -647,6 +641,25 @@ function segmentClassName(active: boolean): string {
       ? "bg-background text-foreground shadow-sm"
       : "text-foreground/60 hover:text-foreground",
   );
+}
+
+function mobileKindLabel(
+  kind: TransactionKind,
+  t: (key: string) => string,
+): string {
+  if (kind === TransactionKind.Default) {
+    return t("kindDefault");
+  }
+  if (kind === TransactionKind.Loan) {
+    return t("kindLoan");
+  }
+  if (kind === TransactionKind.Debt) {
+    return t("kindDebt");
+  }
+  if (kind === TransactionKind.Transfer) {
+    return t("kindTransfer");
+  }
+  return t("kindRefund");
 }
 
 function ToggleRow({

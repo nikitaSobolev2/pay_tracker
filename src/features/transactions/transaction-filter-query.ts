@@ -8,7 +8,7 @@ import {
 import {
   DateRangeType,
   TransactionKind,
-  type TransactionKind as DebtRole,
+  type TransactionKind as TransactionKindValue,
 } from "@/types/enums";
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,10 +33,7 @@ const CALENDAR_RANGES = new Set<string>([
 
 const ROLLING_UNITS = new Set<RollingRangeUnit>(["days", "months", "years"]);
 
-const DEBT_ROLES = new Set<string>([
-  TransactionKind.Loan,
-  TransactionKind.Debt,
-]);
+const ALL_KINDS = new Set<string>(Object.values(TransactionKind));
 
 type SearchParamsReader = {
   get(name: string): string | null;
@@ -48,7 +45,7 @@ export function filtersFromSearchParams(
 ): TransactionFilterState {
   return {
     datePreset: datePresetFromSearchParams(params),
-    kinds: parseDebtRoles(params.get("kinds")),
+    kinds: parseKinds(params.get("kinds")),
     categoryIds: parseCsv(params.get("categoryIds")),
     counterpartyIds: parseCsv(params.get("counterpartyIds")),
     hideUncategorized: params.get("hideUncategorized") === "true",
@@ -158,8 +155,12 @@ function parseCsv(raw: string | null): string[] {
     .filter(Boolean);
 }
 
-function parseDebtRoles(raw: string | null): DebtRole[] {
-  return parseCsv(raw).filter((role): role is DebtRole => DEBT_ROLES.has(role));
+function parseKinds(raw: string | null): TransactionKindValue[] {
+  const parsed = parseCsv(raw).filter((kind): kind is TransactionKindValue =>
+    ALL_KINDS.has(kind),
+  );
+  // Kind filter is a single select — keep the first valid value.
+  return parsed.slice(0, 1);
 }
 
 function parsePositiveInt(raw: string | null): number | null {

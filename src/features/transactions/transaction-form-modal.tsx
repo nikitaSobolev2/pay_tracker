@@ -168,6 +168,10 @@ export function TransactionFormModal() {
     transactionFormMode === TransactionFormMode.Spending
       ? TransactionType.Spending
       : TransactionType.Earning;
+  const categoryListType =
+    form.kind === TransactionKind.Refund
+      ? TransactionType.Spending
+      : transactionType;
 
   const isEditing = Boolean(editingTransaction);
   const modalTitle = isEditing ? tCommon("edit") : t("addNewTransaction");
@@ -219,7 +223,7 @@ export function TransactionFormModal() {
     }
     let cancelled = false;
     setCategoriesReady(false);
-    void listCategories(transactionType)
+    void listCategories(categoryListType)
       .then((result) => {
         if (!cancelled) {
           setAvailableCategories(result.categories);
@@ -235,7 +239,7 @@ export function TransactionFormModal() {
     return () => {
       cancelled = true;
     };
-  }, [transactionModalOpen, transactionType]);
+  }, [transactionModalOpen, categoryListType]);
 
   useEffect(() => {
     if (!transactionModalOpen) {
@@ -598,12 +602,16 @@ export function TransactionFormModal() {
                   value={form.kind}
                   onValueChange={(value) => {
                     const kind = value as TransactionKind;
+                    const wasRefund = form.kind === TransactionKind.Refund;
+                    const nextRefund = kind === TransactionKind.Refund;
                     setSuggestionOwned((prev) => ({
                       ...prev,
                       kind: false,
                       counterpartyName: kindNeedsCounterparty(kind)
                         ? prev.counterpartyName
                         : false,
+                      categoryIds:
+                        wasRefund !== nextRefund ? false : prev.categoryIds,
                     }));
                     setForm((prev) => ({
                       ...prev,
@@ -611,7 +619,12 @@ export function TransactionFormModal() {
                       counterpartyName: kindNeedsCounterparty(kind)
                         ? prev.counterpartyName
                         : "",
+                      categoryIds:
+                        wasRefund !== nextRefund ? [] : prev.categoryIds,
                     }));
+                    if (wasRefund !== nextRefund) {
+                      setCategoriesManual(false);
+                    }
                   }}
                 >
                   <SelectTrigger className="h-12 w-full rounded-xl text-base md:h-11 md:rounded-xl md:text-base md:data-[size=default]:h-11">
@@ -707,7 +720,7 @@ export function TransactionFormModal() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">{t("categories")}</Label>
                 <CategoryChipPicker
-                  type={transactionType}
+                  type={categoryListType}
                   selectedIds={form.categoryIds}
                   categories={availableCategories}
                   onCategoriesChange={setAvailableCategories}

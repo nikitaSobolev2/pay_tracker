@@ -24,6 +24,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { IosCalendar } from "@/features/transactions/ios-calendar";
 import {
   DEFAULT_TRANSACTION_FILTERS,
@@ -58,6 +65,16 @@ import type { TransactionCategoryDto } from "@/types/transaction";
 
 export type { TransactionFilterState } from "@/features/transactions/transaction-filter.types";
 export { DEFAULT_TRANSACTION_FILTERS } from "@/features/transactions/transaction-filter.types";
+
+const KIND_FILTER_ALL = "all";
+
+const KIND_FILTER_OPTIONS = [
+  TransactionKind.Default,
+  TransactionKind.Loan,
+  TransactionKind.Debt,
+  TransactionKind.Refund,
+  TransactionKind.Transfer,
+] as const;
 
 type TransactionFiltersProps = {
   readonly pageType?: TransactionType;
@@ -101,6 +118,7 @@ export function TransactionFilters({
   const t = useTranslations("transaction");
   const tDate = useTranslations("dateRange");
   const tCommon = useTranslations("common");
+  const tNav = useTranslations("nav");
   const locale = useLocale();
   const dateLocale = locale.startsWith("ru") ? ru : enUS;
   const isMobile = useIsMobile();
@@ -220,24 +238,8 @@ export function TransactionFilters({
 
   const kindLabel =
     value.kinds.length === 0
-      ? t("filterKind")
-      : value.kinds
-          .map((kind) => {
-            if (kind === TransactionKind.Default) {
-              return t("kindDefault");
-            }
-            if (kind === TransactionKind.Loan) {
-              return t("kindLoan");
-            }
-            if (kind === TransactionKind.Debt) {
-              return t("kindDebt");
-            }
-            if (kind === TransactionKind.Transfer) {
-              return t("kindTransfer");
-            }
-            return t("kindRefund");
-          })
-          .join(" · ");
+      ? tNav("all")
+      : kindOptionLabel(value.kinds[0]!, t);
 
   const selectedCategoryTitles = categories
     .filter((category) => value.categoryIds.includes(category.id))
@@ -423,74 +425,49 @@ export function TransactionFilters({
           </>
         ) : (
           <>
-            <FilterMenuChip
-              active={value.kinds.length > 0}
-              label={kindLabel}
-              title={t("filterKind")}
-              contentClassName="w-64"
+            <Select
+              value={value.kinds[0] ?? KIND_FILTER_ALL}
+              onValueChange={(next) => {
+                if (next == null || next === KIND_FILTER_ALL) {
+                  onChange({ ...value, kinds: [] });
+                  return;
+                }
+                onChange({
+                  ...value,
+                  kinds: [next as TransactionKind],
+                });
+              }}
             >
-              <div className="space-y-1">
-                <ToggleRow
-                  checked={value.kinds.includes(TransactionKind.Default)}
-                  label={t("kindDefault")}
-                  onCheckedChange={() =>
-                    onChange({
-                      ...value,
-                      kinds: toggleValue(
-                        value.kinds,
-                        TransactionKind.Default,
-                      ),
-                    })
-                  }
-                />
-                <ToggleRow
-                  checked={value.kinds.includes(TransactionKind.Loan)}
-                  label={t("kindLoan")}
-                  onCheckedChange={() =>
-                    onChange({
-                      ...value,
-                      kinds: toggleValue(
-                        value.kinds,
-                        TransactionKind.Loan,
-                      ),
-                    })
-                  }
-                />
-                <ToggleRow
-                  checked={value.kinds.includes(TransactionKind.Debt)}
-                  label={t("kindDebt")}
-                  onCheckedChange={() =>
-                    onChange({
-                      ...value,
-                      kinds: toggleValue(value.kinds, TransactionKind.Debt),
-                    })
-                  }
-                />
-                <ToggleRow
-                  checked={value.kinds.includes(TransactionKind.Refund)}
-                  label={t("kindRefund")}
-                  onCheckedChange={() =>
-                    onChange({
-                      ...value,
-                      kinds: toggleValue(value.kinds, TransactionKind.Refund),
-                    })
-                  }
-                />
-                <ToggleRow
-                  checked={value.kinds.includes(TransactionKind.Transfer)}
-                  label={t("kindTransfer")}
-                  onCheckedChange={() =>
-                    onChange({
-                      ...value,
-                      kinds: toggleValue(
-                        value.kinds,
-                        TransactionKind.Transfer,
-                      ),
-                    })
-                  }
-                />
-              </div>
-            </FilterMenuChip>
+              <SelectTrigger
+                className={cn(
+                  "h-10 w-auto min-w-36 rounded-full border-border/70 bg-card/60 px-3.5 text-sm sm:h-9",
+                  value.kinds.length > 0 && "border-foreground/40",
+                )}
+                aria-label={t("filterKind")}
+              >
+                <SelectValue>
+                  {() => (
+                    <span className="truncate">
+                      {t("filterKind")}: {kindLabel}
+                    </span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent align="start" className="min-w-48">
+                <SelectItem value={KIND_FILTER_ALL} className="text-base sm:text-base">
+                  {tNav("all")}
+                </SelectItem>
+                {KIND_FILTER_OPTIONS.map((kind) => (
+                  <SelectItem
+                    key={kind}
+                    value={kind}
+                    className="text-base sm:text-base"
+                  >
+                    {kindOptionLabel(kind, t)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {counterparties.length > 0 ? (
               <FilterMenuChip
@@ -705,6 +682,25 @@ function treeCategories(
   }
   visit(null, 0);
   return result;
+}
+
+function kindOptionLabel(
+  kind: TransactionKind,
+  t: (key: string) => string,
+): string {
+  if (kind === TransactionKind.Default) {
+    return t("kindDefault");
+  }
+  if (kind === TransactionKind.Loan) {
+    return t("kindLoan");
+  }
+  if (kind === TransactionKind.Debt) {
+    return t("kindDebt");
+  }
+  if (kind === TransactionKind.Transfer) {
+    return t("kindTransfer");
+  }
+  return t("kindRefund");
 }
 
 function ToggleRow({

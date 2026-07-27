@@ -2,8 +2,10 @@ import { eachDayOfInterval, endOfDay, format, startOfDay, startOfWeek, subWeeks 
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import Decimal from "decimal.js";
 
+import { attributeCashflowAmount, includeRowInCashflow } from "@/lib/cashflow-kinds";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { TransactionType } from "@/types/enums";
 
 import { convertRubToDisplay } from "../exchange-rate-service";
 import { buildTransactionWhere } from "../transaction-service";
@@ -12,7 +14,6 @@ import type {
   ActivityHeatmapDay,
   ActivityHeatmapInput,
 } from "../stats-service.types";
-import { isCashflowExcludedKind, TransactionKind, TransactionType } from "@/types/enums";
 
 /** GitHub-style grid: trailing 53 columns × 7 rows, aligned to Monday. */
 const WEEKS = 52;
@@ -60,7 +61,7 @@ export async function getActivityHeatmap(
   let maxEarning = toDecimal(0);
   let maxSpending = toDecimal(0);
   for (const row of rows) {
-    if (isCashflowExcludedKind(row.kind)) {
+    if (!includeRowInCashflow(row.kind, input.kinds)) {
       continue;
     }
     const key = format(toZonedTime(row.occurredAt, input.timezone), "yyyy-MM-dd");
@@ -70,19 +71,15 @@ export async function getActivityHeatmap(
       row.fxRateDate,
     );
     const amount = toDecimal(display.amount);
-    if (
-      row.type === TransactionType.Earning &&
-      row.kind !== TransactionKind.Refund
-    ) {
-      const next = (earning.get(key) ?? toDecimal(0)).plus(amount);
+    const attributed = attributeCashflowAmount(row, amount, input.kinds);
+    if (attributed.type === TransactionType.Earning) {
+      const next = (earning.get(key) ?? toDecimal(0)).plus(attributed.amount);
       earning.set(key, next);
-      maxEarning = Decimal.max(maxEarning, next);
-    } else if (row.type === TransactionType.Spending) {
-      const delta =
-        row.kind === TransactionKind.Refund ? amount.neg() : amount;
-      const next = (spending.get(key) ?? toDecimal(0)).plus(delta);
+      maxEarning = Decimal.max(maxEarning, next.abs());
+    } else if (attributed.type === TransactionType.Spending) {
+      const next = (spending.get(key) ?? toDecimal(0)).plus(attributed.amount);
       spending.set(key, next);
-      maxSpending = Decimal.max(maxSpending, next);
+      maxSpending = Decimal.max(maxSpending, next.abs());
     }
   }
 

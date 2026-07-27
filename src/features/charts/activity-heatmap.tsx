@@ -131,7 +131,7 @@ export function ActivityHeatmapCard({
 
   const selectDay = useCallback(
     (date: string, earning: number, spending: number) => {
-      const empty = earning <= 0 && spending <= 0;
+      const empty = earning === 0 && spending === 0;
       if (empty) {
         if (selected) {
           setSelected(null);
@@ -349,7 +349,7 @@ function HeatmapCell({
   readonly netLabel: string;
   readonly emptyLabel: string;
 }) {
-  const hasData = earning > 0 || spending > 0;
+  const hasData = earning !== 0 || spending !== 0;
   const net = earning - spending;
   const dayLabel = formatDayLabel(date, locale);
   const ariaLabel = hasData
@@ -538,10 +538,11 @@ function netToneClassName(net: number): string {
 }
 
 function intensity(value: number, max: number): number {
-  if (value <= 0 || max <= 0) {
+  const magnitude = Math.abs(value);
+  if (magnitude <= 0 || max <= 0) {
     return 0;
   }
-  return 0.3 + 0.7 * Math.sqrt(value / max);
+  return 0.3 + 0.7 * Math.sqrt(magnitude / max);
 }
 
 function cellStyle(
@@ -552,15 +553,15 @@ function cellStyle(
 ): CSSProperties {
   const earnAlpha = intensity(earning, maxEarning);
   const spendAlpha = intensity(spending, maxSpending);
-  if (earning > 0 && spending > 0) {
+  if (earning !== 0 && spending !== 0) {
     return {
       background: `linear-gradient(135deg, rgba(${EMERALD},${earnAlpha}) 0 50%, rgba(${ROSE},${spendAlpha}) 50% 100%)`,
     };
   }
-  if (earning > 0) {
+  if (earning !== 0) {
     return { backgroundColor: `rgba(${EMERALD},${earnAlpha})` };
   }
-  if (spending > 0) {
+  if (spending !== 0) {
     return { backgroundColor: `rgba(${ROSE},${spendAlpha})` };
   }
   return {};

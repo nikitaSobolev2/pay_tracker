@@ -15,10 +15,10 @@ describe("filtersFromSearchParams", () => {
     assert.deepEqual(filters, DEFAULT_TRANSACTION_FILTERS);
   });
 
-  it("parses calendar, debt, categories, counterparties, and hide flag", () => {
+  it("parses calendar, kind, categories, counterparties, and hide flag", () => {
     const params = new URLSearchParams({
       dateRangeType: "year",
-      kinds: "DEFAULT,LOAN,DEBT,REFUND",
+      kinds: "REFUND",
       categoryIds: "c1,c2",
       counterpartyIds: "p1",
       hideUncategorized: "true",
@@ -28,13 +28,19 @@ describe("filtersFromSearchParams", () => {
       kind: "calendar",
       range: DateRangeType.Year,
     });
-    assert.deepEqual(filters.kinds, [
-      TransactionKind.Loan,
-      TransactionKind.Debt,
-    ]);
+    assert.deepEqual(filters.kinds, [TransactionKind.Refund]);
     assert.deepEqual(filters.categoryIds, ["c1", "c2"]);
     assert.deepEqual(filters.counterpartyIds, ["p1"]);
     assert.equal(filters.hideUncategorized, true);
+  });
+
+  it("keeps only the first kind when multiple are present", () => {
+    const params = new URLSearchParams({
+      kinds: "DEFAULT,LOAN,REFUND",
+    });
+    assert.deepEqual(filtersFromSearchParams(params).kinds, [
+      TransactionKind.Default,
+    ]);
   });
 
   it("prefers absolute range over calendar type", () => {

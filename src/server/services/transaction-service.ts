@@ -474,7 +474,11 @@ async function validateTransactionWrite(input: {
   }
 
   const categoryIds = [...new Set(input.categoryIds ?? [])];
-  await assertCategoriesMatchType(input.userId, categoryIds, input.type);
+  const categoryType =
+    kind === TransactionKind.Refund
+      ? TransactionType.Spending
+      : input.type;
+  await assertCategoriesMatchType(input.userId, categoryIds, categoryType);
 
   const counterpartyId = counterpartyName
     ? (

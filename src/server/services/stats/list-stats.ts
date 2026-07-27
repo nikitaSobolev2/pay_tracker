@@ -10,7 +10,6 @@ import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
   DateRangeType,
-  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
@@ -24,6 +23,7 @@ import {
   buildTransactionWhere,
   resolveListDateBounds,
 } from "../transaction-service";
+import { includeRowInCashflow, isSingleKindFilter } from "@/lib/cashflow-kinds";
 import { resolveTimelineBucket } from "@/lib/timeline-bucket";
 
 import {
@@ -46,6 +46,8 @@ export async function getListPageStats(
   const timelineRangeType = resolveTimelineRangeType(input);
   const timelineBucket = resolveTimelineBucket(bounds);
   const where = buildTransactionWhere(input);
+  const kindsFilter = input.kinds;
+  const kindScoped = isSingleKindFilter(kindsFilter);
 
   const previousBounds =
     input.rollingUnit || (input.startDate && input.endDate)
@@ -68,9 +70,11 @@ export async function getListPageStats(
       ...(previousBounds.end ? { lte: previousBounds.end } : {}),
     };
   }
-  const cashflowPreviousWhere = {
-    AND: [previousWhere, { kind: { not: TransactionKind.Transfer } }],
-  };
+  const cashflowPreviousWhere = kindScoped
+    ? previousWhere
+    : {
+        AND: [previousWhere, { kind: { not: TransactionKind.Transfer } }],
+      };
 
   const [rows, previousTotal, previousCount, multiCurrency] =
     await Promise.all([
@@ -90,46 +94,53 @@ export async function getListPageStats(
       hasMultipleCurrenciesForUser(input.userId),
     ]);
 
-  const spendingTotal = (
-    await sumDisplay(
-      rows.filter(
-        (row) =>
-          row.type === TransactionType.Spending &&
-          row.kind !== TransactionKind.Refund &&
-          !isCashflowExcludedKind(row.kind),
-      ),
-      input.displayCurrency,
-    )
-  ).minus(
-    await sumDisplay(
-      rows.filter(
-        (row) =>
-          row.type === TransactionType.Spending &&
-          row.kind === TransactionKind.Refund,
-      ),
-      input.displayCurrency,
-    ),
+  const cashflowRows = rows.filter((row) =>
+    includeRowInCashflow(row.kind, kindsFilter),
   );
-  const earningTotal = await sumDisplay(
-    rows.filter(
-      (row) =>
-        row.type === TransactionType.Earning &&
-        row.kind !== TransactionKind.Refund &&
-        !isCashflowExcludedKind(row.kind),
-    ),
-    input.displayCurrency,
-  );
-  const scopedTotal = input.type
+
+  const spendingTotal = kindScoped
     ? await sumDisplay(
-        rows.filter((row) => !isCashflowExcludedKind(row.kind)),
+        cashflowRows.filter((row) => row.type === TransactionType.Spending),
         input.displayCurrency,
       )
-    : spendingTotal.plus(earningTotal);
+    : (
+        await sumDisplay(
+          rows.filter(
+            (row) =>
+              row.type === TransactionType.Spending &&
+              includeRowInCashflow(row.kind),
+          ),
+          input.displayCurrency,
+        )
+      ).minus(
+        await sumDisplay(
+          rows.filter((row) => row.kind === TransactionKind.Refund),
+          input.displayCurrency,
+        ),
+      );
+
+  const earningTotal = kindScoped
+    ? await sumDisplay(
+        cashflowRows.filter((row) => row.type === TransactionType.Earning),
+        input.displayCurrency,
+      )
+    : await sumDisplay(
+        rows.filter(
+          (row) =>
+            row.type === TransactionType.Earning &&
+            row.kind !== TransactionKind.Refund &&
+            includeRowInCashflow(row.kind),
+        ),
+        input.displayCurrency,
+      );
+
+  const scopedTotal =
+    kindScoped || input.type
+      ? await sumDisplay(cashflowRows, input.displayCurrency)
+      : spendingTotal.plus(earningTotal);
   const netTotal = earningTotal.minus(spendingTotal);
   const count = rows.length;
-  const cashflowCount = rows.filter(
-    (row) => !isCashflowExcludedKind(row.kind),
-  ).length;
+  const cashflowCount = cashflowRows.length;
   const dayCount =
     bounds.start && bounds.end
       ? elapsedDaysInRange(bounds.start, bounds.end)
@@ -141,8 +152,18 @@ export async function getListPageStats(
         );
 
   const [categoryPie, categoryActivity] = await Promise.all([
-    buildCategorySlices(input.userId, rows, input.displayCurrency),
-    buildCategoryActivity(input.userId, rows, input.displayCurrency),
+    buildCategorySlices(
+      input.userId,
+      rows,
+      input.displayCurrency,
+      kindsFilter,
+    ),
+    buildCategoryActivity(
+      input.userId,
+      rows,
+      input.displayCurrency,
+      kindsFilter,
+    ),
   ]);
   const topCategories = [...categoryPie]
     .sort((a, b) => toDecimal(b.amount).cmp(toDecimal(a.amount)))
@@ -202,6 +223,7 @@ export async function getListPageStats(
       bounds.start,
       bounds.end,
       input.displayCurrency,
+      kindsFilter,
     ),
     categoryPie,
     categoryActivity,

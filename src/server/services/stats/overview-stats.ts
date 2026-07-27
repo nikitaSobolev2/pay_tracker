@@ -12,7 +12,6 @@ import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
   DateRangeType,
-  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
@@ -24,6 +23,7 @@ import type {
   OverviewStats,
   OverviewStatsInput,
 } from "../stats-service.types";
+import { includeRowInDefaultCashflow } from "@/lib/cashflow-kinds";
 import { resolveTimelineBucket } from "@/lib/timeline-bucket";
 
 import {
@@ -62,19 +62,16 @@ export async function getOverviewStats(
   const spendingRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Spending &&
-      row.kind !== TransactionKind.Refund &&
-      !isCashflowExcludedKind(row.kind),
+      includeRowInDefaultCashflow(row.kind),
   );
   const refundRows = periodRows.filter(
-    (row) =>
-      row.type === TransactionType.Spending &&
-      row.kind === TransactionKind.Refund,
+    (row) => row.kind === TransactionKind.Refund,
   );
   const earningRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Earning &&
       row.kind !== TransactionKind.Refund &&
-      !isCashflowExcludedKind(row.kind),
+      includeRowInDefaultCashflow(row.kind),
   );
 
   const spendingTotal = (
@@ -147,7 +144,11 @@ export async function getOverviewStats(
     debtsOwedToMe,
     spendingByCategory: await buildCategorySlices(
       input.userId,
-      spendingRows,
+      periodRows.filter(
+        (row) =>
+          row.type === TransactionType.Spending ||
+          row.kind === TransactionKind.Refund,
+      ),
       input.displayCurrency,
     ),
     earningByCategory: await buildCategorySlices(
@@ -307,18 +308,13 @@ async function loadPreviousPeriodTotals(input: {
       previousRows.filter(
         (row) =>
           row.type === TransactionType.Spending &&
-          row.kind !== TransactionKind.Refund &&
-          !isCashflowExcludedKind(row.kind),
+          includeRowInDefaultCashflow(row.kind),
       ),
       input.displayCurrency,
     )
   ).minus(
     await sumDisplay(
-      previousRows.filter(
-        (row) =>
-          row.type === TransactionType.Spending &&
-          row.kind === TransactionKind.Refund,
-      ),
+      previousRows.filter((row) => row.kind === TransactionKind.Refund),
       input.displayCurrency,
     ),
   );
@@ -327,7 +323,7 @@ async function loadPreviousPeriodTotals(input: {
       (row) =>
         row.type === TransactionType.Earning &&
         row.kind !== TransactionKind.Refund &&
-        !isCashflowExcludedKind(row.kind),
+        includeRowInDefaultCashflow(row.kind),
     ),
     input.displayCurrency,
   );

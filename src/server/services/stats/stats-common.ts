@@ -12,13 +12,18 @@ import { toZonedTime } from "date-fns-tz";
 import Decimal from "decimal.js";
 
 import { listCategoryAncestorIds } from "@/lib/category-ancestors";
+import {
+  attributeCashflowAmount,
+  categoryAttributionType,
+  categorySignedAmount,
+  includeRowInCashflow,
+} from "@/lib/cashflow-kinds";
 import { daysInRange, elapsedDaysInRange } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import type { TimelineBucket } from "@/lib/timeline-bucket";
 import {
   DateRangeType,
-  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
@@ -37,6 +42,15 @@ import type {
   PeriodComparison,
   TimelinePoint,
 } from "../stats-service.types";
+
+export {
+  attributeCashflowAmount,
+  categoryAttributionType,
+  categorySignedAmount,
+  includeRowInCashflow,
+  includeRowInDefaultCashflow,
+  isSingleKindFilter,
+} from "@/lib/cashflow-kinds";
 
 export type TxRow = {
   id: string;
@@ -199,6 +213,7 @@ export async function buildCategoryActivity(
   userId: string,
   rows: TxRow[],
   displayCurrency: string,
+  kindsFilter?: readonly TransactionKind[],
 ): Promise<CategoryActivity[]> {
   const assignedIds = rows.flatMap((row) =>
     row.categories.map((link) => link.categoryId),
@@ -208,23 +223,25 @@ export async function buildCategoryActivity(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
-    if (isCashflowExcludedKind(row.kind)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter)) {
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
+    const signed = categorySignedAmount(row, display, kindsFilter);
+    const attributionType = categoryAttributionType(row);
     totalByType.set(
-      row.type,
-      (totalByType.get(row.type) ?? toDecimal(0)).plus(display),
+      attributionType,
+      (totalByType.get(attributionType) ?? toDecimal(0)).plus(signed),
     );
     if (row.categories.length === 0) {
       continue;
     }
-    const share = display.div(row.categories.length);
+    const share = signed.div(row.categories.length);
     for (const link of row.categories) {
       for (const categoryId of listCategoryAncestorIds(link.categoryId, byId)) {
-        const key = `${row.type}:${categoryId}`;
+        const key = `${attributionType}:${categoryId}`;
         const current = buckets.get(key) ?? {
-          type: row.type,
+          type: attributionType,
           amount: toDecimal(0),
         };
         current.amount = current.amount.plus(share);
@@ -256,6 +273,7 @@ export async function buildCategorySlices(
   userId: string,
   rows: TxRow[],
   displayCurrency: string,
+  kindsFilter?: readonly TransactionKind[],
 ): Promise<CategorySlice[]> {
   const assignedIds = rows.flatMap((row) =>
     row.categories.map((link) => link.categoryId),
@@ -275,36 +293,38 @@ export async function buildCategorySlices(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
-    if (isCashflowExcludedKind(row.kind)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter)) {
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
+    const signed = categorySignedAmount(row, display, kindsFilter);
+    const attributionType = categoryAttributionType(row);
     totalByType.set(
-      row.type,
-      (totalByType.get(row.type) ?? toDecimal(0)).plus(display),
+      attributionType,
+      (totalByType.get(attributionType) ?? toDecimal(0)).plus(signed),
     );
     if (row.categories.length === 0) {
-      const key = `uncategorized:${row.type}`;
+      const key = `uncategorized:${attributionType}`;
       const current = rootBuckets.get(key) ?? {
         categoryId: null,
         title: "Uncategorized",
-        type: row.type,
+        type: attributionType,
         amount: toDecimal(0),
       };
-      current.amount = current.amount.plus(display);
+      current.amount = current.amount.plus(signed);
       rootBuckets.set(key, current);
       continue;
     }
 
-    const share = display.div(row.categories.length);
+    const share = signed.div(row.categories.length);
     for (const link of row.categories) {
       const rootId = resolveRootCategoryId(link.categoryId, byId);
       const root = byId.get(rootId);
-      const bucketKey = `${row.type}:${rootId}`;
+      const bucketKey = `${attributionType}:${rootId}`;
       const rootBucket = rootBuckets.get(bucketKey) ?? {
         categoryId: rootId,
         title: root?.title ?? link.category.title,
-        type: row.type,
+        type: attributionType,
         amount: toDecimal(0),
       };
       rootBucket.amount = rootBucket.amount.plus(share);
@@ -368,6 +388,7 @@ export async function buildTimeline(
   start: Date | null,
   end: Date | null,
   displayCurrency: string,
+  kindsFilter?: readonly TransactionKind[],
 ): Promise<TimelinePoint[]> {
   const bucketKeys = resolveBucketKeys(bucket, timezone, start, end, rows);
   const spending = new Map<string, Decimal>();
@@ -378,7 +399,7 @@ export async function buildTimeline(
   }
 
   for (const row of rows) {
-    if (isCashflowExcludedKind(row.kind)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter)) {
       continue;
     }
     const key = formatBucketKey(row.occurredAt, bucket, timezone);
@@ -388,12 +409,17 @@ export async function buildTimeline(
       bucketKeys.push(key);
     }
     const amount = await rowDisplayAmount(row, displayCurrency);
-    if (row.type === TransactionType.Spending) {
-      const delta =
-        row.kind === TransactionKind.Refund ? amount.neg() : amount;
-      spending.set(key, (spending.get(key) ?? toDecimal(0)).plus(delta));
-    } else if (row.kind !== TransactionKind.Refund) {
-      earning.set(key, (earning.get(key) ?? toDecimal(0)).plus(amount));
+    const attributed = attributeCashflowAmount(row, amount, kindsFilter);
+    if (attributed.type === TransactionType.Spending) {
+      spending.set(
+        key,
+        (spending.get(key) ?? toDecimal(0)).plus(attributed.amount),
+      );
+    } else {
+      earning.set(
+        key,
+        (earning.get(key) ?? toDecimal(0)).plus(attributed.amount),
+      );
     }
   }
 
