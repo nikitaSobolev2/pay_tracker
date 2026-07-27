@@ -428,7 +428,7 @@ export function TransactionFilters({
             <Select
               value={value.kinds[0] ?? KIND_FILTER_ALL}
               onValueChange={(next) => {
-                if (next == null || next === KIND_FILTER_ALL) {
+                if (next == null || String(next) === KIND_FILTER_ALL) {
                   onChange({ ...value, kinds: [] });
                   return;
                 }
