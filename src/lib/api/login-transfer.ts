@@ -40,25 +40,32 @@ export async function createLoginTransferRequest(
   return (await response.json()) as LoginTransferDto;
 }
 
+/**
+ * Claim a code/QR. Instead of an instant session this now returns an approval
+ * token: the code owner must approve before the device can redeem a session.
+ */
 export async function redeemLoginTransferRequest(input: {
   readonly code?: string;
   readonly token?: string;
-}): Promise<void> {
+  readonly locale: string;
+}): Promise<{ token: string }> {
   const response = await fetch("/api/auth/login-transfer/redeem", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
     credentials: "include",
   });
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      message?: string;
-      error?: { message?: string };
-    } | null;
+  const payload = (await response.json().catch(() => null)) as {
+    token?: string;
+    message?: string;
+    error?: { message?: string };
+  } | null;
+  if (!response.ok || !payload?.token) {
     throw new Error(
       payload?.message ??
         payload?.error?.message ??
         "Invalid or expired login code",
     );
   }
+  return { token: payload.token };
 }

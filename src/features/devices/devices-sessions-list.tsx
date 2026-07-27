@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { authClient } from "@/lib/auth-client";
 import { isSessionActive } from "@/lib/session-activity";
+import { describeUserAgent } from "@/lib/user-agent";
 import { cn } from "@/lib/utils";
 
 type SessionRow = {
@@ -103,7 +104,11 @@ export function DevicesSessionsList() {
             const updatedAt = new Date(session.updatedAt);
             const createdAt = new Date(session.createdAt);
             const active = isSessionActive(updatedAt);
-            const deviceLabel = describeUserAgent(session.userAgent, t);
+            const deviceLabel = describeUserAgent(session.userAgent, {
+              unknownDevice: t("unknownDevice"),
+              unknownBrowser: t("unknownBrowser"),
+              unknownOs: t("unknownOs"),
+            });
 
             return (
               <li
@@ -179,44 +184,4 @@ export function DevicesSessionsList() {
       )}
     </section>
   );
-}
-
-function describeUserAgent(
-  userAgent: string | null | undefined,
-  t: ReturnType<typeof useTranslations<"devices">>,
-): string {
-  if (!userAgent) {
-    return t("unknownDevice");
-  }
-
-  const browser =
-    matchFirst(userAgent, [
-      [/Edg\/[\d.]+/i, "Edge"],
-      [/Chrome\/[\d.]+/i, "Chrome"],
-      [/Firefox\/[\d.]+/i, "Firefox"],
-      [/Safari\/[\d.]+/i, "Safari"],
-    ]) ?? t("unknownBrowser");
-
-  const os =
-    matchFirst(userAgent, [
-      [/Windows NT/i, "Windows"],
-      [/Mac OS X/i, "macOS"],
-      [/Android/i, "Android"],
-      [/iPhone|iPad/i, "iOS"],
-      [/Linux/i, "Linux"],
-    ]) ?? t("unknownOs");
-
-  return `${browser} · ${os}`;
-}
-
-function matchFirst(
-  value: string,
-  rules: Array<[RegExp, string]>,
-): string | null {
-  for (const [pattern, label] of rules) {
-    if (pattern.test(value)) {
-      return label;
-    }
-  }
-  return null;
 }

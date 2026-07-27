@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { username } from "better-auth/plugins";
 
 import { loginTransferPlugin } from "@/lib/auth/login-transfer-plugin";
+import { qrApprovalPlugin } from "@/lib/auth/qr-approval-plugin";
 import { getDefaultCurrency } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { AppLocale, AppTheme } from "@/types/enums";
@@ -16,7 +17,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  plugins: [username(), loginTransferPlugin()],
+  plugins: [username(), loginTransferPlugin(), qrApprovalPlugin()],
   user: {
     additionalFields: {
       locale: {

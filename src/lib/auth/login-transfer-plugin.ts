@@ -1,52 +1,34 @@
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
-import { setSessionCookie } from "better-auth/cookies";
 import { z } from "zod";
 
+import {
+  createRedeemRateLimiter,
+  resolveClientKey,
+} from "@/lib/auth/redeem-rate-limit";
 import { isAppServiceError } from "@/lib/errors";
-import { redeemLoginTransfer } from "@/server/services/login-transfer-service";
+import { beginTransferApproval } from "@/server/services/login-transfer-service";
 
 const redeemBodySchema = z
   .object({
     code: z.string().optional(),
     token: z.string().optional(),
+    locale: z.string().min(2).max(8).optional(),
   })
   .refine((value) => Boolean(value.code || value.token), {
     message: "code or token is required",
   });
 
-const REDEEM_WINDOW_MS = 5 * 60 * 1000;
-const REDEEM_MAX_ATTEMPTS = 10;
-const redeemAttempts = new Map<string, { count: number; resetAt: number }>();
+const assertRedeemAllowed = createRedeemRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  maxAttempts: 10,
+});
 
 /**
- * Throttles brute-force guessing of six-digit codes on the public redeem
- * endpoint. In-memory per-instance limiter keyed by client IP.
+ * Public endpoint where a device claims a code/QR minted on a logged-in device.
+ * The claim no longer signs in immediately: it creates a pending approval that
+ * the code owner must confirm, and returns the approval token to poll.
  */
-function assertRedeemAllowed(clientKey: string): void {
-  const now = Date.now();
-  const entry = redeemAttempts.get(clientKey);
-  if (!entry || entry.resetAt <= now) {
-    redeemAttempts.set(clientKey, { count: 1, resetAt: now + REDEEM_WINDOW_MS });
-    return;
-  }
-  entry.count += 1;
-  if (entry.count > REDEEM_MAX_ATTEMPTS) {
-    throw new APIError("TOO_MANY_REQUESTS", {
-      message: "Too many login attempts. Try again later.",
-      code: "LOGIN_TRANSFER_RATE_LIMITED",
-    });
-  }
-}
-
-function resolveClientKey(headers: Headers | undefined): string {
-  const forwardedFor = headers?.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0]!.trim();
-  }
-  return headers?.get("x-real-ip")?.trim() || "unknown";
-}
-
 export function loginTransferPlugin(): BetterAuthPlugin {
   return {
     id: "login-transfer",
@@ -60,30 +42,14 @@ export function loginTransferPlugin(): BetterAuthPlugin {
         async (ctx) => {
           assertRedeemAllowed(resolveClientKey(ctx.headers));
           try {
-            const redeemed = await redeemLoginTransfer({
+            const approval = await beginTransferApproval({
               code: ctx.body.code,
               token: ctx.body.token,
+              locale: ctx.body.locale ?? "en",
+              requesterUserAgent: ctx.headers?.get("user-agent") ?? null,
+              requesterIp: resolveClientKey(ctx.headers),
             });
-            const session = await ctx.context.internalAdapter.createSession(
-              redeemed.userId,
-            );
-            if (!session) {
-              throw APIError.from("INTERNAL_SERVER_ERROR", {
-                message: "Failed to create session",
-                code: "FAILED_TO_CREATE_SESSION",
-              });
-            }
-            const user = await ctx.context.internalAdapter.findUserById(
-              redeemed.userId,
-            );
-            if (!user) {
-              throw APIError.from("INTERNAL_SERVER_ERROR", {
-                message: "User not found",
-                code: "USER_NOT_FOUND",
-              });
-            }
-            await setSessionCookie(ctx, { session, user });
-            return ctx.json({ ok: true as const });
+            return ctx.json({ pending: true as const, token: approval.token });
           } catch (error) {
             if (isAppServiceError(error)) {
               throw APIError.from("BAD_REQUEST", {

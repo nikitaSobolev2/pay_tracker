@@ -24,6 +24,7 @@ function isAuthPage(pathname: string): boolean {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/login/code" ||
+    pathname === "/login/qr" ||
     pathname.startsWith("/login/qr/")
   );
 }

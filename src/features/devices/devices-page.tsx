@@ -10,6 +10,8 @@ import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DevicesSessionsList } from "@/features/devices/devices-sessions-list";
+import { IncomingApprovals } from "@/features/devices/incoming-approvals";
+import { ScanQrButton } from "@/features/devices/scan-qr-button";
 import {
   createLoginTransferRequest,
   getLoginTransferRequest,
@@ -112,6 +114,8 @@ export function DevicesPage() {
         </PageTitleWithBack>
       </header>
 
+      <IncomingApprovals />
+
       <section className="space-y-5 rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -176,6 +180,11 @@ export function DevicesPage() {
               </p>
             )}
           </div>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">{t("scanQrHint")}</p>
+          <ScanQrButton />
         </div>
       </section>
 

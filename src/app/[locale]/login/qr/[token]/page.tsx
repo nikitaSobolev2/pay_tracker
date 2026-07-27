@@ -1,23 +1,25 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { buttonVariants } from "@/components/ui/button";
-import { Link, useRouter } from "@/i18n/navigation";
+import { ApprovalWaiting } from "@/features/auth/approval-waiting";
+import { Link } from "@/i18n/navigation";
 import { redeemLoginTransferRequest } from "@/lib/api/login-transfer";
 import { cn } from "@/lib/utils";
 
 export default function QrLoginPage() {
   const t = useTranslations("auth");
   const tApp = useTranslations("app");
-  const router = useRouter();
+  const locale = useLocale();
   const params = useParams<{ token: string }>();
   const token = typeof params.token === "string" ? params.token : "";
+  const [approvalToken, setApprovalToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const startedRef = useRef(false);
@@ -28,12 +30,12 @@ export default function QrLoginPage() {
     }
     startedRef.current = true;
 
-    async function redeem() {
+    async function claim() {
       setLoading(true);
       setError(null);
       try {
-        await redeemLoginTransferRequest({ token });
-        router.replace("/");
+        const redeemed = await redeemLoginTransferRequest({ token, locale });
+        setApprovalToken(redeemed.token);
       } catch (redeemError) {
         const message =
           redeemError instanceof Error
@@ -46,8 +48,8 @@ export default function QrLoginPage() {
       }
     }
 
-    void redeem();
-  }, [token, router, t]);
+    void claim();
+  }, [token, locale, t]);
 
   return (
     <AuthShell brand={tApp("name")} title={t("qrLoginTitle")}>
@@ -57,6 +59,8 @@ export default function QrLoginPage() {
             <Loader2 className="size-8 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">{t("qrLoginPending")}</p>
           </>
+        ) : approvalToken ? (
+          <ApprovalWaiting token={approvalToken} />
         ) : (
           <>
             <p className="text-sm text-destructive">

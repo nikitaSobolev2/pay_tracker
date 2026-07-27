@@ -19,6 +19,13 @@ enum TransactionKind {
   TRANSFER
 }
 
+enum AuthApprovalStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CONSUMED
+}
+
 model User {
   id              String   @id @default(cuid())
   name            String
@@ -99,6 +106,25 @@ model LoginTransfer {
 
   @@index([userId, expiresAt])
   @@index([codeHash])
+}
+
+model AuthApproval {
+  id                 String             @id @default(cuid())
+  tokenHash          String             @unique
+  status             AuthApprovalStatus @default(PENDING)
+  // Push flow: only this user may approve (the code/QR owner). Null = pull flow.
+  boundUserId        String?
+  // Set on approval; the account whose session the waiting device receives.
+  approvedByUserId   String?
+  requesterUserAgent String?
+  requesterIp        String?
+  locale             String             @default("en")
+  expiresAt          DateTime
+  resolvedAt         DateTime?
+  consumedAt         DateTime?
+  createdAt          DateTime           @default(now())
+
+  @@index([boundUserId, status, expiresAt])
 }
 
 model UserCategory {

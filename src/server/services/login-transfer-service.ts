@@ -12,7 +12,10 @@ import {
   normalizeLoginCode,
   transferExpiresAt,
 } from "./login-transfer-crypto";
+import { createApproval } from "./qr-approval-service";
+import type { CreateApprovalResult } from "./qr-approval-service.types";
 import type {
+  BeginTransferApprovalInput,
   CreateLoginTransferInput,
   CreateLoginTransferResult,
   RedeemLoginTransferInput,
@@ -110,6 +113,36 @@ export async function redeemLoginTransfer(
   input: RedeemLoginTransferInput,
 ): Promise<RedeemLoginTransferResult> {
   const now = new Date();
+  const transfer = await consumeRedeemableTransfer(input, now);
+  return { userId: transfer.userId };
+}
+
+/**
+ * Claims a code/QR minted on a logged-in device and turns it into a pending
+ * approval bound to that device's owner. The owner must then approve before the
+ * requesting device receives a session.
+ */
+export async function beginTransferApproval(
+  input: BeginTransferApprovalInput,
+): Promise<CreateApprovalResult> {
+  const now = new Date();
+  const transfer = await consumeRedeemableTransfer(
+    { code: input.code, token: input.token },
+    now,
+  );
+  return createApproval({
+    locale: input.locale,
+    baseUrl: input.baseUrl,
+    requesterUserAgent: input.requesterUserAgent,
+    requesterIp: input.requesterIp,
+    boundUserId: transfer.userId,
+  });
+}
+
+async function consumeRedeemableTransfer(
+  input: RedeemLoginTransferInput,
+  now: Date,
+): Promise<{ id: string; userId: string }> {
   const transfer = await findRedeemableTransfer(input, now);
   if (!transfer) {
     throw new AppServiceError(
@@ -134,7 +167,7 @@ export async function redeemLoginTransfer(
     );
   }
 
-  return { userId: transfer.userId };
+  return { id: transfer.id, userId: transfer.userId };
 }
 
 function toTransferResult(

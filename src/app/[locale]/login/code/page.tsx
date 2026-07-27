@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -12,24 +12,29 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Link, useRouter } from "@/i18n/navigation";
+import { ApprovalWaiting } from "@/features/auth/approval-waiting";
+import { Link } from "@/i18n/navigation";
 import { redeemLoginTransferRequest } from "@/lib/api/login-transfer";
 import { LOGIN_TRANSFER_CODE_LENGTH } from "@/lib/login-transfer";
 
 export default function LoginByCodePage() {
   const t = useTranslations("auth");
   const tApp = useTranslations("app");
-  const router = useRouter();
+  const locale = useLocale();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [approvalToken, setApprovalToken] = useState<string | null>(null);
   const submittedCodeRef = useRef<string | null>(null);
 
   const submitCode = useCallback(
     async (nextCode: string) => {
       setLoading(true);
       try {
-        await redeemLoginTransferRequest({ code: nextCode });
-        router.replace("/");
+        const { token } = await redeemLoginTransferRequest({
+          code: nextCode,
+          locale,
+        });
+        setApprovalToken(token);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : t("loginCodeInvalid"),
@@ -40,7 +45,7 @@ export default function LoginByCodePage() {
         setLoading(false);
       }
     },
-    [router, t],
+    [locale, t],
   );
 
   useEffect(() => {
@@ -53,6 +58,14 @@ export default function LoginByCodePage() {
     submittedCodeRef.current = code;
     void submitCode(code);
   }, [code, loading, submitCode]);
+
+  if (approvalToken) {
+    return (
+      <AuthShell brand={tApp("name")} title={t("qrLoginTitle")}>
+        <ApprovalWaiting token={approvalToken} />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell brand={tApp("name")} title={t("loginCodeTitle")}>
