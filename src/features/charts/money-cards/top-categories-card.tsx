@@ -108,48 +108,50 @@ export function TopCategoriesCard({
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <ChartContainer
-          config={chartConfig}
-          className="aspect-auto h-56 w-full px-2 pb-2"
-        >
-          <BarChart
-            data={data}
-            margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
+        <div className="relative min-h-56 w-full flex-1">
+          <ChartContainer
+            config={chartConfig}
+            className="absolute inset-0 aspect-auto h-full w-full px-2 pb-2"
           >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              interval={0}
-              tick={{ fontSize: 11 }}
-            />
-            <YAxis
-              type="number"
-              tickLine={false}
-              axisLine={false}
-              width={36}
-              tick={{ fontSize: 11 }}
-              tickFormatter={(value) => compactAxisTick(Number(value))}
-            />
-            <ChartTooltip
-              cursor={{ fill: "var(--muted)", opacity: 0.35 }}
-              content={
-                <TopCategoriesTooltip
-                  currency={currency}
-                  showTypeHints={showTypeHints}
-                  earningLabel={tTx("earning")}
-                  spendingLabel={tTx("spending")}
-                />
-              }
-            />
-            <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={48}>
-              {data.map((entry) => (
-                <Cell key={entry.chartKey} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+            <BarChart
+              data={data}
+              margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis
+                type="number"
+                tickLine={false}
+                axisLine={false}
+                width={36}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(value) => compactAxisTick(Number(value))}
+              />
+              <ChartTooltip
+                cursor={{ fill: "var(--muted)", opacity: 0.35 }}
+                content={
+                  <TopCategoriesTooltip
+                    currency={currency}
+                    showTypeHints={showTypeHints}
+                    earningLabel={tTx("earning")}
+                    spendingLabel={tTx("spending")}
+                  />
+                }
+              />
+              <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                {data.map((entry) => (
+                  <Cell key={entry.chartKey} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </div>
       )}
     </StatCard>
   );
