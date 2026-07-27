@@ -101,6 +101,7 @@ export async function getCategoryDetailStats(input: {
       userId: input.userId,
       isDeleted: false,
       type: category.type,
+      kind: { not: TransactionKind.Transfer },
       occurredAt: { gte: start, lte: end },
       categories: {
         some: {

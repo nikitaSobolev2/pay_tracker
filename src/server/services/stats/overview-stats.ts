@@ -10,8 +10,12 @@ import {
 } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { TransactionKind, TransactionType } from "@/types/enums";
-import { DateRangeType } from "@/types/enums";
+import {
+  DateRangeType,
+  isCashflowExcludedKind,
+  TransactionKind,
+  TransactionType,
+} from "@/types/enums";
 
 import { convertRubToDisplay } from "../exchange-rate-service";
 import type {
@@ -58,7 +62,8 @@ export async function getOverviewStats(
   const spendingRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Spending &&
-      row.kind !== TransactionKind.Refund,
+      row.kind !== TransactionKind.Refund &&
+      !isCashflowExcludedKind(row.kind),
   );
   const refundRows = periodRows.filter(
     (row) =>
@@ -68,7 +73,8 @@ export async function getOverviewStats(
   const earningRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Earning &&
-      row.kind !== TransactionKind.Refund,
+      row.kind !== TransactionKind.Refund &&
+      !isCashflowExcludedKind(row.kind),
   );
 
   const spendingTotal = (
@@ -301,7 +307,8 @@ async function loadPreviousPeriodTotals(input: {
       previousRows.filter(
         (row) =>
           row.type === TransactionType.Spending &&
-          row.kind !== TransactionKind.Refund,
+          row.kind !== TransactionKind.Refund &&
+          !isCashflowExcludedKind(row.kind),
       ),
       input.displayCurrency,
     )
@@ -319,7 +326,8 @@ async function loadPreviousPeriodTotals(input: {
     previousRows.filter(
       (row) =>
         row.type === TransactionType.Earning &&
-        row.kind !== TransactionKind.Refund,
+        row.kind !== TransactionKind.Refund &&
+        !isCashflowExcludedKind(row.kind),
     ),
     input.displayCurrency,
   );

@@ -508,22 +508,28 @@ function validateKindForType(
   if (kind === TransactionKind.Default) {
     return;
   }
-  if (type === TransactionType.Spending && kind !== TransactionKind.Loan) {
-    throw new AppServiceError(
-      ApiErrorCode.Validation,
-      "Spending transactions may only use DEFAULT or LOAN kind",
-    );
+  if (
+    type === TransactionType.Spending &&
+    (kind === TransactionKind.Loan || kind === TransactionKind.Transfer)
+  ) {
+    return;
   }
   if (
     type === TransactionType.Earning &&
-    kind !== TransactionKind.Debt &&
-    kind !== TransactionKind.Refund
+    (kind === TransactionKind.Debt || kind === TransactionKind.Refund)
   ) {
+    return;
+  }
+  if (type === TransactionType.Spending) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Earning transactions may only use DEFAULT, DEBT, or REFUND kind",
+      "Spending transactions may only use DEFAULT, LOAN, or TRANSFER kind",
     );
   }
+  throw new AppServiceError(
+    ApiErrorCode.Validation,
+    "Earning transactions may only use DEFAULT, DEBT, or REFUND kind",
+  );
 }
 
 function rankTitleMatches(

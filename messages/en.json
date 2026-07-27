@@ -111,6 +111,8 @@
     "kindLoan": "Loan",
     "kindDebt": "Debt",
     "kindRefund": "Refund",
+    "kindTransfer": "Transfer",
+    "kindTransferHint": "Card bill or account move — not counted as spending",
     "titleSuggestions": "Past transactions",
     "showOtherSuggestions": "Show other",
     "evaluateAmount": "Evaluate expression",

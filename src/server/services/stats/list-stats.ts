@@ -10,6 +10,7 @@ import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
   DateRangeType,
+  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
@@ -67,6 +68,9 @@ export async function getListPageStats(
       ...(previousBounds.end ? { lte: previousBounds.end } : {}),
     };
   }
+  const cashflowPreviousWhere = {
+    AND: [previousWhere, { kind: { not: TransactionKind.Transfer } }],
+  };
 
   const [rows, previousTotal, previousCount, multiCurrency] =
     await Promise.all([
@@ -79,10 +83,10 @@ export async function getListPageStats(
       }),
       isAllTime
         ? Promise.resolve(null)
-        : sumDisplayGrouped(previousWhere, input.displayCurrency),
+        : sumDisplayGrouped(cashflowPreviousWhere, input.displayCurrency),
       isAllTime
         ? Promise.resolve(0)
-        : prisma.transaction.count({ where: previousWhere }),
+        : prisma.transaction.count({ where: cashflowPreviousWhere }),
       hasMultipleCurrenciesForUser(input.userId),
     ]);
 
@@ -91,7 +95,8 @@ export async function getListPageStats(
       rows.filter(
         (row) =>
           row.type === TransactionType.Spending &&
-          row.kind !== TransactionKind.Refund,
+          row.kind !== TransactionKind.Refund &&
+          !isCashflowExcludedKind(row.kind),
       ),
       input.displayCurrency,
     )
@@ -109,15 +114,22 @@ export async function getListPageStats(
     rows.filter(
       (row) =>
         row.type === TransactionType.Earning &&
-        row.kind !== TransactionKind.Refund,
+        row.kind !== TransactionKind.Refund &&
+        !isCashflowExcludedKind(row.kind),
     ),
     input.displayCurrency,
   );
   const scopedTotal = input.type
-    ? await sumDisplay(rows, input.displayCurrency)
+    ? await sumDisplay(
+        rows.filter((row) => !isCashflowExcludedKind(row.kind)),
+        input.displayCurrency,
+      )
     : spendingTotal.plus(earningTotal);
   const netTotal = earningTotal.minus(spendingTotal);
   const count = rows.length;
+  const cashflowCount = rows.filter(
+    (row) => !isCashflowExcludedKind(row.kind),
+  ).length;
   const dayCount =
     bounds.start && bounds.end
       ? elapsedDaysInRange(bounds.start, bounds.end)
@@ -143,7 +155,7 @@ export async function getListPageStats(
   );
 
   const avgPerTransactionAmount =
-    count > 0 ? scopedTotal.div(count) : toDecimal(0);
+    cashflowCount > 0 ? scopedTotal.div(cashflowCount) : toDecimal(0);
   const avgPerDayAmount =
     dayCount > 0 ? scopedTotal.div(dayCount) : toDecimal(0);
 

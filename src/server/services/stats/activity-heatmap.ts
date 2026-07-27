@@ -12,7 +12,7 @@ import type {
   ActivityHeatmapDay,
   ActivityHeatmapInput,
 } from "../stats-service.types";
-import { TransactionKind, TransactionType } from "@/types/enums";
+import { isCashflowExcludedKind, TransactionKind, TransactionType } from "@/types/enums";
 
 /** GitHub-style grid: trailing 53 columns × 7 rows, aligned to Monday. */
 const WEEKS = 52;
@@ -60,6 +60,9 @@ export async function getActivityHeatmap(
   let maxEarning = toDecimal(0);
   let maxSpending = toDecimal(0);
   for (const row of rows) {
+    if (isCashflowExcludedKind(row.kind)) {
+      continue;
+    }
     const key = format(toZonedTime(row.occurredAt, input.timezone), "yyyy-MM-dd");
     const display = await convertRubToDisplay(
       row.amount.toString(),

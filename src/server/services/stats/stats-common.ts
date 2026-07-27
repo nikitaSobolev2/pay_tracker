@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import type { TimelineBucket } from "@/lib/timeline-bucket";
 import {
   DateRangeType,
+  isCashflowExcludedKind,
   TransactionKind,
   TransactionType,
 } from "@/types/enums";
@@ -207,6 +208,9 @@ export async function buildCategoryActivity(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
+    if (isCashflowExcludedKind(row.kind)) {
+      continue;
+    }
     const display = await rowDisplayAmount(row, displayCurrency);
     totalByType.set(
       row.type,
@@ -271,6 +275,9 @@ export async function buildCategorySlices(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
+    if (isCashflowExcludedKind(row.kind)) {
+      continue;
+    }
     const display = await rowDisplayAmount(row, displayCurrency);
     totalByType.set(
       row.type,
@@ -371,6 +378,9 @@ export async function buildTimeline(
   }
 
   for (const row of rows) {
+    if (isCashflowExcludedKind(row.kind)) {
+      continue;
+    }
     const key = formatBucketKey(row.occurredAt, bucket, timezone);
     if (!spending.has(key)) {
       spending.set(key, toDecimal(0));
@@ -471,6 +481,9 @@ function formatBucketKey(
 export function buildCurrencyBreakdown(rows: TxRow[]) {
   const map = new Map<string, { amount: Decimal; count: number }>();
   for (const row of rows) {
+    if (isCashflowExcludedKind(row.kind)) {
+      continue;
+    }
     const key = row.inputCurrency.toUpperCase();
     const current = map.get(key) ?? { amount: toDecimal(0), count: 0 };
     current.amount = current.amount.plus(toDecimal(row.originalAmount.toString()));

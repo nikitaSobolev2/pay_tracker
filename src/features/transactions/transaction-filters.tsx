@@ -232,6 +232,9 @@ export function TransactionFilters({
             if (kind === TransactionKind.Debt) {
               return t("kindDebt");
             }
+            if (kind === TransactionKind.Transfer) {
+              return t("kindTransfer");
+            }
             return t("kindRefund");
           })
           .join(" · ");
@@ -470,6 +473,19 @@ export function TransactionFilters({
                     onChange({
                       ...value,
                       kinds: toggleValue(value.kinds, TransactionKind.Refund),
+                    })
+                  }
+                />
+                <ToggleRow
+                  checked={value.kinds.includes(TransactionKind.Transfer)}
+                  label={t("kindTransfer")}
+                  onCheckedChange={() =>
+                    onChange({
+                      ...value,
+                      kinds: toggleValue(
+                        value.kinds,
+                        TransactionKind.Transfer,
+                      ),
                     })
                   }
                 />

@@ -24,11 +24,17 @@ describe("matchCategoriesByTitle", () => {
     title: "Пропитание",
     path: "Пропитание",
   });
+  const products = category({
+    id: "products",
+    title: "Продукты",
+    parentCategoryId: "food",
+    path: "Пропитание/Продукты",
+  });
   const ozonFood = category({
     id: "ozon-food",
     title: "Озон продукты",
-    parentCategoryId: "food",
-    path: "Пропитание/Озон продукты",
+    parentCategoryId: "products",
+    path: "Пропитание/Продукты/Озон продукты",
   });
   const markets = category({
     id: "markets",
@@ -41,27 +47,81 @@ describe("matchCategoriesByTitle", () => {
     parentCategoryId: "markets",
     path: "Маркетплейсы/Озон",
   });
-  const categories = [food, ozonFood, markets, ozon];
+  const health = category({
+    id: "health",
+    title: "Здоровье",
+    path: "Здоровье",
+  });
+  const skinCare = category({
+    id: "skin",
+    title: "Уход за кожей",
+    parentCategoryId: "health",
+    path: "Здоровье/Уход за кожей",
+  });
+  const categories = [food, products, ozonFood, markets, ozon, health, skinCare];
 
-  it("prefers more specific Ozon products leaf for russian title", () => {
-    assert.deepEqual(matchCategoriesByTitle("озон продукты", categories), [
-      "ozon-food",
-      "food",
-    ]);
+  it("matches every category that shares a significant word", () => {
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("Озон уход за кожей", categories)),
+      new Set([
+        "ozon-food",
+        "products",
+        "food",
+        "ozon",
+        "markets",
+        "skin",
+        "health",
+      ]),
+    );
   });
 
-  it("matches transliterated ozon products", () => {
-    assert.deepEqual(matchCategoriesByTitle("ozon продукты", categories), [
-      "ozon-food",
-      "food",
-    ]);
+  it("ignores stop words like за and от", () => {
+    const fromCategory = category({
+      id: "from-store",
+      title: "Покупка от друга",
+      path: "Покупка от друга",
+    });
+    assert.deepEqual(
+      new Set(
+        matchCategoriesByTitle("кофе от васи", [...categories, fromCategory]),
+      ),
+      new Set(),
+    );
+    assert.deepEqual(
+      new Set(
+        matchCategoriesByTitle("покупка васи", [...categories, fromCategory]),
+      ),
+      new Set(["from-store"]),
+    );
   });
 
-  it("falls back to bare Ozon when products token missing", () => {
-    assert.deepEqual(matchCategoriesByTitle("ozon шмотки", categories), [
-      "ozon",
-      "markets",
-    ]);
+  it("matches grocery and marketplace Ozon when both words appear", () => {
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("озон продукты", categories)),
+      new Set(["ozon-food", "products", "food", "ozon", "markets"]),
+    );
+  });
+
+  it("matches transliterated ozon", () => {
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("ozon шмотки", categories)),
+      new Set(["ozon-food", "products", "food", "ozon", "markets"]),
+    );
+  });
+
+  it("tolerates a one-letter typo in a long token", () => {
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("Озон уход за кажей", categories)),
+      new Set([
+        "ozon-food",
+        "products",
+        "food",
+        "ozon",
+        "markets",
+        "skin",
+        "health",
+      ]),
+    );
   });
 
   it("works for english leaf titles", () => {
@@ -81,9 +141,9 @@ describe("matchCategoriesByTitle", () => {
         path: "Marketplaces/Ozon",
       }),
     ];
-    assert.deepEqual(matchCategoriesByTitle("ozon groceries", english), [
-      "leaf",
-      "root",
-    ]);
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("ozon groceries", english)),
+      new Set(["leaf", "root", "oz", "m"]),
+    );
   });
 });

@@ -86,7 +86,11 @@ function emptyForm(currency: string): FormState {
 }
 
 function spendingKinds(): TransactionKind[] {
-  return [TransactionKind.Default, TransactionKind.Loan];
+  return [
+    TransactionKind.Default,
+    TransactionKind.Loan,
+    TransactionKind.Transfer,
+  ];
 }
 
 function earningKinds(): TransactionKind[] {
@@ -431,6 +435,9 @@ export function TransactionFormModal() {
     if (kind === TransactionKind.Refund) {
       return t("kindRefund");
     }
+    if (kind === TransactionKind.Transfer) {
+      return t("kindTransfer");
+    }
     return t("kindDefault");
   }
 
@@ -588,6 +595,11 @@ export function TransactionFormModal() {
                     ))}
                   </SelectContent>
                 </Select>
+                {form.kind === TransactionKind.Transfer ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("kindTransferHint")}
+                  </p>
+                ) : null}
               </div>
 
               <div

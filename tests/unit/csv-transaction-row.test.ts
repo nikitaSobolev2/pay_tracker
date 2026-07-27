@@ -18,6 +18,15 @@ describe("resolveCsvTransactionKind", () => {
     assert.deepEqual(errors, []);
   });
 
+  it("reads TRANSFER kind", () => {
+    const errors: string[] = [];
+    assert.equal(
+      resolveCsvTransactionKind({ kind: "TRANSFER" }, errors),
+      TransactionKind.Transfer,
+    );
+    assert.deepEqual(errors, []);
+  });
+
   it("maps legacy debtRole LEND to LOAN", () => {
     const errors: string[] = [];
     assert.equal(

@@ -16,6 +16,7 @@ enum TransactionKind {
   LOAN
   DEBT
   REFUND
+  TRANSFER
 }
 
 model User {

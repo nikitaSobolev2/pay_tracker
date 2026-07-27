@@ -23,9 +23,15 @@ export const TransactionKind = {
   Loan: "LOAN",
   Debt: "DEBT",
   Refund: "REFUND",
+  Transfer: "TRANSFER",
 } as const;
 export type TransactionKind =
   (typeof TransactionKind)[keyof typeof TransactionKind];
+
+/** Own-account moves (e.g. credit-card bill pay) — visible in lists, excluded from cashflow charts. */
+export function isCashflowExcludedKind(kind: TransactionKind): boolean {
+  return kind === TransactionKind.Transfer;
+}
 
 export const DateRangeType = {
   Day: "day",

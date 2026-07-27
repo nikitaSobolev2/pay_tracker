@@ -111,6 +111,8 @@
     "kindLoan": "Займ",
     "kindDebt": "Долг",
     "kindRefund": "Возврат",
+    "kindTransfer": "Перевод",
+    "kindTransferHint": "Оплата карты или перевод — не учитывается в расходах",
     "titleSuggestions": "Прошлые операции",
     "showOtherSuggestions": "Показать остальные",
     "evaluateAmount": "Вычислить выражение",

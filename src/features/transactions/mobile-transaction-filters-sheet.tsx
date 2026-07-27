@@ -408,6 +408,19 @@ export function MobileTransactionFiltersSheet({
                     }))
                   }
                 />
+                <ToggleRow
+                  checked={draft.kinds.includes(TransactionKind.Transfer)}
+                  label={t("kindTransfer")}
+                  onCheckedChange={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      kinds: toggleValue(
+                        current.kinds,
+                        TransactionKind.Transfer,
+                      ),
+                    }))
+                  }
+                />
               </div>
             </FilterSection>
 

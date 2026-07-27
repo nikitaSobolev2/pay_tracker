@@ -256,6 +256,9 @@ export function TransactionTable({
                             {item.kind === TransactionKind.Debt
                               ? `${t("toBorrow")}: ${item.counterpartyName ?? "—"}`
                               : null}
+                            {item.kind === TransactionKind.Transfer
+                              ? t("kindTransfer")
+                              : null}
                           </div>
                         </Link>
                       </TableCell>
