@@ -28,6 +28,7 @@ import {
 } from "./exchange-rate-service";
 import type {
   BulkDeleteTransactionsInput,
+  ClearTransactionsInput,
   CreateTransactionInput,
   ListTransactionsInput,
   ListTransactionsResult,
@@ -333,6 +334,67 @@ export async function bulkDeleteTransactions(
   return {
     deletedCount: result.reduce((sum, item) => sum + item.count, 0),
   };
+}
+
+const CLEAR_TRANSACTIONS_CHUNK_SIZE = 100;
+
+export async function clearTransactions(
+  input: ClearTransactionsInput,
+): Promise<{ deletedCount: number }> {
+  const hasRange = Boolean(input.startDate && input.endDate);
+  if ((input.startDate && !input.endDate) || (!input.startDate && input.endDate)) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Both startDate and endDate are required for a date range",
+    );
+  }
+
+  const bounds = hasRange
+    ? getAbsoluteRangeBounds(input.startDate!, input.endDate!, input.timezone)
+    : { start: null, end: null };
+
+  const rows = await prisma.transaction.findMany({
+    where: {
+      userId: input.userId,
+      isDeleted: false,
+      ...(bounds.start || bounds.end
+        ? {
+            occurredAt: {
+              ...(bounds.start ? { gte: bounds.start } : {}),
+              ...(bounds.end ? { lte: bounds.end } : {}),
+            },
+          }
+        : {}),
+    },
+    select: { id: true },
+  });
+
+  if (rows.length === 0) {
+    return { deletedCount: 0 };
+  }
+
+  let deletedCount = 0;
+  for (let index = 0; index < rows.length; index += CLEAR_TRANSACTIONS_CHUNK_SIZE) {
+    const chunk = rows.slice(index, index + CLEAR_TRANSACTIONS_CHUNK_SIZE);
+    const result = await prisma.$transaction(
+      chunk.map((row) =>
+        prisma.transaction.updateMany({
+          where: {
+            userId: input.userId,
+            id: row.id,
+            isDeleted: false,
+          },
+          data: {
+            isDeleted: true,
+            idempotencyKey: deletedIdempotencyKey(row.id),
+          },
+        }),
+      ),
+    );
+    deletedCount += result.reduce((sum, item) => sum + item.count, 0);
+  }
+
+  return { deletedCount };
 }
 
 export function resolveListDateBounds(

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDeleteAccountDialog } from "@/features/settings/confirm-delete-account-dialog";
+import { ClearTransactionsDialog } from "@/features/settings/clear-transactions-dialog";
 import { CsvImportDialog } from "@/features/settings/csv-import-dialog";
 import { TimezoneCombobox } from "@/features/settings/timezone-combobox";
 import { useAppUser } from "@/hooks/use-app-user";
@@ -58,6 +59,7 @@ export function SettingsPage() {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -295,6 +297,16 @@ export function SettingsPage() {
 
         <SettingsZone title={t("danger")} danger>
           <p className="mb-5 max-w-md text-sm text-muted-foreground">
+            {t("clearTransactionsDescription")}
+          </p>
+          <Button
+            variant="destructive"
+            className={cn(actionButtonClassName, "mb-4")}
+            onClick={() => setClearOpen(true)}
+          >
+            {t("clearTransactions")}
+          </Button>
+          <p className="mb-5 max-w-md text-sm text-muted-foreground">
             {t("deleteAccountConfirm")}
           </p>
           <Button
@@ -309,6 +321,7 @@ export function SettingsPage() {
       </div>
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ClearTransactionsDialog open={clearOpen} onOpenChange={setClearOpen} />
       <ConfirmDeleteAccountDialog
         open={deleteOpen}
         loading={deleting}

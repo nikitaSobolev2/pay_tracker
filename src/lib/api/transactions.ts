@@ -118,6 +118,18 @@ export function bulkDeleteTransactions(ids: string[]) {
   });
 }
 
+export type ClearTransactionsInput = {
+  startDate?: string;
+  endDate?: string;
+};
+
+export function clearTransactions(input: ClearTransactionsInput = {}) {
+  return apiFetch<{ deletedCount: number }>("/api/transactions/clear", {
+    method: "POST",
+    body: input,
+  });
+}
+
 export function suggestTransactionsByTitle(params: {
   q: string;
   type?: TransactionType;

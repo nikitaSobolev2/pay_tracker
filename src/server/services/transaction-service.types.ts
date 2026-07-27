@@ -67,6 +67,13 @@ export type BulkDeleteTransactionsInput = {
   ids: string[];
 };
 
+export type ClearTransactionsInput = {
+  userId: string;
+  timezone: string;
+  startDate?: string;
+  endDate?: string;
+};
+
 export type TitleSuggestionsInput = {
   userId: string;
   displayCurrency: string;
