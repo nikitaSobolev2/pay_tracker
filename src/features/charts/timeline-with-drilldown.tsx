@@ -178,7 +178,7 @@ export function TimelineWithDrilldown({
     <div
       className={cn(
         "flex flex-col gap-3",
-        !stackDrilldown && "lg:flex-row lg:items-stretch",
+        !stackDrilldown && "lg:flex-row lg:items-start",
         selectedBucket && "rounded-2xl bg-muted/35 p-3",
       )}
     >
@@ -196,7 +196,7 @@ export function TimelineWithDrilldown({
           title={title}
           loading={loading}
           bleed
-          className="h-full min-w-0"
+          className="min-w-0"
           sharePayload={
             disableShare || loading || points.length === 0
               ? null
@@ -375,7 +375,6 @@ export function TimelineWithDrilldown({
               currency={bucketStats?.displayCurrency ?? currency}
               layout="stack"
               showTypeHints
-              className="h-full"
               disableShare={disableShare}
             />
           </div>

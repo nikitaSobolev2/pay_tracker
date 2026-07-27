@@ -23,18 +23,24 @@ import {
 /** Keep tiny amounts visible when the other side dominates. */
 const BAR_FLOOR_PERCENT = 7;
 
+export type PeriodTotalsFooterMode = "incomeSpending" | "vsPrevious";
+
 export function PeriodTotalsCard({
   loading,
   stats,
   comparison,
   hideComparison,
+  footerMode = "incomeSpending",
+  onPreviousPeriodClick,
   disableShare = false,
 }: {
-  loading?: boolean;
-  stats: ListPageStats["periodTotals"];
-  comparison?: PeriodComparison;
-  hideComparison?: boolean;
-  disableShare?: boolean;
+  readonly loading?: boolean;
+  readonly stats: ListPageStats["periodTotals"];
+  readonly comparison?: PeriodComparison;
+  readonly hideComparison?: boolean;
+  readonly footerMode?: PeriodTotalsFooterMode;
+  readonly onPreviousPeriodClick?: () => void;
+  readonly disableShare?: boolean;
 }) {
   const t = useTranslations("stats");
   const tHome = useTranslations("home");
@@ -42,6 +48,9 @@ export function PeriodTotalsCard({
   const spendingValue = Math.max(0, Number(stats.spending.amount) || 0);
   const peak = Math.max(incomeValue, spendingValue, 1);
   const title = t("periodTotals");
+  const showBars = footerMode === "incomeSpending";
+  const showVsPreviousFooter = footerMode === "vsPrevious";
+  const delta = comparison?.deltaAmount ?? null;
 
   return (
     <StatCard
@@ -63,9 +72,9 @@ export function PeriodTotalsCard({
       skeleton={
         <MoneyCardSkeleton
           showBadge={!hideComparison}
-          showHint
+          showHint={showBars}
           detailRows={2}
-          detailStyle="bars"
+          detailStyle={showBars ? "bars" : "list"}
         />
       }
     >
@@ -86,31 +95,99 @@ export function PeriodTotalsCard({
           hide={hideComparison}
         />
       ) : null}
-      <p className="text-sm text-muted-foreground">
-        {t("netBalanceHint")} · {stats.count} {t("count").toLowerCase()}
-      </p>
 
-      <div className="mt-auto space-y-4">
-        <AmountRow
-          label={tHome("income")}
-          amount={formatChartMoney(
-            stats.earning.amount,
-            stats.earning.currency,
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
+          showBars
+            ? "grid-rows-[1fr] opacity-100"
+            : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <p className="text-sm text-muted-foreground">
+            {t("netBalanceHint")} · {stats.count} {t("count").toLowerCase()}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-auto">
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
+            showBars
+              ? "grid-rows-[1fr] opacity-100"
+              : "pointer-events-none grid-rows-[0fr] opacity-0",
           )}
-          widthPercent={barWidthPercent(incomeValue, peak)}
-          barClassName="bg-emerald-400"
-          amountClassName="text-emerald-400"
-        />
-        <AmountRow
-          label={tHome("spendingLabel")}
-          amount={formatChartMoney(
-            stats.spending.amount,
-            stats.spending.currency,
+        >
+          <div className="min-h-0 space-y-4 overflow-hidden">
+            <AmountRow
+              label={tHome("income")}
+              amount={formatChartMoney(
+                stats.earning.amount,
+                stats.earning.currency,
+              )}
+              widthPercent={barWidthPercent(incomeValue, peak)}
+              barClassName="bg-emerald-400"
+              amountClassName="text-emerald-400"
+            />
+            <AmountRow
+              label={tHome("spendingLabel")}
+              amount={formatChartMoney(
+                stats.spending.amount,
+                stats.spending.currency,
+              )}
+              widthPercent={barWidthPercent(spendingValue, peak)}
+              barClassName="bg-rose-400"
+              amountClassName="text-rose-400"
+            />
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
+            showVsPreviousFooter
+              ? "grid-rows-[1fr] opacity-100"
+              : "pointer-events-none grid-rows-[0fr] opacity-0",
           )}
-          widthPercent={barWidthPercent(spendingValue, peak)}
-          barClassName="bg-rose-400"
-          amountClassName="text-rose-400"
-        />
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="space-y-2.5 rounded-xl bg-muted/35 px-4 py-3.5 text-base">
+              <button
+                type="button"
+                disabled={!onPreviousPeriodClick}
+                onClick={onPreviousPeriodClick}
+                className="flex w-full cursor-pointer justify-between gap-4 text-left transition-colors hover:text-foreground disabled:cursor-default disabled:hover:text-inherit"
+              >
+                <span className="text-muted-foreground">
+                  {tHome("previousPeriod")}
+                </span>
+                <span className="font-medium tabular-nums">
+                  {comparison?.previous
+                    ? formatChartMoney(
+                        comparison.previous.amount,
+                        comparison.previous.currency,
+                      )
+                    : "—"}
+                </span>
+              </button>
+              <div className="flex justify-between gap-4 border-t border-border/40 pt-2.5">
+                <span className="text-muted-foreground">{tHome("change")}</span>
+                <span
+                  className={cn(
+                    "font-medium tabular-nums",
+                    delta == null ? undefined : signedAmountClassName(delta),
+                  )}
+                >
+                  {delta == null || !comparison
+                    ? "—"
+                    : formatChartMoney(delta, comparison.current.currency)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </StatCard>
   );

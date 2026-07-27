@@ -164,7 +164,7 @@ export function ActivityHeatmapCard({
     <div
       className={cn(
         "flex flex-col gap-3",
-        !stackDrilldown && "lg:flex-row lg:items-stretch",
+        !stackDrilldown && "lg:flex-row lg:items-start",
         selected && "rounded-2xl bg-muted/35 p-3",
       )}
     >
@@ -194,7 +194,7 @@ export function ActivityHeatmapCard({
           }
           loading={loading}
           skeleton={<HeatmapSkeleton />}
-          className="h-full"
+          className="min-w-0"
         >
           {data && data.days.length > 0 ? (
             <TooltipProvider delay={280}>
@@ -281,7 +281,6 @@ export function ActivityHeatmapCard({
               currency={dayStats?.displayCurrency ?? currency}
               layout="stack"
               showTypeHints
-              className="h-full"
               disableShare={disableShare}
             />
           </div>

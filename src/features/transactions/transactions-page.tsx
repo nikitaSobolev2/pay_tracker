@@ -138,6 +138,7 @@ export function TransactionsPage() {
 
   const showVsPrevious = supportsPreviousPeriod(filters.datePreset);
   const showAvgPerDay = !isSingleDayDatePreset(filters.datePreset);
+  const scopedType = typeFilter !== "all";
   const previousDateRange = previousDateRangeFor(filters.datePreset);
   const applyPreviousPeriod = useCallback(() => {
     if (!previousDateRange) {
@@ -379,6 +380,10 @@ export function TransactionsPage() {
               }
             }
             hideComparison={!showVsPrevious}
+            footerMode={scopedType ? "vsPrevious" : "incomeSpending"}
+            onPreviousPeriodClick={
+              previousDateRange ? applyPreviousPeriod : undefined
+            }
           />
         </div>
         <div className={SUMMARY_CARD_SHELL}>
@@ -435,7 +440,7 @@ export function TransactionsPage() {
         <div
           className={cn(
             "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
-            showVsPrevious
+            showVsPrevious && !scopedType
               ? SUMMARY_CARD_SHELL
               : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
           )}
