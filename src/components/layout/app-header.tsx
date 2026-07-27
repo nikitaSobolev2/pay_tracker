@@ -85,7 +85,7 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const ThemeIcon = themeIconFor(theme);
 
   return (
-    <header className="sticky top-0 z-30 hidden h-14 min-w-0 items-center gap-2 overflow-x-clip border-b bg-background/90 px-3 backdrop-blur md:flex md:px-4">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 overflow-x-clip border-b bg-background/90 px-3 backdrop-blur max-md:hidden md:px-4">
       <SidebarTrigger className="shrink-0" />
       <Separator
         orientation="vertical"
