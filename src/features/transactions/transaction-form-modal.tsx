@@ -237,26 +237,31 @@ export function TransactionFormModal() {
     if (!transactionModalOpen || categoriesManual || isEditing) {
       return;
     }
-    if (!debouncedTitle.trim() || form.categoryIds.length > 0) {
+    if (!debouncedTitle.trim()) {
+      setForm((prev) =>
+        prev.categoryIds.length === 0
+          ? prev
+          : { ...prev, categoryIds: [] },
+      );
+      return;
+    }
+    if (availableCategories.length === 0) {
       return;
     }
     const matched = matchCategoriesByTitle(
       debouncedTitle,
       availableCategories,
     );
-    if (matched.length === 0) {
-      return;
-    }
-    setForm((prev) =>
-      prev.categoryIds.length > 0
-        ? prev
-        : { ...prev, categoryIds: matched },
-    );
+    setForm((prev) => {
+      if (sameIdList(prev.categoryIds, matched)) {
+        return prev;
+      }
+      return { ...prev, categoryIds: matched };
+    });
   }, [
     availableCategories,
     categoriesManual,
     debouncedTitle,
-    form.categoryIds.length,
     isEditing,
     transactionModalOpen,
   ]);
@@ -711,6 +716,14 @@ export function TransactionFormModal() {
       </ResponsiveDialogContent>
     </Dialog>
   );
+}
+
+function sameIdList(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const rightSet = new Set(right);
+  return left.every((id) => rightSet.has(id));
 }
 
 function TransactionFormSkeleton({

@@ -109,6 +109,21 @@ describe("matchCategoriesByTitle", () => {
     );
   });
 
+  it("matches skincare from face-care wording via shared уход", () => {
+    assert.deepEqual(
+      new Set(matchCategoriesByTitle("озон уход за лицом", categories)),
+      new Set([
+        "ozon-food",
+        "products",
+        "food",
+        "ozon",
+        "markets",
+        "skin",
+        "health",
+      ]),
+    );
+  });
+
   it("tolerates a one-letter typo in a long token", () => {
     assert.deepEqual(
       new Set(matchCategoriesByTitle("Озон уход за кажей", categories)),
@@ -121,6 +136,21 @@ describe("matchCategoriesByTitle", () => {
         "skin",
         "health",
       ]),
+    );
+  });
+
+  it("matches word forms via shared stem prefix", () => {
+    const faceCare = category({
+      id: "face",
+      title: "Уход за лицом",
+      parentCategoryId: "health",
+      path: "Здоровье/Уход за лицом",
+    });
+    assert.deepEqual(
+      new Set(
+        matchCategoriesByTitle("уход лицу", [...categories, faceCare]),
+      ),
+      new Set(["face", "health", "skin"]),
     );
   });
 

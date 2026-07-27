@@ -109,21 +109,27 @@ const STOP_TOKENS = new Set([
 
 const FUZZY_MIN_TOKEN_LENGTH = 4;
 const FUZZY_MAX_DISTANCE = 1;
+const FUZZY_SOFT_MIN_TOKEN_LENGTH = 5;
+const FUZZY_SOFT_MAX_DISTANCE = 2;
+const STEM_PREFIX_LENGTH = 4;
 
 type MatchCandidate = {
   category: TransactionCategoryDto;
   matchedTokenCount: number;
+  exactTokenCount: number;
 };
 
 /**
- * Selects categories whose title/keywords share any significant word with the
- * transaction title (stop words like «от», «в», «за» are ignored).
+ * Selects categories whose title/keywords share significant words with the
+ * transaction title. Prefers exact hits; also accepts near tokens (typos /
+ * word forms) when there is no perfect phrase match. Stop words are ignored.
  */
 export function matchCategoriesByTitle(
   title: string,
   categories: readonly TransactionCategoryDto[],
 ): string[] {
-  const titleTokens = expandTokenSet(significantTokens(tokenize(title)));
+  const rawTitleTokens = significantTokens(tokenize(title));
+  const titleTokens = expandTokenSet(rawTitleTokens);
   if (titleTokens.size === 0) {
     return [];
   }
@@ -132,24 +138,29 @@ export function matchCategoriesByTitle(
 
   for (const category of categories) {
     const phrases = [category.title, ...(category.keywords ?? [])];
-    let bestOverlap = 0;
+    let best: Omit<MatchCandidate, "category"> | null = null;
 
     for (const phrase of phrases) {
       const phraseTokens = significantTokens(tokenize(phrase));
       if (phraseTokens.length === 0) {
         continue;
       }
-      const overlap = countCoveredTokens(phraseTokens, titleTokens);
-      if (overlap > bestOverlap) {
-        bestOverlap = overlap;
+      const coverage = scorePhraseCoverage(phraseTokens, titleTokens);
+      if (coverage.matchedTokenCount === 0) {
+        continue;
+      }
+      if (
+        !best ||
+        coverage.exactTokenCount > best.exactTokenCount ||
+        (coverage.exactTokenCount === best.exactTokenCount &&
+          coverage.matchedTokenCount > best.matchedTokenCount)
+      ) {
+        best = coverage;
       }
     }
 
-    if (bestOverlap > 0) {
-      candidates.push({
-        category,
-        matchedTokenCount: bestOverlap,
-      });
+    if (best) {
+      candidates.push({ category, ...best });
     }
   }
 
@@ -170,38 +181,77 @@ export function matchCategoriesByTitle(
   return [...selected];
 }
 
-function countCoveredTokens(
+function scorePhraseCoverage(
   phraseTokens: string[],
   titleTokens: Set<string>,
-): number {
-  let count = 0;
+): { matchedTokenCount: number; exactTokenCount: number } {
+  let matchedTokenCount = 0;
+  let exactTokenCount = 0;
   for (const token of phraseTokens) {
-    if (tokenCoveredByTitle(token, titleTokens)) {
-      count += 1;
+    const quality = tokenMatchQuality(token, titleTokens);
+    if (quality === "none") {
+      continue;
+    }
+    matchedTokenCount += 1;
+    if (quality === "exact") {
+      exactTokenCount += 1;
     }
   }
-  return count;
+  return { matchedTokenCount, exactTokenCount };
 }
 
-function tokenCoveredByTitle(token: string, titleTokens: Set<string>): boolean {
+function tokenMatchQuality(
+  token: string,
+  titleTokens: Set<string>,
+): "exact" | "near" | "none" {
   const variants = expandToken(token);
   if ([...variants].some((variant) => titleTokens.has(variant))) {
-    return true;
+    return "exact";
   }
   if (token.length < FUZZY_MIN_TOKEN_LENGTH) {
-    return false;
+    return "none";
   }
   for (const titleToken of titleTokens) {
     if (titleToken.length < FUZZY_MIN_TOKEN_LENGTH) {
       continue;
     }
     for (const variant of variants) {
-      if (fuzzyTokenMatch(variant, titleToken)) {
-        return true;
+      if (nearTokenMatch(variant, titleToken)) {
+        return "near";
       }
     }
   }
-  return false;
+  return "none";
+}
+
+function nearTokenMatch(left: string, right: string): boolean {
+  if (sharedStemPrefix(left, right)) {
+    return true;
+  }
+  const lengthDelta = Math.abs(left.length - right.length);
+  if (
+    left.length >= FUZZY_SOFT_MIN_TOKEN_LENGTH &&
+    right.length >= FUZZY_SOFT_MIN_TOKEN_LENGTH &&
+    lengthDelta <= FUZZY_SOFT_MAX_DISTANCE
+  ) {
+    return levenshteinDistance(left, right) <= FUZZY_SOFT_MAX_DISTANCE;
+  }
+  if (lengthDelta > FUZZY_MAX_DISTANCE) {
+    return false;
+  }
+  return levenshteinDistance(left, right) <= FUZZY_MAX_DISTANCE;
+}
+
+/** Russian-ish word forms often share a 4+ letter stem prefix (лица/лицом). */
+function sharedStemPrefix(left: string, right: string): boolean {
+  if (
+    left.length < STEM_PREFIX_LENGTH ||
+    right.length < STEM_PREFIX_LENGTH
+  ) {
+    return false;
+  }
+  const prefix = left.slice(0, STEM_PREFIX_LENGTH);
+  return right.startsWith(prefix);
 }
 
 function significantTokens(tokens: string[]): string[] {
@@ -237,13 +287,6 @@ function expandToken(token: string): Set<string> {
     variants.add("озон");
   }
   return variants;
-}
-
-function fuzzyTokenMatch(left: string, right: string): boolean {
-  if (Math.abs(left.length - right.length) > FUZZY_MAX_DISTANCE) {
-    return false;
-  }
-  return levenshteinDistance(left, right) <= FUZZY_MAX_DISTANCE;
 }
 
 function levenshteinDistance(left: string, right: string): number {
