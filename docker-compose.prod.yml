@@ -30,7 +30,9 @@ services:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
     restart: unless-stopped
     ports:
-      - "${APP_HOST:-0.0.0.0}:${APP_PORT:-3000}:3000"
+      # Loopback by default: nginx terminates TLS and proxies to 127.0.0.1.
+      # Publishing on 0.0.0.0 would expose the app directly, bypassing TLS.
+      - "${APP_HOST:-127.0.0.1}:${APP_PORT:-3000}:3000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-paytracker}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paytracker}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}

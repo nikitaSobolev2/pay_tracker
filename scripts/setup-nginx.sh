@@ -120,7 +120,9 @@ write_nginx_config() {
     server_names="${domain} www.${domain}"
   fi
 
-  # Safari opens many parallel TLS streams; cap per-IP so one browser cannot wedge nginx.
+  # Abuse guard only. Home networks share a single NAT address across every
+  # device, and an idle keep-alive connection holds its slot for the full
+  # keepalive_timeout, so a low cap locks out ordinary visitors.
   cat >"/etc/nginx/conf.d/paytracker-limits.conf" <<'EOF'
 limit_conn_zone $binary_remote_addr zone=pt_conn:10m;
 EOF
@@ -133,7 +135,7 @@ server {
     server_name ${server_names};
 
     location / {
-        limit_conn pt_conn 20;
+        limit_conn pt_conn 100;
         proxy_pass http://127.0.0.1:${app_port};
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
