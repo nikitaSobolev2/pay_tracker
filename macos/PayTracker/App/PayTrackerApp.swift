@@ -16,6 +16,9 @@ struct PayTrackerApp: App {
                 .onOpenURL { url in
                     handleOpenURL(url)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .payTrackerOpenFastAdd)) { _ in
+                    openFastAdd()
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         consumePendingQuickAdd()
@@ -24,27 +27,40 @@ struct PayTrackerApp: App {
                 }
         }
         .defaultSize(width: 480, height: 560)
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("Fast Add") {
+                    openFastAdd()
+                }
+                .keyboardShortcut("n", modifiers: [.command])
+            }
+        }
 
-        Window("Quick Add", id: "quick-add") {
+        Window("Fast Add", id: "quick-add") {
             QuickAddView {
                 showQuickAdd = false
             }
-            .frame(minWidth: 360, minHeight: 420)
+            .frame(minWidth: 420, minHeight: 360)
         }
         .windowStyle(.automatic)
-        .defaultSize(width: 400, height: 460)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 480, height: 400)
+    }
+
+    private func openFastAdd() {
+        SessionStore.pendingQuickAdd = false
+        showQuickAdd = true
     }
 
     private func consumePendingQuickAdd() {
         guard SessionStore.pendingQuickAdd else { return }
-        SessionStore.pendingQuickAdd = false
-        showQuickAdd = true
+        openFastAdd()
     }
 
     private func handleOpenURL(_ url: URL) {
         guard url.scheme == "paytracker" else { return }
         if url.host == AppConstants.urlSchemeHostQuickAdd {
-            showQuickAdd = true
+            openFastAdd()
         }
     }
 }

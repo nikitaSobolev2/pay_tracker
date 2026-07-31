@@ -25,47 +25,26 @@ export function includeRowInCashflow(
   return includeRowInDefaultCashflow(kind);
 }
 
-/** Refunds reduce spending category totals (refunded purchase). */
+/** Category charts follow the transaction's own type. */
 export function categoryAttributionType(row: {
   type: TransactionType;
-  kind: TransactionKind;
 }): TransactionType {
-  if (row.kind === TransactionKind.Refund) {
-    return TransactionType.Spending;
-  }
   return row.type;
 }
 
-/** Signed amount for category buckets: refunds subtract (unless kind-scoped to refund). */
-export function categorySignedAmount(
-  row: { kind: TransactionKind },
-  amount: Decimal,
-  kindsFilter?: readonly TransactionKind[],
-): Decimal {
-  if (row.kind !== TransactionKind.Refund) {
-    return amount;
-  }
-  if (
-    isSingleKindFilter(kindsFilter) &&
-    kindsFilter[0] === TransactionKind.Refund
-  ) {
-    return amount;
-  }
-  return amount.neg();
+/** Signed amount for category buckets — magnitude stays as stored. */
+export function categorySignedAmount(amount: Decimal): Decimal {
+  return amount;
 }
 
-/**
- * Cashflow series placement for timeline/heatmap/totals:
- * refunds attribute to spending and sign negative unless refund-scoped.
- */
+/** Cashflow series placement for timeline/heatmap/totals. */
 export function attributeCashflowAmount(
-  row: { type: TransactionType; kind: TransactionKind },
+  row: { type: TransactionType },
   amount: Decimal,
-  kindsFilter?: readonly TransactionKind[],
 ): { type: TransactionType; amount: Decimal } {
   return {
     type: categoryAttributionType(row),
-    amount: categorySignedAmount(row, amount, kindsFilter),
+    amount: categorySignedAmount(amount),
   };
 }
 

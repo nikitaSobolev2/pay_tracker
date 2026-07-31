@@ -228,7 +228,7 @@ export async function buildCategoryActivity(
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
-    const signed = categorySignedAmount(row, display, kindsFilter);
+    const signed = categorySignedAmount(display);
     const attributionType = categoryAttributionType(row);
     totalByType.set(
       attributionType,
@@ -298,7 +298,7 @@ export async function buildCategorySlices(
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
-    const signed = categorySignedAmount(row, display, kindsFilter);
+    const signed = categorySignedAmount(display);
     const attributionType = categoryAttributionType(row);
     totalByType.set(
       attributionType,
@@ -410,7 +410,7 @@ export async function buildTimeline(
       bucketKeys.push(key);
     }
     const amount = await rowDisplayAmount(row, displayCurrency);
-    const attributed = attributeCashflowAmount(row, amount, kindsFilter);
+    const attributed = attributeCashflowAmount(row, amount);
     if (attributed.type === TransactionType.Spending) {
       spending.set(
         key,

@@ -11,23 +11,30 @@ enum MoneyFormatting {
         return formatter.string(from: value as NSDecimalNumber) ?? "\(amount) \(currency)"
     }
 
+    /// Compact labels like `59.3k RUB` (never `RUBk`).
     static func compact(amount: String, currency: String) -> String {
         guard let doubleValue = Double(amount) else {
             return format(amount: amount, currency: currency)
         }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currency
-        formatter.maximumFractionDigits = 1
-        if abs(doubleValue) >= 1_000_000 {
-            formatter.maximumFractionDigits = 1
-            let millions = doubleValue / 1_000_000
-            return "\(formatter.currencySymbol ?? currency)\(String(format: "%.1f", millions))M"
+        let magnitude = abs(doubleValue)
+        let scaled: Double
+        let suffix: String
+        if magnitude >= 1_000_000 {
+            scaled = doubleValue / 1_000_000
+            suffix = "M"
+        } else if magnitude >= 10_000 {
+            scaled = doubleValue / 1_000
+            suffix = "k"
+        } else {
+            return format(amount: amount, currency: currency)
         }
-        if abs(doubleValue) >= 1_000 {
-            let thousands = doubleValue / 1_000
-            return "\(formatter.currencySymbol ?? currency)\(String(format: "%.1f", thousands))k"
-        }
-        return format(amount: amount, currency: currency)
+
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.maximumFractionDigits = 1
+        numberFormatter.minimumFractionDigits = 0
+        let number = numberFormatter.string(from: NSNumber(value: scaled))
+            ?? String(format: "%.1f", scaled)
+        return "\(number)\(suffix) \(currency)"
     }
 }

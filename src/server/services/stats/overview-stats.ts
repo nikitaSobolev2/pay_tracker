@@ -64,19 +64,13 @@ export async function getOverviewStats(
       row.type === TransactionType.Spending &&
       includeRowInDefaultCashflow(row.kind),
   );
-  const refundRows = periodRows.filter(
-    (row) => row.kind === TransactionKind.Refund,
-  );
   const earningRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Earning &&
-      row.kind !== TransactionKind.Refund &&
       includeRowInDefaultCashflow(row.kind),
   );
 
-  const spendingTotal = (
-    await sumDisplay(spendingRows, input.displayCurrency)
-  ).minus(await sumDisplay(refundRows, input.displayCurrency));
+  const spendingTotal = await sumDisplay(spendingRows, input.displayCurrency);
   const earningTotal = await sumDisplay(earningRows, input.displayCurrency);
   const netTotal = earningTotal.minus(spendingTotal);
 
@@ -144,11 +138,7 @@ export async function getOverviewStats(
     debtsOwedToMe,
     spendingByCategory: await buildCategorySlices(
       input.userId,
-      periodRows.filter(
-        (row) =>
-          row.type === TransactionType.Spending ||
-          row.kind === TransactionKind.Refund,
-      ),
+      spendingRows,
       input.displayCurrency,
     ),
     earningByCategory: await buildCategorySlices(
@@ -303,26 +293,18 @@ async function loadPreviousPeriodTotals(input: {
     previousBounds.start,
     previousBounds.end,
   );
-  const previousSpending = (
-    await sumDisplay(
-      previousRows.filter(
-        (row) =>
-          row.type === TransactionType.Spending &&
-          includeRowInDefaultCashflow(row.kind),
-      ),
-      input.displayCurrency,
-    )
-  ).minus(
-    await sumDisplay(
-      previousRows.filter((row) => row.kind === TransactionKind.Refund),
-      input.displayCurrency,
+  const previousSpending = await sumDisplay(
+    previousRows.filter(
+      (row) =>
+        row.type === TransactionType.Spending &&
+        includeRowInDefaultCashflow(row.kind),
     ),
+    input.displayCurrency,
   );
   const previousEarning = await sumDisplay(
     previousRows.filter(
       (row) =>
         row.type === TransactionType.Earning &&
-        row.kind !== TransactionKind.Refund &&
         includeRowInDefaultCashflow(row.kind),
     ),
     input.displayCurrency,

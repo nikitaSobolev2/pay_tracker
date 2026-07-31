@@ -24,8 +24,12 @@ struct RootView: View {
         .onChange(of: showQuickAdd) { _, shouldOpen in
             if shouldOpen {
                 openWindow(id: "quick-add")
-                showQuickAdd = false
+                // Keep true until the Fast Add window dismisses via onDone.
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .payTrackerOpenFastAdd)) { _ in
+            openWindow(id: "quick-add")
+            showQuickAdd = true
         }
     }
 }
@@ -72,7 +76,7 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Quick Add", action: onQuickAdd)
+            Button("Fast Add", action: onQuickAdd)
                 .buttonStyle(.borderedProminent)
             Button("Sign Out", action: onSignOut)
         }

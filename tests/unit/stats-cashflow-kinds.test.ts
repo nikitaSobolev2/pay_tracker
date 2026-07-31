@@ -30,42 +30,23 @@ describe("cashflow kind helpers", () => {
     );
   });
 
-  it("attributes refunds to spending and signs them negative by default", () => {
+  it("attributes refunds as earnings with positive amounts", () => {
     const refund = {
       type: TransactionType.Earning,
       kind: TransactionKind.Refund,
     };
-    assert.equal(categoryAttributionType(refund), TransactionType.Spending);
-    assert.equal(
-      categorySignedAmount(refund, new Decimal(10)).toString(),
-      "-10",
-    );
+    assert.equal(categoryAttributionType(refund), TransactionType.Earning);
+    assert.equal(categorySignedAmount(new Decimal(10)).toString(), "10");
   });
 
-  it("keeps refund magnitude positive when kind-scoped to refund", () => {
-    const refund = { kind: TransactionKind.Refund };
-    assert.equal(
-      categorySignedAmount(refund, new Decimal(10), [
-        TransactionKind.Refund,
-      ]).toString(),
-      "10",
-    );
-  });
-
-  it("places refunds on spending series for timeline/heatmap", () => {
+  it("places refunds on the earning series for timeline/heatmap", () => {
     const refund = {
       type: TransactionType.Earning,
       kind: TransactionKind.Refund,
     };
-    const defaultAttr = attributeCashflowAmount(refund, new Decimal(25));
-    assert.equal(defaultAttr.type, TransactionType.Spending);
-    assert.equal(defaultAttr.amount.toString(), "-25");
-
-    const scopedAttr = attributeCashflowAmount(refund, new Decimal(25), [
-      TransactionKind.Refund,
-    ]);
-    assert.equal(scopedAttr.type, TransactionType.Spending);
-    assert.equal(scopedAttr.amount.toString(), "25");
+    const attributed = attributeCashflowAmount(refund, new Decimal(25));
+    assert.equal(attributed.type, TransactionType.Earning);
+    assert.equal(attributed.amount.toString(), "25");
   });
 
   it("leaves ordinary earning and spending unchanged", () => {

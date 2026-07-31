@@ -52,15 +52,53 @@ enum SessionStore {
 
     static func cacheOverview(_ data: Data) {
         defaults.set(data, forKey: AppConstants.overviewCacheKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: AppConstants.overviewCacheAtKey)
     }
 
     static func cachedOverviewData() -> Data? {
         defaults.data(forKey: AppConstants.overviewCacheKey)
     }
 
+    static func overviewCacheAge() -> TimeInterval? {
+        cacheAge(forKey: AppConstants.overviewCacheAtKey)
+    }
+
+    static func cacheHeatmap(_ data: Data) {
+        defaults.set(data, forKey: AppConstants.heatmapCacheKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: AppConstants.heatmapCacheAtKey)
+    }
+
+    static func cachedHeatmapData() -> Data? {
+        defaults.data(forKey: AppConstants.heatmapCacheKey)
+    }
+
+    static func heatmapCacheAge() -> TimeInterval? {
+        cacheAge(forKey: AppConstants.heatmapCacheAtKey)
+    }
+
+    private static func cacheAge(forKey key: String) -> TimeInterval? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        let savedAt = defaults.double(forKey: key)
+        guard savedAt > 0 else { return nil }
+        return Date().timeIntervalSince1970 - savedAt
+    }
+
+    static var displayCurrency: String {
+        get {
+            defaults.string(forKey: AppConstants.displayCurrencyKey) ?? "RUB"
+        }
+        set {
+            defaults.set(newValue, forKey: AppConstants.displayCurrencyKey)
+        }
+    }
+
     static func clearSession() {
         sessionToken = nil
         defaults.removeObject(forKey: AppConstants.overviewCacheKey)
+        defaults.removeObject(forKey: AppConstants.overviewCacheAtKey)
+        defaults.removeObject(forKey: AppConstants.heatmapCacheKey)
+        defaults.removeObject(forKey: AppConstants.heatmapCacheAtKey)
+        defaults.removeObject(forKey: AppConstants.displayCurrencyKey)
     }
 
     private static func saveKeychainToken(_ token: String) {

@@ -34,18 +34,24 @@ In Xcode:
 
 ## Link account
 
-1. On the web app, open **Devices** and show a login code.
-2. In the Mac app, enter the 6-digit code and approve the Mac from a logged-in device.
-3. Or use **Email** sign-in (same credentials as the website).
+1. Prefer **QR code** in the Mac app — scan with a logged-in phone and approve.
+2. Or enter the 6-digit **Devices** code, or sign in with email/username + password.
 
 The session token is stored in the App Group so widgets can call the API with `Authorization: Bearer …`.
 
-## Add Desktop widgets
+## Desktop widgets
 
-1. In Xcode: set **Team** on **PayTracker** and **PayTrackerWidget** targets.
-2. Signing & Capabilities → add **App Groups** → enable `group.site.paytracker.mac` on both targets.
-3. Product → Clean Build Folder, then ⌘R (run once).
-4. If gallery still empty, register the extension:
+| Gallery name | Sizes | Content |
+|--------------|-------|---------|
+| Balance | S / M / L | Net + income/spend bars, avg/day, weekly chart (Large) |
+| Top Categories | M / L | Ranked spending categories this month |
+| Recent Activity | M / L | Latest transactions with relative time |
+| Spending Activity | M / L | Daily spending intensity grid |
+
+1. Set **Team** on **PayTracker** and **PayTrackerWidget**.
+2. App Groups → `group.site.paytracker.mac` on both.
+3. Clean Build Folder, then ⌘R.
+4. If gallery stale:
 
 ```bash
 ./macos/scripts/register-widget.sh
@@ -53,24 +59,26 @@ The session token is stored in the App Group so widgets can call the API with `A
 
 5. Desktop → **Edit Widgets** → search **Pay Tracker**.
 
-Widget shows under app name **Pay Tracker**.
+**In-widget Add** prompts for amount, Spending/Earning, and optional title, then `POST /api/transactions`. Categories still use companion Quick Add.
 
 ## Layout
 
 ```
 macos/
   project.yml
+  scripts/register-widget.sh
   PayTracker/
-    App/        # companion UI, Quick Add, link account
-    Widget/     # WidgetKit timelines + Swift Charts
-    Shared/     # API client, models, SessionStore
-    Resources/  # entitlements, URL scheme
+    App/
+    Widget/
+    Shared/
+    Resources/
 ```
 
 ## API
 
-- Base URL: `https://pay-tracker.site` (override via `SessionStore.baseURL`)
+- Base URL: `https://pay-tracker.site`
 - Overview: `GET /api/stats/overview?dateRangeType=month`
+- Activity: `GET /api/stats/activity`
 - Categories: `GET /api/categories`
 - Create: `POST /api/transactions`
-- Auth: Better Auth bearer (`set-auth-token` / session token)
+- Auth: Better Auth bearer / session token

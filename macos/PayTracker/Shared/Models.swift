@@ -122,6 +122,22 @@ struct QrApprovalRequestDTO: Codable, Sendable {
     let expiresAt: String
 }
 
+struct ActivityHeatmapDayDTO: Codable, Identifiable, Sendable {
+    var id: String { date }
+    let date: String
+    let earning: String
+    let spending: String
+}
+
+struct ActivityHeatmapDTO: Codable, Sendable {
+    let displayCurrency: String
+    let start: String
+    let end: String
+    let days: [ActivityHeatmapDayDTO]
+    let maxEarning: String
+    let maxSpending: String
+}
+
 struct APIErrorBodyDTO: Codable, Sendable {
     struct ErrorPayload: Codable, Sendable {
         let code: String?

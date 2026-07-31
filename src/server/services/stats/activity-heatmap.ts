@@ -71,7 +71,7 @@ export async function getActivityHeatmap(
       row.fxRateDate,
     );
     const amount = toDecimal(display.amount);
-    const attributed = attributeCashflowAmount(row, amount, input.kinds);
+    const attributed = attributeCashflowAmount(row, amount);
     if (attributed.type === TransactionType.Earning) {
       const next = (earning.get(key) ?? toDecimal(0)).plus(attributed.amount);
       earning.set(key, next);

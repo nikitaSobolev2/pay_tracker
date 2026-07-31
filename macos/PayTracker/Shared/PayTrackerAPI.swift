@@ -4,6 +4,16 @@ struct PayTrackerAPI: Sendable {
     var baseURL: URL
     var sessionToken: String?
 
+    /// Shared session with a low connection cap so widget timelines can't open a TLS storm.
+    private static let urlSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 8
+        configuration.timeoutIntervalForResource = 12
+        configuration.httpMaximumConnectionsPerHost = 2
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
+    }()
+
     init(
         baseURL: URL = SessionStore.baseURL,
         sessionToken: String? = SessionStore.sessionToken
@@ -16,6 +26,13 @@ struct PayTrackerAPI: Sendable {
         try await get(
             path: "/api/stats/overview",
             query: ["dateRangeType": dateRangeType],
+            authenticated: true
+        )
+    }
+
+    func fetchActivityHeatmap() async throws -> ActivityHeatmapDTO {
+        try await get(
+            path: "/api/stats/activity",
             authenticated: true
         )
     }
@@ -156,14 +173,17 @@ struct PayTrackerAPI: Sendable {
         for line in cookieLines {
             for part in line.split(separator: ",") {
                 let trimmed = part.trimmingCharacters(in: .whitespaces)
-                if trimmed.lowercased().contains("session_token=")
-                    || trimmed.lowercased().hasPrefix("better-auth.session_token=")
-                    || trimmed.lowercased().contains("__secure-better-auth.session_token=") {
-                    let pair = trimmed.split(separator: ";", maxSplits: 1).first ?? Substring()
-                    if let equals = pair.firstIndex(of: "=") {
-                        let value = String(pair[pair.index(after: equals)...])
-                        if !value.isEmpty { return value }
-                    }
+                let lower = trimmed.lowercased()
+                // Match cookie name at the start of the Set-Cookie segment only.
+                guard lower.hasPrefix("better-auth.session_token=")
+                    || lower.hasPrefix("__secure-better-auth.session_token=")
+                else {
+                    continue
+                }
+                let pair = trimmed.split(separator: ";", maxSplits: 1).first ?? Substring()
+                if let equals = pair.firstIndex(of: "=") {
+                    let value = String(pair[pair.index(after: equals)...])
+                    if !value.isEmpty { return value }
                 }
             }
         }
@@ -260,6 +280,7 @@ struct PayTrackerAPI: Sendable {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.timeoutInterval = 8
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         // Better Auth CSRF rejects requests with a missing Origin (native clients).
         let origin = originHeaderValue
@@ -283,7 +304,7 @@ struct PayTrackerAPI: Sendable {
         }
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await Self.urlSession.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 throw PayTrackerAPIError.httpStatus(0, "Invalid response")
             }

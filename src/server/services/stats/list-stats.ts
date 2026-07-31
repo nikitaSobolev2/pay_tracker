@@ -103,20 +103,13 @@ export async function getListPageStats(
         cashflowRows.filter((row) => row.type === TransactionType.Spending),
         input.displayCurrency,
       )
-    : (
-        await sumDisplay(
-          rows.filter(
-            (row) =>
-              row.type === TransactionType.Spending &&
-              includeRowInCashflow(row.kind),
-          ),
-          input.displayCurrency,
-        )
-      ).minus(
-        await sumDisplay(
-          rows.filter((row) => row.kind === TransactionKind.Refund),
-          input.displayCurrency,
+    : await sumDisplay(
+        rows.filter(
+          (row) =>
+            row.type === TransactionType.Spending &&
+            includeRowInCashflow(row.kind),
         ),
+        input.displayCurrency,
       );
 
   const earningTotal = kindScoped
@@ -128,7 +121,6 @@ export async function getListPageStats(
         rows.filter(
           (row) =>
             row.type === TransactionType.Earning &&
-            row.kind !== TransactionKind.Refund &&
             includeRowInCashflow(row.kind),
         ),
         input.displayCurrency,
