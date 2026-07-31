@@ -120,6 +120,11 @@ write_nginx_config() {
     server_names="${domain} www.${domain}"
   fi
 
+  # Safari opens many parallel TLS streams; cap per-IP so one browser cannot wedge nginx.
+  cat >"/etc/nginx/conf.d/paytracker-limits.conf" <<'EOF'
+limit_conn_zone $binary_remote_addr zone=pt_conn:10m;
+EOF
+
   info "Writing ${NGINX_AVAILABLE}..."
   cat >"${NGINX_AVAILABLE}" <<EOF
 server {
@@ -128,14 +133,17 @@ server {
     server_name ${server_names};
 
     location / {
+        limit_conn pt_conn 20;
         proxy_pass http://127.0.0.1:${app_port};
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        # Do not force Connection: upgrade on normal requests (Safari/HTTP keep-alive footgun).
     }
 }
 EOF
