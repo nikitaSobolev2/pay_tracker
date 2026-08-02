@@ -63,10 +63,12 @@ export function EventMap({
   }, [pickable]);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
+    const root = containerRef.current;
+    if (!root) {
       return;
     }
+    // Definite binding — nested closures must not see RefObject's `| null`.
+    const container: HTMLDivElement = root;
 
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
@@ -74,7 +76,7 @@ export function EventMap({
     let createRetryTimer: number | null = null;
 
     function hasLaidOutSize(): boolean {
-      if (!container.isConnected || cancelled) {
+      if (cancelled || !container.isConnected) {
         return false;
       }
       const rect = container.getBoundingClientRect();

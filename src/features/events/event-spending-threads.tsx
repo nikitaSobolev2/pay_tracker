@@ -463,7 +463,9 @@ function AiSuggestionComment({
                 disabled={busy}
                 onClick={() => void apply(EventSpendingField.Amount)}
               >
-                {t("aiApplyAmount", { value: comment.suggestedAmount })}
+                {t("aiApplyAmount", {
+                  value: comment.suggestedAmount ?? "",
+                })}
               </Button>
             ) : null}
             {showApplyPrice ? (
