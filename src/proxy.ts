@@ -31,7 +31,12 @@ function isAuthPage(pathname: string): boolean {
 
 /** Public pages that do not require a session (and must stay open when logged in). */
 function isPublicContentPage(pathname: string): boolean {
-  return pathname === "/share" || pathname.startsWith("/share/");
+  return (
+    pathname === "/share" ||
+    pathname.startsWith("/share/") ||
+    pathname === "/event" ||
+    pathname.startsWith("/event/")
+  );
 }
 
 export default async function proxy(request: NextRequest) {

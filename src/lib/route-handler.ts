@@ -32,6 +32,9 @@ function statusForCode(code: ApiErrorCode): number {
   if (code === ApiErrorCode.Validation) {
     return 400;
   }
+  if (code === ApiErrorCode.Forbidden) {
+    return 403;
+  }
   if (code === ApiErrorCode.NotFound) {
     return 404;
   }
@@ -40,6 +43,9 @@ function statusForCode(code: ApiErrorCode): number {
   }
   if (code === ApiErrorCode.FxUnavailable) {
     return 422;
+  }
+  if (code === ApiErrorCode.RateLimited) {
+    return 429;
   }
   return 500;
 }

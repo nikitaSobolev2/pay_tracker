@@ -10,11 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const RESPONSIVE_DIALOG_CONTENT_CLASS = cn(
-  "flex flex-col gap-0 overflow-hidden p-0",
-  // Mobile: full-bleed — use vw so scroll-lock gutter does not leave a right strip
-  "top-0 right-0 bottom-0 left-0 h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 rounded-none",
-  "sm:top-1/2 sm:right-auto sm:bottom-auto sm:left-1/2 sm:h-auto sm:max-h-[92svh] sm:w-full",
-  "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
+  // Layout chrome only. Position/size live in .ui-dialog-popup--responsive (globals.css).
+  "ui-dialog-popup--responsive flex flex-col gap-0 overflow-hidden p-0",
 );
 
 type ResponsiveDialogContentProps = ComponentProps<typeof DialogContent> & {
@@ -31,11 +28,8 @@ export function ResponsiveDialogContent({
   return (
     <DialogContent
       showCloseButton={showCloseButton}
-      className={cn(
-        RESPONSIVE_DIALOG_CONTENT_CLASS,
-        size === "md" ? "sm:max-w-md" : "sm:max-w-xl",
-        className,
-      )}
+      data-dialog-size={size}
+      className={cn(RESPONSIVE_DIALOG_CONTENT_CLASS, className)}
       {...props}
     />
   );
@@ -48,7 +42,7 @@ export function ResponsiveDialogHeader({
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 shrink-0 border-b border-border/60 bg-popover",
+        "sticky top-0 z-20 shrink-0 border-b border-border/60 bg-popover sm:rounded-t-2xl",
         className,
       )}
       {...props}

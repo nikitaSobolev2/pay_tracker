@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   HandCoins,
   Home,
   List,
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { href: "/shared-charts", key: "sharedCharts", icon: Share2 },
   { href: "/categories", key: "categories", icon: Tags },
   { href: "/counterparties", key: "counterparties", icon: Users },
+  { href: "/events", key: "events", icon: CalendarDays },
 ] as const;
 
 const SETTINGS_ITEM = {

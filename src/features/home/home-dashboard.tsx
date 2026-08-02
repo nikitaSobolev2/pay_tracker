@@ -73,6 +73,8 @@ export function HomeDashboard() {
         absoluteRange ?? undefined,
       );
       setStats(result);
+    } catch {
+      setStats(null);
     } finally {
       setLoading(false);
     }

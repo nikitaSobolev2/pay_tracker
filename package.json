@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "fx:fetch": "tsx scripts/fetch-exchange-rates.ts",
+    "seed:event-ai": "tsx scripts/seed-event-ai-fixture.ts",
     "postinstall": "prisma generate",
     "test:unit": "tsx --test tests/unit/**/*.test.ts"
   },
@@ -27,7 +28,11 @@
     "date-fns-tz": "^3.2.0",
     "decimal.js": "^10.6.0",
     "input-otp": "^1.4.2",
+    "isomorphic-dompurify": "^3.21.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.26.0",
+    "marked": "^18.0.7",
+    "minio": "^8.0.7",
     "next": "16.2.11",
     "next-intl": "^4.13.4",
     "next-themes": "^0.4.6",
@@ -49,6 +54,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.20.0",

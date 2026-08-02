@@ -26,6 +26,39 @@ enum AuthApprovalStatus {
   CONSUMED
 }
 
+enum EventPublicity {
+  PUBLIC
+  PRIVATE
+}
+
+enum EventGuestPermission {
+  VIEW
+  EDIT
+}
+
+enum EventLinkType {
+  LOCATION
+  OTHER
+}
+
+enum EventSpendingCategory {
+  FOOD
+  DRINKS
+  ALCOHOL
+  HOUSING
+  OTHER
+}
+
+enum EventAttendanceStatus {
+  CERTAIN
+  UNCERTAIN
+}
+
+enum EventAiReportType {
+  OK
+  BAD
+}
+
 model User {
   id              String   @id @default(cuid())
   name            String
@@ -48,6 +81,7 @@ model User {
   transactions   Transaction[]
   loginTransfers LoginTransfer[]
   sharedCharts   SharedChart[]
+  events         Event[]
 }
 
 model Session {
@@ -128,16 +162,16 @@ model AuthApproval {
 }
 
 model UserCategory {
-  id               String          @id @default(cuid())
+  id               String                @id @default(cuid())
   userId           String
   title            String
   type             TransactionType
   parentCategoryId String?
-  keywords         String[]        @default([])
-  createdAt        DateTime        @default(now())
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent           UserCategory?   @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
-  children         UserCategory[]  @relation("CategoryHierarchy")
+  keywords         String[]              @default([])
+  createdAt        DateTime              @default(now())
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent           UserCategory?         @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  children         UserCategory[]        @relation("CategoryHierarchy")
   transactions     TransactionCategory[]
 
   @@index([userId, type, title])
@@ -146,36 +180,37 @@ model UserCategory {
 }
 
 model UserCounterparty {
-  id           String        @id @default(cuid())
-  userId       String
-  name         String
-  createdAt    DateTime      @default(now())
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id               String          @id @default(cuid())
+  userId           String
+  name             String
+  createdAt        DateTime        @default(now())
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  eventAttendances EventAttendee[]
 
   @@unique([userId, name])
   @@index([userId, name])
 }
 
 model Transaction {
-  id             String           @id @default(cuid())
+  id             String                @id @default(cuid())
   userId         String
   type           TransactionType
-  amount         Decimal          @db.Decimal(18, 4)
+  amount         Decimal               @db.Decimal(18, 4)
   inputCurrency  String
-  originalAmount Decimal          @db.Decimal(18, 4)
-  rateToRub      Decimal          @db.Decimal(18, 8)
-  fxRateDate     DateTime         @db.Date
+  originalAmount Decimal               @db.Decimal(18, 4)
+  rateToRub      Decimal               @db.Decimal(18, 8)
+  fxRateDate     DateTime              @db.Date
   title          String?
   occurredAt     DateTime
-  kind           TransactionKind  @default(DEFAULT)
+  kind           TransactionKind       @default(DEFAULT)
   counterpartyId String?
   idempotencyKey String
-  isDeleted      Boolean          @default(false)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  counterparty   UserCounterparty? @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
+  isDeleted      Boolean               @default(false)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counterparty   UserCounterparty?     @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
   categories     TransactionCategory[]
 
   @@unique([userId, idempotencyKey])
@@ -200,7 +235,7 @@ model ExchangeRate {
 model TransactionCategory {
   transactionId String
   categoryId    String
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transaction   Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   category      UserCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([transactionId, categoryId])
@@ -220,4 +255,208 @@ model SharedChart {
 
   @@index([userId])
   @@index([isPublic])
+}
+
+model Event {
+  id               String               @id @default(uuid())
+  userId           String
+  title            String
+  /// Optional markdown blurb shown on the event page.
+  description      String?
+  occursAt         DateTime
+  /// Optional end of the event; when set it must not precede occursAt.
+  endsAt           DateTime?
+  imageUrl         String?
+  address          String?
+  latitude         Decimal?             @db.Decimal(10, 7)
+  longitude        Decimal?             @db.Decimal(10, 7)
+  publicity        EventPublicity       @default(PRIVATE)
+  guestPermission  EventGuestPermission @default(VIEW)
+  currency         String
+  /// Owner name shown inside this event; falls back to User.name.
+  ownerDisplayName String?
+  /// Last owner heartbeat, so guests see the owner in the presence bar.
+  ownerLastSeenAt  DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees EventAttendee[]
+  links     EventLink[]
+  spendings EventSpending[]
+  payments  EventPayment[]
+  threads   EventCommentThread[]
+  messages  EventChatMessage[]
+  presences EventGuestPresence[]
+  aiReport  EventAiReport?
+
+  @@index([userId, occursAt])
+}
+
+model EventAttendee {
+  id             String                @id @default(cuid())
+  eventId        String
+  counterpartyId String
+  status         EventAttendanceStatus @default(CERTAIN)
+  createdAt      DateTime              @default(now())
+
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  counterparty UserCounterparty @relation(fields: [counterpartyId], references: [id], onDelete: Cascade)
+  payments     EventPayment[]
+
+  @@unique([eventId, counterpartyId])
+  @@index([counterpartyId])
+}
+
+model EventLink {
+  id        String        @id @default(cuid())
+  eventId   String
+  type      EventLinkType @default(OTHER)
+  title     String
+  url       String
+  createdAt DateTime      @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, type])
+}
+
+model EventSpending {
+  id            String                @id @default(cuid())
+  eventId       String
+  title         String
+  category      EventSpendingCategory @default(OTHER)
+  /// Quantity, multiplied by price to get the row total.
+  amount        Decimal               @db.Decimal(18, 4)
+  /// Unit label such as "шт", "литр", "кг".
+  amountUnit    String
+  price         Decimal               @db.Decimal(18, 4)
+  note          String?
+  /// Set only when the author is the event owner; guests use authorGuestId.
+  authorUserId  String?
+  authorGuestId String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  event       Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorGuest GuestUser?           @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+  threads     EventCommentThread[]
+
+  @@index([eventId, createdAt])
+  @@index([authorGuestId])
+}
+
+model EventPayment {
+  id         String   @id @default(cuid())
+  eventId    String
+  attendeeId String
+  amount     Decimal  @db.Decimal(18, 4)
+  paidAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  event    Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendee EventAttendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, paidAt])
+  @@index([attendeeId])
+}
+
+model EventCommentThread {
+  id         String    @id @default(cuid())
+  eventId    String
+  spendingId String
+  resolvedAt DateTime?
+  /// Marks threads opened by the analyzer, so a re-run can replace its own output.
+  createdByAi Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+
+  event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  spending EventSpending  @relation(fields: [spendingId], references: [id], onDelete: Cascade)
+  comments EventComment[]
+
+  @@index([eventId, spendingId, createdAt])
+}
+
+model EventComment {
+  id            String   @id @default(cuid())
+  threadId      String
+  body          String
+  authorUserId  String?
+  authorGuestId String?
+  /// AI comments have neither author id and carry optional item suggestions.
+  isAiGenerated   Boolean   @default(false)
+  suggestedAmount Decimal?  @db.Decimal(18, 4)
+  suggestedPrice  Decimal?  @db.Decimal(18, 4)
+  amountAppliedAt DateTime?
+  priceAppliedAt  DateTime?
+  createdAt     DateTime @default(now())
+
+  thread      EventCommentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorGuest GuestUser?         @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+
+  @@index([threadId, createdAt])
+  @@index([authorGuestId])
+}
+
+/// Latest analyzer verdict for an event; a re-run replaces the row.
+model EventAiReport {
+  id             String            @id @default(cuid())
+  eventId        String            @unique
+  type           EventAiReportType
+  /// Markdown, rendered for every viewer of the event.
+  reportMessage  String
+  /// Extra hints the owner typed before the run.
+  contextMessage String?
+  /// Locale the report text was generated in (en/ru).
+  responseLocale String?
+  /// Structured missing-item suggestions from the latest analyze run.
+  suggestedItems Json?
+  model          String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model EventChatMessage {
+  id            String   @id @default(cuid())
+  eventId       String
+  body          String
+  authorUserId  String?
+  authorGuestId String?
+  createdAt     DateTime @default(now())
+
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  authorGuest GuestUser? @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt])
+  @@index([authorGuestId])
+}
+
+model GuestUser {
+  id         String   @id @default(uuid())
+  name       String
+  ipAddress  String?
+  userAgent  String?
+  locale     String   @default("en")
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  presences EventGuestPresence[]
+  spendings EventSpending[]
+  comments  EventComment[]
+  messages  EventChatMessage[]
+}
+
+model EventGuestPresence {
+  id          String   @id @default(cuid())
+  eventId     String
+  guestUserId String
+  lastSeenAt  DateTime @default(now())
+
+  event Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest GuestUser @relation(fields: [guestUserId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, guestUserId])
+  @@index([eventId, lastSeenAt])
 }

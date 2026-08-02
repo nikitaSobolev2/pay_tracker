@@ -260,3 +260,275 @@
   align-items: center !important;
   align-content: center !important;
 }
+
+/* Rainbow shimmer for the event AI analyzer while a run is in flight. */
+@keyframes ai-rainbow-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.ai-rainbow-running {
+  background-size: 200% 200%;
+  animation: ai-rainbow-shift 2.4s ease infinite;
+}
+
+/*
+ * AI title color — solid fuchsia (not bg-clip-text).
+ * Dialog popups use CSS transform for centering; clip-text paints as a bar there.
+ */
+.ai-rainbow-text {
+  color: #e879f9;
+  -webkit-text-fill-color: #e879f9;
+  background-image: none;
+}
+
+/* Event page: keep content clear of the fixed desktop chat rail / drawer. */
+@media (min-width: 768px) {
+  [data-event-chat-gutter] {
+    margin-right: var(--event-chat-gutter, 3rem);
+  }
+}
+
+/*
+ * Stacking — named CSS only (Tailwind z-[…] often does not emit here).
+ * Island (40) < sheet (50) < dialog (1200)
+ */
+.event-page-stack,
+.event-bento-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.event-mobile-nav-island {
+  z-index: 40;
+}
+
+body:has([data-slot="dialog-overlay"][data-open]) .event-mobile-nav-island,
+body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
+  display: none !important;
+}
+
+.event-mobile-header-island {
+  z-index: 1100;
+}
+
+.event-chat-rail {
+  z-index: 1150;
+}
+
+.ui-dialog-layer {
+  z-index: 1200;
+}
+
+/*
+ * Dialog positioning in plain CSS — Tailwind utilities were unreliable here
+ * after the Leaflet stacking work. Center with translate (same as alert-dialog).
+ */
+.ui-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+}
+
+.ui-dialog-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1200;
+  width: 100%;
+  max-width: min(24rem, calc(100% - 2rem));
+  max-height: 92svh;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 0.75rem;
+  overflow: auto;
+}
+
+/* Responsive dialogs: full-bleed on small screens, centered card on sm+. */
+.ui-dialog-popup.ui-dialog-popup--responsive {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  transform: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .ui-dialog-popup.ui-dialog-popup--responsive {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: 100%;
+    height: auto;
+    max-height: 92svh;
+    transform: translate(-50%, -50%);
+    border-radius: 1rem;
+  }
+
+  .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="md"] {
+    max-width: 28rem;
+  }
+
+  .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="xl"] {
+    max-width: 36rem;
+  }
+}
+
+/*
+ * Leaflet panes use z-index up to 1000. Keep the whole map in a low stacking
+ * context so panes cannot paint above dialogs / sheets.
+ */
+.leaflet-container {
+  z-index: 0 !important;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Fixed centre pin for the address picker (HTML overlay, not a Leaflet marker). */
+.event-map-center-pin {
+  filter: drop-shadow(0 6px 10px rgb(225 29 72 / 0.45))
+    drop-shadow(0 2px 4px rgb(15 23 42 / 0.35));
+}
+
+.event-map-center-pin__head {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: 3px solid white;
+  background: linear-gradient(145deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 0 0 4px rgb(244 63 94 / 0.22);
+}
+
+.event-map-center-pin__stem {
+  width: 0.2rem;
+  height: 1.1rem;
+  margin-top: -1px;
+  background: linear-gradient(180deg, #e11d48 0%, #9f1239 100%);
+  border-radius: 9999px;
+}
+
+.event-map-center-pin__tip {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: -1px;
+  border-radius: 9999px;
+  background: #9f1239;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7);
+}
+
+.event-map-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.event-map-leaflet-marker__dot {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: 3px solid white;
+  background: linear-gradient(145deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
+  box-shadow:
+    0 4px 12px rgb(225 29 72 / 0.45),
+    0 0 0 4px rgb(244 63 94 / 0.2);
+}
+
+/* Custom markdown block: ```payment … ``` */
+.event-payment-details {
+  position: relative;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border-radius: 1.15rem;
+  border: 2px solid rgb(16 185 129 / 0.55);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(52 211 153 / 0.28), transparent 55%),
+    radial-gradient(100% 80% at 100% 100%, rgb(56 189 248 / 0.22), transparent 50%),
+    linear-gradient(145deg, rgb(6 78 59 / 0.55), rgb(15 23 42 / 0.35));
+  box-shadow:
+    0 10px 28px rgb(16 185 129 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+  padding: 1.15rem 1.25rem 1.25rem;
+  color: rgb(236 253 245);
+}
+
+:root:not(.dark) .event-payment-details {
+  border-color: rgb(16 185 129 / 0.45);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(167 243 208 / 0.85), transparent 55%),
+    radial-gradient(100% 80% at 100% 100%, rgb(186 230 253 / 0.7), transparent 50%),
+    linear-gradient(145deg, rgb(236 253 245), rgb(240 253 250));
+  box-shadow:
+    0 10px 24px rgb(16 185 129 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+  color: rgb(6 78 59);
+}
+
+.event-payment-details__label {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(52 211 153);
+}
+
+:root:not(.dark) .event-payment-details__label {
+  color: rgb(4 120 87);
+}
+
+.event-payment-details__body {
+  font-size: 1.125rem;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.event-payment-details__body > :first-child {
+  margin-top: 0;
+}
+
+.event-payment-details__body > :last-child {
+  margin-bottom: 0;
+}
+
+.event-payment-details__body p {
+  margin: 0.35rem 0;
+}
+
+.event-payment-details__body a {
+  color: rgb(125 211 252);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:root:not(.dark) .event-payment-details__body a {
+  color: rgb(3 105 161);
+}
+
+/*
+ * While a dialog/sheet is open, tear page maps out of the tree visually.
+ * display:none — not visibility — so tile layers cannot composite on top.
+ * Maps rendered inside the open dialog (address picker) stay visible.
+ */
+body:has([data-slot="dialog-overlay"][data-open]) [data-event-surface-map],
+body:has([data-slot="dialog-content"][data-open]) [data-event-surface-map],
+body:has([data-slot="sheet-overlay"][data-open]) [data-event-surface-map],
+body:has([data-slot="sheet-content"][data-open]) [data-event-surface-map],
+body:has([data-slot="dialog"][data-open]) [data-event-surface-map] {
+  display: none !important;
+}

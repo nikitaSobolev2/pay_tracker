@@ -32,6 +32,7 @@ export function formatMoney(
   }
 }
 
+/** Chart labels use whole currency units (half-up), never fractional cents. */
 export function formatChartMoney(
   value: string | number | Decimal,
   currency: string,

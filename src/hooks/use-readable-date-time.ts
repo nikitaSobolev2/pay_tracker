@@ -4,13 +4,38 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 import { useAppUser } from "@/hooks/use-app-user";
-import { getReadableDateParts } from "@/lib/dates";
+import {
+  getBrowserTimezone,
+  getReadableDateParts,
+  type ReadableDateKind,
+} from "@/lib/dates";
 
-export function useReadableDateTime() {
+const KIND_KEYS: Record<ReadableDateKind, string> = {
+  today: "todayAt",
+  yesterday: "yesterdayAt",
+  tomorrow: "tomorrowAt",
+  sameYear: "sameYearAt",
+  otherYear: "otherYearAt",
+};
+
+export type ReadableDateTimeFormatter = (value: string | Date) => string;
+
+export function useReadableDateTime(): ReadableDateTimeFormatter {
+  const { user } = useAppUser();
+  return useDateTimeFormatter(user?.timezone ?? "UTC");
+}
+
+/**
+ * Same formatting, but resolves the zone from the browser so public pages keep
+ * working for guests who have no account preferences to read.
+ */
+export function useGuestSafeReadableDateTime(): ReadableDateTimeFormatter {
+  return useDateTimeFormatter(getBrowserTimezone());
+}
+
+function useDateTimeFormatter(timezone: string): ReadableDateTimeFormatter {
   const locale = useLocale();
   const t = useTranslations("datetime");
-  const { user } = useAppUser();
-  const timezone = user?.timezone ?? "UTC";
 
   return useCallback(
     (value: string | Date): string => {
@@ -18,21 +43,7 @@ export function useReadableDateTime() {
       if (!parts) {
         return typeof value === "string" ? value : value.toISOString();
       }
-
-      if (parts.kind === "today") {
-        return t("todayAt", { weekday: parts.weekday, time: parts.time });
-      }
-      if (parts.kind === "yesterday") {
-        return t("yesterdayAt", { weekday: parts.weekday, time: parts.time });
-      }
-      if (parts.kind === "sameYear") {
-        return t("sameYearAt", {
-          weekday: parts.weekday,
-          date: parts.date,
-          time: parts.time,
-        });
-      }
-      return t("otherYearAt", {
+      return t(KIND_KEYS[parts.kind], {
         weekday: parts.weekday,
         date: parts.date,
         year: parts.year,

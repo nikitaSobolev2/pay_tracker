@@ -227,7 +227,12 @@ export function elapsedDaysInRange(
   return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
-export type ReadableDateKind = "today" | "yesterday" | "sameYear" | "otherYear";
+export type ReadableDateKind =
+  | "today"
+  | "yesterday"
+  | "tomorrow"
+  | "sameYear"
+  | "otherYear";
 
 export type ReadableDateParts = {
   kind: ReadableDateKind;
@@ -257,12 +262,15 @@ export function getReadableDateParts(
   const target = getCalendarParts(date, timezone);
   const now = getCalendarParts(reference, timezone);
   const yesterday = shiftCalendarDay(now, -1);
+  const tomorrow = shiftCalendarDay(now, 1);
 
   let kind: ReadableDateKind = "otherYear";
   if (isSameCalendarDay(target, now)) {
     kind = "today";
   } else if (isSameCalendarDay(target, yesterday)) {
     kind = "yesterday";
+  } else if (isSameCalendarDay(target, tomorrow)) {
+    kind = "tomorrow";
   } else if (target.year === now.year) {
     kind = "sameYear";
   }
@@ -291,6 +299,30 @@ export function getReadableDateParts(
       hourCycle: "h23",
     }).format(date),
   };
+}
+
+export function isSameZonedDay(
+  left: Date,
+  right: Date,
+  timezone: string,
+): boolean {
+  return isSameCalendarDay(
+    getCalendarParts(left, timezone),
+    getCalendarParts(right, timezone),
+  );
+}
+
+export function formatZonedTime(
+  date: Date,
+  locale: string,
+  timezone: string,
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 function getCalendarParts(date: Date, timezone: string): CalendarParts {
