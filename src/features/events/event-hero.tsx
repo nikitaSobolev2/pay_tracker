@@ -32,8 +32,10 @@ export function EventHero({ viewers, onEdit, onRenamed }: EventHeroProps) {
     <section className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
       <div
         className={cn(
-          "relative h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-transparent",
-          event.imageUrl && "bg-none",
+          "relative w-full overflow-hidden",
+          event.imageUrl
+            ? "max-h-[650px] md:max-h-[1000px]"
+            : "h-40 bg-gradient-to-br from-primary/30 via-primary/10 to-transparent",
         )}
       >
         {event.imageUrl ? (
@@ -41,7 +43,7 @@ export function EventHero({ viewers, onEdit, onRenamed }: EventHeroProps) {
           <img
             src={event.imageUrl}
             alt=""
-            className="size-full object-cover"
+            className="h-auto w-full max-h-[650px] object-cover object-center md:max-h-[1000px]"
           />
         ) : null}
       </div>
