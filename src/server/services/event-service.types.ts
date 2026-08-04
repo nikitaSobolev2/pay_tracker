@@ -38,6 +38,7 @@ export type UpdateEventInput = {
   readonly publicity?: EventPublicity;
   readonly guestPermission?: EventGuestPermission;
   readonly ownerDisplayName?: string | null;
+  readonly manualPerPersonAmount?: string | null;
 } & EventLocationInput;
 
 export type EventListItemDto = {
@@ -139,6 +140,8 @@ export type EventDetailDto = {
   readonly guestPermission: EventGuestPermission;
   readonly currency: string;
   readonly ownerName: string;
+  /** Owner override for per-person share; null = computed from spendings. */
+  readonly manualPerPersonAmount: string | null;
   readonly links: readonly EventLinkDto[];
   readonly attendees: readonly EventAttendeeDto[];
   readonly spendings: readonly EventSpendingDto[];

@@ -72,4 +72,37 @@ describe("buildEventSummary", () => {
 
     assert.equal(summary.drinksAndAlcohol, "300.00");
   });
+
+  it("uses the manual per-person amount for share, balances, and expected", () => {
+    const summary = buildEventSummary({
+      attendees,
+      spendings,
+      payments: [{ attendeeId: "a", amount: "500" }],
+      manualPerPersonAmount: "500",
+    });
+
+    assert.equal(summary.share.average, "500.00");
+    assert.equal(summary.share.lowerBound, "500.00");
+    assert.equal(summary.share.upperBound, "500.00");
+    assert.equal(summary.share.hasUncertain, false);
+    assert.equal(summary.paidProgress.expected, "1500.00");
+
+    const anna = summary.balances.find(
+      (balance) => balance.attendeeId === "a",
+    );
+    assert.equal(anna?.share, "500.00");
+    assert.equal(anna?.hasPaidShare, true);
+  });
+
+  it("falls back to computed share when manual amount is cleared", () => {
+    const summary = buildEventSummary({
+      attendees,
+      spendings,
+      payments: [],
+      manualPerPersonAmount: null,
+    });
+
+    assert.equal(summary.share.average, "300.00");
+    assert.equal(summary.share.hasUncertain, true);
+  });
 });

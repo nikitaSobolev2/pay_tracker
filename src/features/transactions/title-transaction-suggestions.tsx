@@ -203,9 +203,9 @@ export function TitleTransactionSuggestions({
   const desktopPanel = (
     <aside
       className={cn(
-        "fixed z-[80] hidden flex-col overflow-hidden rounded-2xl border border-border/60 bg-popover shadow-lg sm:flex",
+        "fixed hidden flex-col overflow-hidden rounded-2xl border border-border/60 bg-popover shadow-lg sm:flex",
       )}
-      style={panelStyle}
+      style={{ zIndex: 1300, ...panelStyle }}
     >
       <div className="border-b border-border/50 px-3 py-2 text-xs font-medium text-muted-foreground">
         {t("titleSuggestions")}

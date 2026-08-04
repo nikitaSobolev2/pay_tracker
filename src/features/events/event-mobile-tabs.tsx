@@ -26,8 +26,10 @@ export function EventMobileTabs({
       {activeTab === EventTab.Overview ? (
         <>
           {hasLocation ? <EventMapCard mapEnabled={mapEnabled} /> : null}
-          <EventTotalCard />
-          <EventPerPersonCard />
+          {event.spendings.length > 0 ? <EventTotalCard /> : null}
+          {event.spendings.length > 0 || event.manualPerPersonAmount != null ? (
+            <EventPerPersonCard />
+          ) : null}
           <EventPaidProgressCard />
           <EventAttendanceCard />
         </>

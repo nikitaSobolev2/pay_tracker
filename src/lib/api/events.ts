@@ -40,6 +40,7 @@ export type UpdateEventBody = Partial<
   Omit<CreateEventBody, "counterpartyIds">
 > & {
   ownerDisplayName?: string | null;
+  manualPerPersonAmount?: string | null;
 };
 
 export type SpendingBody = {

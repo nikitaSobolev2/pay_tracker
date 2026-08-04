@@ -1,8 +1,12 @@
 "use client";
 
+import { Pencil, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Cell, Pie, PieChart } from "recharts";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -10,8 +14,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Input } from "@/components/ui/input";
+import { updateEvent } from "@/lib/api/events";
 import { formatChartMoney } from "@/lib/money";
-import { EventSpendingCategory } from "@/types/enums";
+import { EventAuthorRole, EventSpendingCategory } from "@/types/enums";
 
 import { useEventContext } from "./event-context";
 import {
@@ -142,19 +148,125 @@ export function EventPerPersonCard({
   readonly className?: string;
 }) {
   const t = useTranslations("events");
-  const { event } = useEventContext();
+  const { event, viewer, refreshEvent } = useEventContext();
   const { share } = event.summary;
+  const isOwner = viewer.role === EventAuthorRole.Owner;
+  const isManual = event.manualPerPersonAmount != null;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(share.average);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit() {
+    setDraft(event.manualPerPersonAmount ?? share.average);
+    setEditing(true);
+  }
+
+  async function saveManual(amount: string | null) {
+    setSaving(true);
+    try {
+      await updateEvent(event.id, { manualPerPersonAmount: amount });
+      await refreshEvent();
+      setEditing(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("perPersonSaveFailed"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function submitDraft() {
+    const trimmed = draft.trim();
+    if (!/^\d+(\.\d{1,4})?$/.test(trimmed)) {
+      toast.error(t("perPersonInvalidAmount"));
+      return;
+    }
+    void saveManual(trimmed);
+  }
 
   return (
     <Card className={className}>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-base">{t("perPersonTitle")}</CardTitle>
+        {isOwner && !editing ? (
+          <div className="flex items-center gap-1">
+            {isManual ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={saving}
+                onClick={() => void saveManual(null)}
+              >
+                {t("perPersonClear")}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label={t("perPersonEdit")}
+              disabled={saving}
+              onClick={startEdit}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-3xl font-semibold tabular-nums">
-          {formatChartMoney(share.average, event.currency)}
-        </p>
-        {share.hasUncertain ? (
+        {editing ? (
+          <div className="flex items-center gap-2">
+            <Input
+              inputMode="decimal"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  submitDraft();
+                }
+                if (event.key === "Escape") {
+                  setEditing(false);
+                }
+              }}
+              disabled={saving}
+              className="h-10 text-xl font-semibold tabular-nums"
+              autoFocus
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              onClick={submitDraft}
+            >
+              {t("perPersonSave")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label={t("perPersonCancel")}
+              disabled={saving}
+              onClick={() => setEditing(false)}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        ) : (
+          <p className="text-3xl font-semibold tabular-nums">
+            {formatChartMoney(share.average, event.currency)}
+          </p>
+        )}
+        {isManual ? (
+          <p className="text-sm text-muted-foreground">
+            {t("perPersonManualHint")}
+          </p>
+        ) : share.hasUncertain ? (
           <div className="space-y-1.5">
             <p className="text-sm text-muted-foreground">
               {t("perPersonRange", {

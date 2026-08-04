@@ -20,6 +20,8 @@ export const auth = betterAuth({
   // Devices page calls listSessions, which uses freshSessionMiddleware.
   // Default freshAge (1 day) blocks listing after the session ages out.
   session: {
+    expiresIn: 60 * 60 * 24 * 365, // 1 year
+    updateAge: 60 * 60 * 24 * 7, // refresh expiry weekly while active
     freshAge: 0,
   },
   plugins: [

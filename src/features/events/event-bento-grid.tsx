@@ -25,8 +25,10 @@ export function EventBentoGrid({
           className="md:col-span-1 md:row-span-2 xl:col-span-1"
         />
       ) : null}
-      <EventTotalCard />
-      <EventPerPersonCard />
+      {event.spendings.length > 0 ? <EventTotalCard /> : null}
+      {event.spendings.length > 0 || event.manualPerPersonAmount != null ? (
+        <EventPerPersonCard />
+      ) : null}
       <EventPaidProgressCard />
       <EventAttendanceCard />
       <EventSpendingsList className="md:col-span-2 xl:col-span-3" />

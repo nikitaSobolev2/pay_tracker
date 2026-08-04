@@ -273,6 +273,8 @@ model Event {
   publicity        EventPublicity       @default(PRIVATE)
   guestPermission  EventGuestPermission @default(VIEW)
   currency         String
+  /// Owner-set per-person share; null means compute from spendings.
+  manualPerPersonAmount Decimal? @db.Decimal(18, 4)
   /// Owner name shown inside this event; falls back to User.name.
   ownerDisplayName String?
   /// Last owner heartbeat, so guests see the owner in the presence bar.

@@ -124,8 +124,15 @@ export async function updateEvent(input: UpdateEventInput): Promise<void> {
         input.ownerDisplayName === undefined
           ? undefined
           : emptyToNull(input.ownerDisplayName),
+      manualPerPersonAmount:
+        input.manualPerPersonAmount === undefined
+          ? undefined
+          : input.manualPerPersonAmount,
     },
   });
+  if (input.manualPerPersonAmount !== undefined) {
+    await bumpEventContent(input.eventId);
+  }
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {
@@ -196,6 +203,7 @@ export async function getEventDetail(
       guestPermission: event.guestPermission,
       currency: event.currency,
       ownerName: access.viewer.displayName,
+      manualPerPersonAmount: event.manualPerPersonAmount?.toString() ?? null,
       links: event.links.map(toLinkDto),
       attendees,
       spendings,
@@ -215,6 +223,7 @@ export async function getEventDetail(
           attendeeId: payment.attendeeId,
           amount: payment.amount.toString(),
         })),
+        manualPerPersonAmount: event.manualPerPersonAmount?.toString() ?? null,
       }),
       aiReport: event.aiReport
         ? {
@@ -241,7 +250,11 @@ export async function getEventDetail(
 export async function getEventSettlement(
   eventId: string,
 ): Promise<EventSettlementResponse> {
-  const [attendeeRows, spendingRows, paymentRows] = await Promise.all([
+  const [eventRow, attendeeRows, spendingRows, paymentRows] = await Promise.all([
+    prisma.event.findUniqueOrThrow({
+      where: { id: eventId },
+      select: { manualPerPersonAmount: true },
+    }),
     prisma.eventAttendee.findMany({
       where: { eventId },
       orderBy: { createdAt: "asc" },
@@ -278,6 +291,7 @@ export async function getEventSettlement(
         attendeeId: payment.attendeeId,
         amount: payment.amount.toString(),
       })),
+      manualPerPersonAmount: eventRow.manualPerPersonAmount?.toString() ?? null,
     }),
   };
 }
