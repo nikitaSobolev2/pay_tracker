@@ -1,13 +1,10 @@
-import { z } from "zod";
-
 import { jsonOk } from "@/lib/api-response";
 import { requireEventAccess } from "@/lib/event-access";
+import { messageAttachmentBodySchema } from "@/lib/message-attachment-schema";
 import { handleRouteError } from "@/lib/route-handler";
 import { listMessages, postMessage } from "@/server/services/event-chat-service";
 
-const createBodySchema = z.object({
-  body: z.string().min(1).max(2000),
-});
+const createBodySchema = messageAttachmentBodySchema;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -38,6 +35,7 @@ export async function POST(request: Request, context: RouteContext) {
       eventId: id,
       viewer: access.viewer,
       body: payload.body,
+      imageUrl: payload.imageUrl,
     });
     return jsonOk({ messageId }, { status: 201 });
   } catch (error) {

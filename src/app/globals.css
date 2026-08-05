@@ -279,6 +279,28 @@
   animation: ai-rainbow-shift 2.4s ease infinite;
 }
 
+/* Animated rainbow frame around the housing poll card. */
+.poll-rainbow-frame {
+  border-radius: 0.875rem;
+  padding: 2px;
+  background: linear-gradient(
+    120deg,
+    #f43f5e,
+    #f59e0b,
+    #22c55e,
+    #38bdf8,
+    #a855f7,
+    #f43f5e
+  );
+  background-size: 300% 300%;
+  animation: ai-rainbow-shift 4s ease infinite;
+}
+
+.poll-rainbow-frame > [data-slot="card"] {
+  border-radius: calc(0.875rem - 2px);
+  box-shadow: none;
+}
+
 /*
  * AI title color — solid fuchsia (not bg-clip-text).
  * Dialog popups use CSS transform for centering; clip-text paints as a bar there.
@@ -351,6 +373,37 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
   overflow: auto;
 }
 
+/* Nested address / map picker (non-responsive). Prefer ResponsiveDialog + size=map. */
+.ui-dialog-overlay.ui-dialog-overlay--nested {
+  z-index: 1400 !important;
+  background-color: rgb(0 0 0 / 0.75);
+}
+
+.ui-dialog-popup.ui-dialog-popup--map:not(.ui-dialog-popup--responsive) {
+  z-index: 1400 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: min(50rem, calc(100vw - 1.5rem)) !important;
+  min-width: min(50rem, calc(100vw - 1.5rem)) !important;
+  max-width: min(50rem, calc(100vw - 1.5rem)) !important;
+  height: min(90svh, 56rem) !important;
+  max-height: 92svh !important;
+  transform: translate(-50%, -50%) !important;
+  overflow: hidden !important;
+}
+
+.ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="map"] {
+  z-index: 1400 !important;
+}
+
+.event-address-picker-map--lg {
+  height: min(58svh, 36rem) !important;
+}
+
 /* Responsive dialogs: full-bleed on small screens, centered card on sm+. */
 .ui-dialog-popup.ui-dialog-popup--responsive {
   top: 0;
@@ -385,6 +438,13 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
 
   .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="xl"] {
     max-width: 36rem;
+  }
+
+  .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="map"] {
+    width: min(50rem, calc(100vw - 1.5rem));
+    max-width: min(50rem, calc(100vw - 1.5rem));
+    height: min(90svh, 56rem);
+    max-height: 92svh;
   }
 }
 

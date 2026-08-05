@@ -2,6 +2,7 @@
 
 import { EventAttendanceCard } from "./event-attendance-chart";
 import { useEventContext } from "./event-context";
+import { EventLocationPollCard } from "./event-location-poll-card";
 import { EventMapCard } from "./event-map-card";
 import { EventPaidProgressCard } from "./event-paid-progress-chart";
 import { EventPeoplePanel } from "./event-people-panel";
@@ -25,6 +26,7 @@ export function EventBentoGrid({
           className="md:col-span-1 md:row-span-2 xl:col-span-1"
         />
       ) : null}
+      <EventLocationPollCard className="w-full md:col-span-2 xl:col-span-3" />
       {event.spendings.length > 0 ? <EventTotalCard /> : null}
       {event.spendings.length > 0 || event.manualPerPersonAmount != null ? (
         <EventPerPersonCard />

@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
 import { EventAuthorRole } from "@/types/enums";
 import type { EventAuthorDto } from "./event-service.types";
+import { normalizeMessageAttachment } from "./message-attachment";
 
 export type EventChatMessageDto = {
   readonly id: string;
   readonly body: string;
+  readonly imageUrl: string | null;
   readonly author: EventAuthorDto;
   readonly createdAt: string;
   readonly isMine: boolean;
@@ -25,11 +27,11 @@ export type ListMessagesInput = {
 export type PostMessageInput = {
   readonly eventId: string;
   readonly viewer: EventViewer;
-  readonly body: string;
+  readonly body?: string;
+  readonly imageUrl?: string | null;
 };
 
 const DEFAULT_PAGE_SIZE = 100;
-const MAX_BODY_LENGTH = 2000;
 
 export async function listMessages(
   input: ListMessagesInput,
@@ -55,6 +57,7 @@ export async function listMessages(
   return messages.map((message) => ({
     id: message.id,
     body: message.body,
+    imageUrl: message.imageUrl,
     author: resolveAuthor({
       ownerDisplayName: owner.ownerDisplayName,
       ownerName: owner.ownerName,
@@ -68,10 +71,15 @@ export async function listMessages(
 }
 
 export async function postMessage(input: PostMessageInput): Promise<string> {
+  const content = normalizeMessageAttachment({
+    body: input.body,
+    imageUrl: input.imageUrl,
+  });
   const message = await prisma.eventChatMessage.create({
     data: {
       eventId: input.eventId,
-      body: normalizeBody(input.body),
+      body: content.body,
+      imageUrl: content.imageUrl,
       authorUserId: input.viewer.userId,
       authorGuestId: input.viewer.guestUserId,
     },
@@ -136,12 +144,4 @@ async function loadOwnerNames(eventId: string): Promise<{
     ownerDisplayName: event.ownerDisplayName,
     ownerName: event.user.name,
   };
-}
-
-function normalizeBody(body: string): string {
-  const trimmed = body.trim();
-  if (!trimmed) {
-    throw new AppServiceError(ApiErrorCode.Validation, "Message is empty");
-  }
-  return trimmed.slice(0, MAX_BODY_LENGTH);
 }

@@ -57,6 +57,8 @@ export type EventFormDialogProps = {
   readonly eventId?: string | null;
   /** Publicity and guest rights belong to the owner only. */
   readonly canManageSharing?: boolean;
+  /** Date/time and address belong to the owner only. */
+  readonly canManageScheduleAndLocation?: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onSubmit: (values: EventFormValues) => Promise<void>;
 };
@@ -98,6 +100,7 @@ export function EventFormDialog({
   saving,
   eventId = null,
   canManageSharing = true,
+  canManageScheduleAndLocation = true,
   onOpenChange,
   onSubmit,
 }: EventFormDialogProps) {
@@ -182,15 +185,17 @@ export function EventFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("date")}</Label>
-            <EventDateRangePicker
-              value={{ occursAt: values.occursAt, endsAt: values.endsAt }}
-              onChange={(schedule) =>
-                setValues((current) => ({ ...current, ...schedule }))
-              }
-            />
-          </div>
+          {canManageScheduleAndLocation ? (
+            <div className="space-y-2">
+              <Label>{t("date")}</Label>
+              <EventDateRangePicker
+                value={{ occursAt: values.occursAt, endsAt: values.endsAt }}
+                onChange={(schedule) =>
+                  setValues((current) => ({ ...current, ...schedule }))
+                }
+              />
+            </div>
+          ) : null}
 
           <EventCoverField
             value={values.imageUrl}
@@ -266,13 +271,15 @@ export function EventFormDialog({
             </div>
           </div>
 
-          <EventAddressPicker
-            mapActive={open}
-            value={values.location}
-            onChange={(location) =>
-              setValues((current) => ({ ...current, location }))
-            }
-          />
+          {canManageScheduleAndLocation ? (
+            <EventAddressPicker
+              mapActive={open}
+              value={values.location}
+              onChange={(location) =>
+                setValues((current) => ({ ...current, location }))
+              }
+            />
+          ) : null}
         </ResponsiveDialogBody>
 
         <ResponsiveDialogFooter>

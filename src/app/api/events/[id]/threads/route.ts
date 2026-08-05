@@ -2,15 +2,15 @@ import { z } from "zod";
 
 import { jsonOk } from "@/lib/api-response";
 import { requireEventAccess } from "@/lib/event-access";
+import { messageAttachmentBodySchema } from "@/lib/message-attachment-schema";
 import { handleRouteError } from "@/lib/route-handler";
 import {
   createThread,
   listThreads,
 } from "@/server/services/event-thread-service";
 
-const createBodySchema = z.object({
+const createBodySchema = messageAttachmentBodySchema.extend({
   spendingId: z.string().min(1),
-  body: z.string().min(1).max(2000),
 });
 
 type RouteContext = {
@@ -44,6 +44,7 @@ export async function POST(request: Request, context: RouteContext) {
       spendingId: body.spendingId,
       viewer: access.viewer,
       body: body.body,
+      imageUrl: body.imageUrl,
     });
     const threads = await listThreads({
       eventId: id,

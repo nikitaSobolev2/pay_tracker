@@ -79,8 +79,8 @@ export function resolveEventViewer(
     guestUserId: input.guestUserId,
     displayName: input.guestName ?? "Guest",
     canEdit,
-    // Edit guests can record payments the same way they edit the list.
-    canManagePayments: canEdit,
+    // Only the event owner records payments ("Add sum").
+    canManagePayments: false,
     isAuthenticated: input.sessionUserId !== null,
   };
 }

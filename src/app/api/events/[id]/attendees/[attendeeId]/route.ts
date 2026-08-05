@@ -35,8 +35,11 @@ export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { id, attendeeId } = await context.params;
     const access = await requireEventAccess(id);
-    assertCanEdit(access.viewer);
-    await removeAttendee({ eventId: id, attendeeId });
+    await removeAttendee({
+      eventId: id,
+      attendeeId,
+      viewer: access.viewer,
+    });
     return jsonOk({ ok: true });
   } catch (error) {
     return handleRouteError(error);

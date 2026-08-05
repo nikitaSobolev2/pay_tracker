@@ -15,7 +15,7 @@ const RESPONSIVE_DIALOG_CONTENT_CLASS = cn(
 );
 
 type ResponsiveDialogContentProps = ComponentProps<typeof DialogContent> & {
-  readonly size?: "md" | "xl";
+  readonly size?: "md" | "xl" | "map";
 };
 
 /** Full-viewport on mobile, centered card on sm+. */

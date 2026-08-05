@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { reverseAddress, searchAddress } from "@/lib/api/geocode";
+import { cn } from "@/lib/utils";
 import type { GeocodeResultDto } from "@/server/services/geocode-service";
 
 import { EventMapLazy } from "./event-map-lazy";
@@ -26,6 +27,8 @@ export type EventAddressPickerProps = {
    * is created only after the modal is shown (avoids zero-size / transform bugs).
    */
   readonly mapActive?: boolean;
+  /** Extra classes for the map pane (e.g. taller map in a large dialog). */
+  readonly mapClassName?: string;
 };
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -38,6 +41,7 @@ export function EventAddressPicker({
   value,
   onChange,
   mapActive = true,
+  mapClassName,
 }: EventAddressPickerProps) {
   const t = useTranslations("events");
   const locale = useLocale();
@@ -168,7 +172,7 @@ export function EventAddressPicker({
             <li key={`${place.latitude},${place.longitude}`}>
               <button
                 type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted/60"
+                className="min-h-11 w-full rounded-lg px-3 py-2.5 text-left text-base hover:bg-muted/60 md:text-sm"
                 onClick={() => selectPlace(place)}
               >
                 {place.displayName}
@@ -202,13 +206,19 @@ export function EventAddressPicker({
         <EventMapLazy
           point={point}
           pickable
-          className="h-56 w-full overflow-hidden rounded-xl border border-border/60"
+          className={cn(
+            "h-56 w-full overflow-hidden rounded-xl border border-border/60",
+            mapClassName,
+          )}
           onCenterChange={moveCenter}
         />
       ) : (
         <div
           aria-hidden
-          className="h-56 w-full rounded-xl border border-border/60 bg-muted/30"
+          className={cn(
+            "h-56 w-full rounded-xl border border-border/60 bg-muted/30",
+            mapClassName,
+          )}
         />
       )}
       <p className="text-xs text-muted-foreground">{t("addressMapHint")}</p>

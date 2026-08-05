@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@dicebear/core": "^9.4.2",
+    "@dicebear/lorelei": "^9.4.2",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",

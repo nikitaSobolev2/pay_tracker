@@ -139,3 +139,17 @@ export const EventTab = {
   People: "people",
 } as const;
 export type EventTab = (typeof EventTab)[keyof typeof EventTab];
+
+export const EventPollStatus = {
+  Open: "OPEN",
+  Finished: "FINISHED",
+} as const;
+export type EventPollStatus =
+  (typeof EventPollStatus)[keyof typeof EventPollStatus];
+
+export const EventPollSelectionMode = {
+  Single: "SINGLE",
+  Multiple: "MULTIPLE",
+} as const;
+export type EventPollSelectionMode =
+  (typeof EventPollSelectionMode)[keyof typeof EventPollSelectionMode];

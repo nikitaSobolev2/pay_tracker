@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ExchangeRatesDisplay } from "@/components/layout/exchange-rates-display";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/person-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,7 +81,6 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
     setTheme(AppTheme.Light);
   }
 
-  const initials = (user?.username ?? "?").slice(0, 2).toUpperCase();
   const ThemeIcon = themeIconFor(theme);
 
   return (
@@ -150,9 +149,11 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
                 />
               }
             >
-              <Avatar className="size-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
+              <PersonAvatar
+                seed={user?.id ?? user?.username ?? "user"}
+                name={user?.username ?? "?"}
+                className="size-8"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"

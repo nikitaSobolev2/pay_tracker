@@ -1,17 +1,18 @@
 "use client";
 
-import { Send, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { deleteEventChatMessage, postEventChatMessage } from "@/lib/api/events";
 import { cn } from "@/lib/utils";
 import type { EventChatMessageDto } from "@/server/services/event-chat-service";
 
 import { useEventContext } from "./event-context";
+import { MessageComposer } from "./message-composer";
+import { MessageImageBubble } from "./message-image-bubble";
 
 export type EventChatPanelProps = {
   readonly messages: readonly EventChatMessageDto[];
@@ -31,7 +32,6 @@ export function EventChatPanel({
   const t = useTranslations("events");
   const { event } = useEventContext();
   const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const pinnedRef = useRef(true);
 
@@ -50,24 +50,6 @@ export function EventChatPanel({
     const distanceFromBottom =
       list.scrollHeight - list.scrollTop - list.clientHeight;
     pinnedRef.current = distanceFromBottom < SCROLL_PIN_THRESHOLD_PX;
-  }
-
-  async function send() {
-    const body = draft.trim();
-    if (!body) {
-      return;
-    }
-    setSending(true);
-    try {
-      await postEventChatMessage(event.id, body);
-      setDraft("");
-      pinnedRef.current = true;
-      await onPosted();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("chatFailed"));
-    } finally {
-      setSending(false);
-    }
   }
 
   async function remove(messageId: string) {
@@ -101,29 +83,29 @@ export function EventChatPanel({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border/60 p-3">
-        <Input
-          className="h-10 rounded-xl"
-          placeholder={t("chatPlaceholder")}
+      <div className="border-t border-border/60 p-3">
+        <MessageComposer
+          eventId={event.id}
           value={draft}
-          onChange={(changeEvent) => setDraft(changeEvent.target.value)}
-          onKeyDown={(keyEvent) => {
-            if (keyEvent.key === "Enter") {
-              keyEvent.preventDefault();
-              void send();
+          placeholder={t("chatPlaceholder")}
+          sendLabel={t("chatSend")}
+          attachLabel={t("attachImage")}
+          inputClassName="h-10 rounded-xl"
+          buttonClassName="size-10 rounded-xl"
+          onChange={setDraft}
+          onSubmit={async ({ body, imageUrl }) => {
+            try {
+              await postEventChatMessage(event.id, { body, imageUrl });
+              pinnedRef.current = true;
+              await onPosted();
+            } catch (error) {
+              toast.error(
+                error instanceof Error ? error.message : t("chatFailed"),
+              );
+              throw error;
             }
           }}
         />
-        <Button
-          type="button"
-          size="icon"
-          className="size-10 shrink-0 rounded-xl"
-          aria-label={t("chatSend")}
-          disabled={sending || !draft.trim()}
-          onClick={() => void send()}
-        >
-          <Send className="size-4" />
-        </Button>
       </div>
     </div>
   );
@@ -137,6 +119,7 @@ function ChatBubble({
   readonly onDelete: () => void;
 }) {
   const t = useTranslations("events");
+  const isImageOnly = Boolean(message.imageUrl);
 
   return (
     <div
@@ -168,16 +151,24 @@ function ChatBubble({
           </Button>
         ) : null}
       </div>
-      <p
-        className={cn(
-          "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm",
-          message.isMine
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground",
-        )}
-      >
-        {message.body}
-      </p>
+      {isImageOnly ? (
+        <MessageImageBubble
+          imageUrl={message.imageUrl!}
+          alignEnd={message.isMine}
+          className="max-w-[85%]"
+        />
+      ) : (
+        <p
+          className={cn(
+            "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm",
+            message.isMine
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-foreground",
+          )}
+        >
+          {message.body}
+        </p>
+      )}
     </div>
   );
 }

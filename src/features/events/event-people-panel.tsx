@@ -42,7 +42,7 @@ import type {
   EventAttendeeDto,
   EventPaymentDto,
 } from "@/server/services/event-service.types";
-import { EventAttendanceStatus } from "@/types/enums";
+import { EventAttendanceStatus, EventAuthorRole } from "@/types/enums";
 
 import { useEventContext } from "./event-context";
 
@@ -117,6 +117,10 @@ export function EventPeoplePanel({
             {event.attendees.map((attendee) => {
               const balance = balanceByAttendee.get(attendee.id);
               const payments = paymentsByAttendee.get(attendee.id) ?? [];
+              const canRemove =
+                viewer.role === EventAuthorRole.Owner ||
+                (viewer.guestUserId != null &&
+                  attendee.authorGuestId === viewer.guestUserId);
               return (
                 <PersonRow
                   key={attendee.id}
@@ -127,6 +131,7 @@ export function EventPeoplePanel({
                   busy={busy}
                   canEdit={viewer.canEdit}
                   canManagePayments={viewer.canManagePayments}
+                  canRemove={canRemove}
                   onToggleStatus={(status) =>
                     void run(() =>
                       updateEventAttendee(event.id, attendee.id, status),
@@ -141,7 +146,7 @@ export function EventPeoplePanel({
           </ul>
         )}
 
-        {viewer.canEdit ? (
+        {viewer.canEdit || viewer.role === EventAuthorRole.Guest ? (
           <div className="flex items-center gap-2">
             <Input
               className="h-10 rounded-xl"
@@ -213,6 +218,7 @@ function PersonRow({
   busy,
   canEdit,
   canManagePayments,
+  canRemove,
   onToggleStatus,
   onRemove,
 }: {
@@ -223,6 +229,7 @@ function PersonRow({
   readonly busy: boolean;
   readonly canEdit: boolean;
   readonly canManagePayments: boolean;
+  readonly canRemove: boolean;
   readonly onToggleStatus: (status: EventAttendanceStatus) => void;
   readonly onRemove: () => void;
 }) {
@@ -284,7 +291,7 @@ function PersonRow({
           {canManagePayments ? (
             <AddPaymentButton attendeeId={attendee.id} />
           ) : null}
-          {canEdit ? (
+          {canRemove ? (
             <Button
               type="button"
               variant="ghost"

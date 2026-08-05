@@ -3,17 +3,15 @@
 import {
   Check,
   MessageCircle,
-  Send,
   Sparkles,
   Trash2,
   Undo2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +46,8 @@ import {
   AI_RAINBOW_FILL_CLASS,
 } from "./ai/ai-styles";
 import { useEventContext } from "./event-context";
+import { MessageComposer } from "./message-composer";
+import { MessageImageBubble } from "./message-image-bubble";
 
 export type EventSpendingThreadsProps = {
   readonly spendingId: string;
@@ -169,18 +169,22 @@ function ThreadsPanel({
     };
   }, [active, fetchThreads, t]);
 
-  async function startThread() {
-    const body = draft.trim();
-    if (!body) {
-      return;
-    }
+  async function startThread(payload: {
+    body: string;
+    imageUrl: string | null;
+  }) {
     setBusy(true);
     try {
-      const result = await createEventThread(event.id, { spendingId, body });
+      const result = await createEventThread(event.id, {
+        spendingId,
+        body: payload.body,
+        imageUrl: payload.imageUrl,
+      });
       setThreads(result.threads);
       setDraft("");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("threadFailed"));
+      throw error;
     } finally {
       setBusy(false);
     }
@@ -219,10 +223,13 @@ function ThreadsPanel({
         </Button>
       ) : null}
 
-      <Composer
+      <MessageComposer
+        eventId={event.id}
         value={draft}
         placeholder={t("threadNewPlaceholder")}
         disabled={busy}
+        sendLabel={t("chatSend")}
+        attachLabel={t("attachImage")}
         onChange={setDraft}
         onSubmit={startThread}
       />
@@ -249,6 +256,7 @@ function ThreadCard({
       await onChanged();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("threadFailed"));
+      throw error;
     } finally {
       setBusy(false);
     }
@@ -305,38 +313,46 @@ function ThreadCard({
                   ) : null}
                 </div>
               </div>
-              <p className="text-sm">{comment.body}</p>
+              {comment.imageUrl ? (
+                <MessageImageBubble
+                  imageUrl={comment.imageUrl}
+                  className="max-w-full"
+                />
+              ) : (
+                <p className="text-sm">{comment.body}</p>
+              )}
             </div>
           ),
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <Composer
+      <div className="flex items-end gap-2">
+        <MessageComposer
+          eventId={event.id}
           value={reply}
           placeholder={t("threadReplyPlaceholder")}
           disabled={busy}
+          className="min-w-0 flex-1"
+          sendLabel={t("chatSend")}
+          attachLabel={t("attachImage")}
           onChange={setReply}
-          onSubmit={async () => {
-            const body = reply.trim();
-            if (!body) {
-              return;
-            }
-            await run(() => createEventComment(event.id, thread.id, body));
-            setReply("");
+          onSubmit={async ({ body, imageUrl }) => {
+            await run(() =>
+              createEventComment(event.id, thread.id, { body, imageUrl }),
+            );
           }}
         />
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-9 shrink-0 rounded-lg"
+          className="mb-0 size-9 shrink-0 self-end rounded-lg"
           aria-label={thread.resolved ? t("threadReopen") : t("threadResolve")}
           disabled={busy}
           onClick={() =>
             void run(() =>
               setEventThreadResolved(event.id, thread.id, !thread.resolved),
-            )
+            ).catch(() => undefined)
           }
         >
           {thread.resolved ? (
@@ -346,47 +362,6 @@ function ThreadCard({
           )}
         </Button>
       </div>
-    </div>
-  );
-}
-
-function Composer({
-  value,
-  placeholder,
-  disabled,
-  onChange,
-  onSubmit,
-}: {
-  readonly value: string;
-  readonly placeholder: string;
-  readonly disabled: boolean;
-  readonly onChange: (value: string) => void;
-  readonly onSubmit: () => Promise<void> | void;
-}): ReactNode {
-  return (
-    <div className="flex w-full items-center gap-2">
-      <Input
-        className="h-9 rounded-lg"
-        placeholder={placeholder}
-        value={value}
-        disabled={disabled}
-        onChange={(changeEvent) => onChange(changeEvent.target.value)}
-        onKeyDown={(keyEvent) => {
-          if (keyEvent.key === "Enter") {
-            keyEvent.preventDefault();
-            void onSubmit();
-          }
-        }}
-      />
-      <Button
-        type="button"
-        size="icon"
-        className="size-9 shrink-0 rounded-lg"
-        disabled={disabled || !value.trim()}
-        onClick={() => void onSubmit()}
-      >
-        <Send className="size-4" />
-      </Button>
     </div>
   );
 }

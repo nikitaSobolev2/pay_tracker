@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  Check,
   ChevronDown,
   MoreVertical,
   Pencil,
   Plus,
   Trash2,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -22,7 +24,6 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -85,6 +86,15 @@ type SpendingGroup = {
   readonly spendings: readonly EventSpendingDto[];
 };
 
+type DraftSpending = {
+  readonly key: string;
+  readonly category: EventSpendingCategory;
+  title: string;
+  amount: string;
+  amountUnit: string;
+  price: string;
+};
+
 type InlineNumbers = {
   readonly amount: string;
   readonly amountUnit: string;
@@ -121,6 +131,7 @@ export function EventSpendingsList({
   const [editing, setEditing] = useState<EventSpendingDto | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<DraftSpending[]>([]);
 
   const groups = useMemo(
     () => groupByCategory(event.spendings, event.summary.byCategory),
@@ -132,14 +143,64 @@ export function EventSpendingsList({
     [editing],
   );
 
-  function startCreate() {
-    setEditing(null);
-    setDialogOpen(true);
-  }
-
   function startEdit(spending: EventSpendingDto) {
     setEditing(spending);
     setDialogOpen(true);
+  }
+
+  function startDraft(category: EventSpendingCategory) {
+    setDrafts((current) => {
+      if (current.some((draft) => draft.category === category)) {
+        return current;
+      }
+      return [
+        {
+          key: `draft-${category}-${Date.now()}`,
+          category,
+          title: "",
+          amount: "1",
+          amountUnit: EVENT_AMOUNT_UNITS[0] ?? "шт",
+          price: "",
+        },
+        ...current,
+      ];
+    });
+  }
+
+  function updateDraft(key: string, patch: Partial<DraftSpending>) {
+    setDrafts((current) =>
+      current.map((draft) =>
+        draft.key === key ? { ...draft, ...patch } : draft,
+      ),
+    );
+  }
+
+  function discardDraft(key: string) {
+    setDrafts((current) => current.filter((draft) => draft.key !== key));
+  }
+
+  async function commitDraft(draft: DraftSpending) {
+    const title = draft.title.trim();
+    if (!title) {
+      discardDraft(draft.key);
+      return;
+    }
+    const amount = draft.amount.trim() || "1";
+    const price = draft.price.trim() || "0";
+    try {
+      await createEventSpending(event.id, {
+        title,
+        category: draft.category,
+        amount,
+        amountUnit: draft.amountUnit,
+        price,
+        note: null,
+      });
+      discardDraft(draft.key);
+      await refreshEvent();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("spendingFailed"));
+    }
   }
 
   async function submit(values: SpendingFormValues) {
@@ -180,50 +241,36 @@ export function EventSpendingsList({
     void remove(spendingId);
   }
 
-  let spendingsBody: ReactNode;
-  if (groups.length === 0) {
-    spendingsBody = (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        {t("spendingsEmpty")}
-      </p>
-    );
-  } else if (isMobile) {
-    spendingsBody = (
-      <MobileSpendingsList
-        groups={groups}
-        canEdit={viewer.canEdit}
-        onEdit={startEdit}
-        onDelete={handleDelete}
-      />
-    );
-  } else {
-    spendingsBody = (
-      <DesktopSpendingsTable
-        groups={groups}
-        canEdit={viewer.canEdit}
-        onEdit={startEdit}
-        onDelete={handleDelete}
-      />
-    );
-  }
+  const spendingsBody = isMobile ? (
+    <MobileSpendingsList
+      groups={groups}
+      drafts={drafts}
+      canEdit={viewer.canEdit}
+      onEdit={startEdit}
+      onDelete={handleDelete}
+      onAdd={startDraft}
+      onDraftChange={updateDraft}
+      onDraftCommit={(draft) => void commitDraft(draft)}
+      onDraftDiscard={discardDraft}
+    />
+  ) : (
+    <DesktopSpendingsTable
+      groups={groups}
+      drafts={drafts}
+      canEdit={viewer.canEdit}
+      onEdit={startEdit}
+      onDelete={handleDelete}
+      onAdd={startDraft}
+      onDraftChange={updateDraft}
+      onDraftCommit={(draft) => void commitDraft(draft)}
+      onDraftDiscard={discardDraft}
+    />
+  );
 
   return (
     <Card className={className}>
       <CardHeader>
         <CardTitle className="text-base">{t("spendingsTitle")}</CardTitle>
-        {viewer.canEdit ? (
-          <CardAction className="max-sm:hidden">
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 gap-1.5 rounded-xl"
-              onClick={startCreate}
-            >
-              <Plus className="size-4" />
-              {t("spendingAdd")}
-            </Button>
-          </CardAction>
-        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {spendingsBody}
@@ -234,17 +281,6 @@ export function EventSpendingsList({
             {formatMoney(event.summary.total, event.currency)}
           </span>
         </div>
-
-        {viewer.canEdit ? (
-          <Button
-            type="button"
-            className="h-12 w-full gap-1.5 rounded-xl text-base sm:hidden"
-            onClick={startCreate}
-          >
-            <Plus className="size-4" />
-            {t("spendingAdd")}
-          </Button>
-        ) : null}
       </CardContent>
 
       <EventSpendingFormDialog
@@ -260,14 +296,24 @@ export function EventSpendingsList({
 
 function DesktopSpendingsTable({
   groups,
+  drafts,
   canEdit,
   onEdit,
   onDelete,
+  onAdd,
+  onDraftChange,
+  onDraftCommit,
+  onDraftDiscard,
 }: {
   readonly groups: readonly SpendingGroup[];
+  readonly drafts: readonly DraftSpending[];
   readonly canEdit: boolean;
   readonly onEdit: (spending: EventSpendingDto) => void;
   readonly onDelete: (spendingId: string) => void;
+  readonly onAdd: (category: EventSpendingCategory) => void;
+  readonly onDraftChange: (key: string, patch: Partial<DraftSpending>) => void;
+  readonly onDraftCommit: (draft: DraftSpending) => void;
+  readonly onDraftDiscard: (key: string) => void;
 }) {
   const t = useTranslations("events");
 
@@ -306,9 +352,14 @@ function DesktopSpendingsTable({
           <SpendingGroupRows
             key={group.category}
             group={group}
+            drafts={drafts.filter((draft) => draft.category === group.category)}
             canEdit={canEdit}
             onEdit={onEdit}
             onDelete={onDelete}
+            onAdd={() => onAdd(group.category)}
+            onDraftChange={onDraftChange}
+            onDraftCommit={onDraftCommit}
+            onDraftDiscard={onDraftDiscard}
           />
         ))}
       </TableBody>
@@ -318,14 +369,24 @@ function DesktopSpendingsTable({
 
 function MobileSpendingsList({
   groups,
+  drafts,
   canEdit,
   onEdit,
   onDelete,
+  onAdd,
+  onDraftChange,
+  onDraftCommit,
+  onDraftDiscard,
 }: {
   readonly groups: readonly SpendingGroup[];
+  readonly drafts: readonly DraftSpending[];
   readonly canEdit: boolean;
   readonly onEdit: (spending: EventSpendingDto) => void;
   readonly onDelete: (spendingId: string) => void;
+  readonly onAdd: (category: EventSpendingCategory) => void;
+  readonly onDraftChange: (key: string, patch: Partial<DraftSpending>) => void;
+  readonly onDraftCommit: (draft: DraftSpending) => void;
+  readonly onDraftDiscard: (key: string) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -333,9 +394,14 @@ function MobileSpendingsList({
         <MobileSpendingGroup
           key={group.category}
           group={group}
+          drafts={drafts.filter((draft) => draft.category === group.category)}
           canEdit={canEdit}
           onEdit={onEdit}
           onDelete={onDelete}
+          onAdd={() => onAdd(group.category)}
+          onDraftChange={onDraftChange}
+          onDraftCommit={onDraftCommit}
+          onDraftDiscard={onDraftDiscard}
         />
       ))}
     </div>
@@ -344,15 +410,26 @@ function MobileSpendingsList({
 
 function MobileSpendingGroup({
   group,
+  drafts,
   canEdit,
   onEdit,
   onDelete,
+  onAdd,
+  onDraftChange,
+  onDraftCommit,
+  onDraftDiscard,
 }: {
   readonly group: SpendingGroup;
+  readonly drafts: readonly DraftSpending[];
   readonly canEdit: boolean;
   readonly onEdit: (spending: EventSpendingDto) => void;
   readonly onDelete: (spendingId: string) => void;
+  readonly onAdd: () => void;
+  readonly onDraftChange: (key: string, patch: Partial<DraftSpending>) => void;
+  readonly onDraftCommit: (draft: DraftSpending) => void;
+  readonly onDraftDiscard: (key: string) => void;
 }) {
+  const t = useTranslations("events");
   const { event } = useEventContext();
   const [expanded, setExpanded] = useState(true);
   const CategoryIcon = CATEGORY_ICONS[group.category];
@@ -379,6 +456,30 @@ function MobileSpendingGroup({
 
       {expanded ? (
         <ul className="divide-y divide-border/40">
+          {canEdit ? (
+            <li className="px-3 py-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-full justify-center gap-1.5 border-border/70 bg-background/60 text-xs hover:bg-background/80"
+                onClick={onAdd}
+              >
+                <Plus className="size-3.5" />
+                {t("spendingAddUnderCategory")}
+              </Button>
+            </li>
+          ) : null}
+          {drafts.map((draft) => (
+            <li key={draft.key}>
+              <MobileDraftSpendingRow
+                draft={draft}
+                onChange={(patch) => onDraftChange(draft.key, patch)}
+                onCommit={() => onDraftCommit(draft)}
+                onDiscard={() => onDraftDiscard(draft.key)}
+              />
+            </li>
+          ))}
           {group.spendings.map((spending, index) => (
             <li
               key={spending.id}
@@ -566,15 +667,26 @@ function MobileInlineField({
 
 function SpendingGroupRows({
   group,
+  drafts,
   canEdit,
   onEdit,
   onDelete,
+  onAdd,
+  onDraftChange,
+  onDraftCommit,
+  onDraftDiscard,
 }: {
   readonly group: SpendingGroup;
+  readonly drafts: readonly DraftSpending[];
   readonly canEdit: boolean;
   readonly onEdit: (spending: EventSpendingDto) => void;
   readonly onDelete: (spendingId: string) => void;
+  readonly onAdd: () => void;
+  readonly onDraftChange: (key: string, patch: Partial<DraftSpending>) => void;
+  readonly onDraftCommit: (draft: DraftSpending) => void;
+  readonly onDraftDiscard: (key: string) => void;
 }) {
+  const t = useTranslations("events");
   const { event } = useEventContext();
   const [expanded, setExpanded] = useState(true);
   const CategoryIcon = CATEGORY_ICONS[group.category];
@@ -585,10 +697,7 @@ function SpendingGroupRows({
   return (
     <>
       <TableRow className="border-b-0 hover:bg-transparent">
-        <TableCell
-          colSpan={6}
-          className={cn("p-0", headerClass)}
-        >
+        <TableCell colSpan={6} className={cn("p-0", headerClass)}>
           <SpendingCategoryHeader
             category={group.category}
             categoryIcon={CategoryIcon}
@@ -601,8 +710,35 @@ function SpendingGroupRows({
         </TableCell>
       </TableRow>
 
-      {expanded
-        ? group.spendings.map((spending, index) => (
+      {expanded ? (
+        <>
+          {canEdit ? (
+            <TableRow className="border-b-0 hover:bg-transparent">
+              <TableCell colSpan={6} className={cn("py-1", surfaceClass)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-full justify-center gap-1.5 border-border/70 bg-background/60 text-xs hover:bg-background/80"
+                  onClick={onAdd}
+                >
+                  <Plus className="size-3.5" />
+                  {t("spendingAddUnderCategory")}
+                </Button>
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {drafts.map((draft) => (
+            <DesktopDraftSpendingRow
+              key={draft.key}
+              draft={draft}
+              surfaceClass={surfaceClass}
+              onChange={(patch) => onDraftChange(draft.key, patch)}
+              onCommit={() => onDraftCommit(draft)}
+              onDiscard={() => onDraftDiscard(draft.key)}
+            />
+          ))}
+          {group.spendings.map((spending, index) => (
             <SpendingRow
               key={spending.id}
               spending={spending}
@@ -615,9 +751,270 @@ function SpendingGroupRows({
               onEdit={() => onEdit(spending)}
               onDelete={() => onDelete(spending.id)}
             />
-          ))
-        : null}
+          ))}
+        </>
+      ) : null}
     </>
+  );
+}
+
+function DesktopDraftSpendingRow({
+  draft,
+  surfaceClass,
+  onChange,
+  onCommit,
+  onDiscard,
+}: {
+  readonly draft: DraftSpending;
+  readonly surfaceClass: string;
+  readonly onChange: (patch: Partial<DraftSpending>) => void;
+  readonly onCommit: () => void;
+  readonly onDiscard: () => void;
+}) {
+  const t = useTranslations("events");
+  const { event } = useEventContext();
+  const liveTotal = computeTotal(draft.amount, draft.price);
+  const unitItems = useMemo(
+    () =>
+      uniqueUnits(draft.amountUnit).map((unit) => ({
+        value: unit,
+        label: unit,
+      })),
+    [draft.amountUnit],
+  );
+
+  return (
+    <TableRow className={cn(surfaceClass, "border-b-0")}>
+      <TableCell className="max-w-0 whitespace-normal py-2">
+        <Input
+          value={draft.title}
+          placeholder={t("spendingTitleField")}
+          className="h-8 border-border/50 bg-transparent px-1.5 text-sm font-medium shadow-none"
+          autoFocus
+          onChange={(changeEvent) =>
+            onChange({ title: changeEvent.target.value })
+          }
+          onKeyDown={(keyEvent) => {
+            if (keyEvent.key === "Enter") {
+              keyEvent.preventDefault();
+              onCommit();
+            }
+            if (keyEvent.key === "Escape") {
+              onDiscard();
+            }
+          }}
+        />
+      </TableCell>
+      <TableCell className="py-1.5">
+        <Input
+          inputMode="decimal"
+          aria-label={t("spendingAmount")}
+          className={CELL_INPUT_CLASS}
+          value={draft.amount}
+          onChange={(changeEvent) =>
+            onChange({ amount: sanitizeDecimal(changeEvent.target.value) })
+          }
+        />
+      </TableCell>
+      <TableCell className="py-1.5">
+        <Select
+          value={draft.amountUnit}
+          items={unitItems}
+          onValueChange={(next) => {
+            if (next) {
+              onChange({ amountUnit: next });
+            }
+          }}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label={t("spendingUnit")}
+            className="h-8 w-full rounded-md border-border/50 bg-transparent px-1.5 text-sm shadow-none"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {unitItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell className="py-1.5">
+        <AmountInput
+          aria-label={t("spendingPrice")}
+          className={CELL_INPUT_CLASS}
+          value={draft.price}
+          onValueChange={(value) => onChange({ price: value })}
+        />
+      </TableCell>
+      <TableCell className="py-2 text-right font-semibold tabular-nums">
+        {liveTotal
+          ? formatMoney(liveTotal, event.currency)
+          : formatMoney("0", event.currency)}
+      </TableCell>
+      <TableCell className="py-1.5">
+        <div className="flex items-center justify-end gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={t("spendingDraftSave")}
+            onClick={onCommit}
+          >
+            <Check className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 text-destructive"
+            aria-label={t("spendingDraftDiscard")}
+            onClick={onDiscard}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function MobileDraftSpendingRow({
+  draft,
+  onChange,
+  onCommit,
+  onDiscard,
+}: {
+  readonly draft: DraftSpending;
+  readonly onChange: (patch: Partial<DraftSpending>) => void;
+  readonly onCommit: () => void;
+  readonly onDiscard: () => void;
+}) {
+  const t = useTranslations("events");
+  const { event } = useEventContext();
+  const liveTotal = computeTotal(draft.amount, draft.price);
+  const unitItems = useMemo(
+    () =>
+      uniqueUnits(draft.amountUnit).map((unit) => ({
+        value: unit,
+        label: unit,
+      })),
+    [draft.amountUnit],
+  );
+
+  return (
+    <div className="space-y-2 px-3 py-3">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            value={draft.title}
+            placeholder={t("spendingTitleField")}
+            className={cn(
+              MOBILE_CONTROL_HEIGHT_CLASS,
+              "w-full border-border/60 bg-background/50 px-1.5 text-[15px] font-medium shadow-none md:text-sm",
+            )}
+            autoFocus
+            onChange={(changeEvent) =>
+              onChange({ title: changeEvent.target.value })
+            }
+            onKeyDown={(keyEvent) => {
+              if (keyEvent.key === "Enter") {
+                keyEvent.preventDefault();
+                onCommit();
+              }
+              if (keyEvent.key === "Escape") {
+                onDiscard();
+              }
+            }}
+          />
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={t("spendingDraftSave")}
+            onClick={onCommit}
+          >
+            <Check className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 text-destructive"
+            aria-label={t("spendingDraftDiscard")}
+            onClick={onDiscard}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className={MOBILE_FIELDS_GRID_CLASS}>
+        <MobileInlineField label={t("spendingAmount")}>
+          <Input
+            inputMode="decimal"
+            aria-label={t("spendingAmount")}
+            className={MOBILE_INPUT_CLASS}
+            value={draft.amount}
+            onChange={(changeEvent) =>
+              onChange({ amount: sanitizeDecimal(changeEvent.target.value) })
+            }
+          />
+        </MobileInlineField>
+        <MobileInlineField label={t("spendingUnit")}>
+          <Select
+            value={draft.amountUnit}
+            items={unitItems}
+            onValueChange={(next) => {
+              if (next) {
+                onChange({ amountUnit: next });
+              }
+            }}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label={t("spendingUnit")}
+              className={MOBILE_SELECT_TRIGGER_CLASS}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {unitItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </MobileInlineField>
+        <MobileInlineField label={t("spendingPriceShort")}>
+          <AmountInput
+            aria-label={t("spendingPrice")}
+            className={MOBILE_INPUT_CLASS}
+            value={draft.price}
+            onValueChange={(value) => onChange({ price: value })}
+          />
+        </MobileInlineField>
+        <MobileInlineField
+          label={t("spendingsTotal")}
+          className="min-w-0 justify-self-end text-right"
+        >
+          <p
+            className="flex h-9 items-center justify-end whitespace-nowrap text-sm font-bold tabular-nums"
+            aria-label={t("spendingsTotal")}
+          >
+            {formatMoney(liveTotal ?? "0", event.currency)}
+          </p>
+        </MobileInlineField>
+      </div>
+    </div>
   );
 }
 
@@ -1007,7 +1404,7 @@ function groupByCategory(
     category,
     total: totalByCategory.get(category) ?? "0",
     spendings: spendings.filter((spending) => spending.category === category),
-  })).filter((group) => group.spendings.length > 0);
+  }));
 }
 
 function toFormValues(spending: EventSpendingDto): SpendingFormValues {

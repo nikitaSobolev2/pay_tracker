@@ -4,6 +4,7 @@ import { EventTab } from "@/types/enums";
 
 import { EventAttendanceCard } from "./event-attendance-chart";
 import { useEventContext } from "./event-context";
+import { EventLocationPollCard } from "./event-location-poll-card";
 import { EventMapCard } from "./event-map-card";
 import { EventPaidProgressCard } from "./event-paid-progress-chart";
 import { EventPeoplePanel } from "./event-people-panel";
@@ -26,6 +27,7 @@ export function EventMobileTabs({
       {activeTab === EventTab.Overview ? (
         <>
           {hasLocation ? <EventMapCard mapEnabled={mapEnabled} /> : null}
+          <EventLocationPollCard className="min-h-96 w-full" />
           {event.spendings.length > 0 ? <EventTotalCard /> : null}
           {event.spendings.length > 0 || event.manualPerPersonAmount != null ? (
             <EventPerPersonCard />

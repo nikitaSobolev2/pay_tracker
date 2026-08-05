@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { PersonAvatar } from "@/components/person-avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { renameGuest, updateEvent } from "@/lib/api/events";
 import { cn } from "@/lib/utils";
@@ -43,17 +44,17 @@ export function EventPresenceBar({
           <Tooltip key={person.id}>
             <TooltipTrigger
               render={
-                <span
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-full border-2 border-background text-xs font-semibold",
-                    person.isOwner
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground",
-                  )}
-                />
+                <span className="inline-flex rounded-full border-2 border-background" />
               }
             >
-              {initialsOf(person.name)}
+              <PersonAvatar
+                seed={person.id}
+                name={person.name}
+                className={cn(
+                  "size-8",
+                  person.isOwner && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+                )}
+              />
             </TooltipTrigger>
             <TooltipContent>{person.name}</TooltipContent>
           </Tooltip>
@@ -151,9 +152,4 @@ function RenameControl({
       </PopoverContent>
     </Popover>
   );
-}
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";
 }

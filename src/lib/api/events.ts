@@ -8,12 +8,17 @@ import type {
   EventListItemDto,
   EventSettlementResponse,
 } from "@/server/services/event-service.types";
+import type {
+  EventLocationPollDto,
+  FinishPollResult,
+} from "@/server/services/event-location-poll-service.types";
 import type { EventLiveDto } from "@/server/services/event-live-service";
 import type { EventThreadDto } from "@/server/services/event-thread-service";
 import type {
   EventAttendanceStatus,
   EventGuestPermission,
   EventLinkType,
+  EventPollSelectionMode,
   EventPublicity,
   EventSpendingCategory,
   EventSpendingField,
@@ -198,7 +203,11 @@ export function listEventThreads(eventId: string, spendingId?: string) {
 
 export function createEventThread(
   eventId: string,
-  body: { spendingId: string; body: string },
+  body: {
+    spendingId: string;
+    body?: string;
+    imageUrl?: string | null;
+  },
 ) {
   return apiFetch<{ threads: EventThreadDto[] }>(
     `/api/events/${eventId}/threads`,
@@ -220,11 +229,12 @@ export function setEventThreadResolved(
 export function createEventComment(
   eventId: string,
   threadId: string,
-  body: string,
+  body: string | { body?: string; imageUrl?: string | null },
 ) {
+  const payload = typeof body === "string" ? { body } : body;
   return apiFetch<{ commentId: string }>(
     `/api/events/${eventId}/threads/${threadId}/comments`,
-    { method: "POST", body: { body } },
+    { method: "POST", body: payload },
   );
 }
 
@@ -286,10 +296,14 @@ export function fetchEventChat(eventId: string, afterId?: string | null) {
   );
 }
 
-export function postEventChatMessage(eventId: string, body: string) {
+export function postEventChatMessage(
+  eventId: string,
+  body: string | { body?: string; imageUrl?: string | null },
+) {
+  const payload = typeof body === "string" ? { body } : body;
   return apiFetch<{ messageId: string }>(`/api/events/${eventId}/chat`, {
     method: "POST",
-    body: { body },
+    body: payload,
   });
 }
 
@@ -318,6 +332,16 @@ export function uploadEventCover(file: File, eventId: string | null) {
   });
 }
 
+export function uploadEventAttachment(file: File, eventId: string) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("eventId", eventId);
+  return apiFetch<{ url: string }>("/api/uploads/event-attachment", {
+    method: "POST",
+    formData,
+  });
+}
+
 export function ensureGuest() {
   return apiFetch<{ guest: { id: string; name: string } }>("/api/guest", {
     method: "POST",
@@ -329,4 +353,116 @@ export function renameGuest(name: string) {
     method: "PATCH",
     body: { name },
   });
+}
+
+export type PollOptionBody = {
+  id?: string;
+  title: string;
+  link?: string | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+export function createEventLocationPoll(
+  eventId: string,
+  body: {
+    title: string;
+    selectionMode: EventPollSelectionMode;
+    endsAt?: string | null;
+    options: PollOptionBody[];
+  },
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll`,
+    { method: "POST", body },
+  );
+}
+
+export function updateEventLocationPoll(
+  eventId: string,
+  body: {
+    pollId: string;
+    title: string;
+    selectionMode: EventPollSelectionMode;
+    endsAt?: string | null;
+    options: PollOptionBody[];
+  },
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deleteEventLocationPoll(
+  eventId: string,
+  body: { pollId: string },
+) {
+  return apiFetch<{ ok: true }>(`/api/events/${eventId}/location-poll`, {
+    method: "DELETE",
+    body,
+  });
+}
+
+export function addEventLocationPollOption(
+  eventId: string,
+  body: { pollId: string; option: PollOptionBody },
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll/options`,
+    { method: "POST", body },
+  );
+}
+
+export function updateEventLocationPollOption(
+  eventId: string,
+  optionId: string,
+  body: { pollId: string; option: PollOptionBody },
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll/options/${optionId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deleteEventLocationPollOption(
+  eventId: string,
+  optionId: string,
+  pollId: string,
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll/options/${optionId}?pollId=${encodeURIComponent(pollId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function setEventLocationPollVotes(
+  eventId: string,
+  body: { pollId: string; optionIds: string[] },
+) {
+  return apiFetch<{ poll: EventLocationPollDto }>(
+    `/api/events/${eventId}/location-poll/votes`,
+    { method: "PUT", body },
+  );
+}
+
+export function finishEventLocationPoll(
+  eventId: string,
+  body: { pollId: string; optionId?: string },
+) {
+  return apiFetch<FinishPollResult>(
+    `/api/events/${eventId}/location-poll/finish`,
+    { method: "POST", body },
+  );
+}
+
+export function claimEventAttendee(
+  eventId: string,
+  body: { attendeeId: string; name: string },
+) {
+  return apiFetch<{ claimedAttendeeId: string; name: string }>(
+    `/api/events/${eventId}/claim-attendee`,
+    { method: "POST", body },
+  );
 }

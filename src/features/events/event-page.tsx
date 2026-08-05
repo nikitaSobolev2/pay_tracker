@@ -31,6 +31,7 @@ import { eventChatGutterPx } from "./event-chat-layout";
 import { EventChatRail } from "./event-chat-rail";
 import { EventProvider } from "./event-context";
 import { EventFormDialog, type EventFormValues } from "./event-form-dialog";
+import { EventGuestClaimDialog } from "./event-guest-claim-dialog";
 import { EventHero } from "./event-hero";
 import { EventMobileHeaderIsland } from "./event-mobile-header-island";
 import { EventMobileNavIsland } from "./event-mobile-nav-island";
@@ -167,6 +168,7 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
         applySettlement,
       }}
     >
+      <EventGuestClaimDialog />
       {/* Desktop chat rail gutter: data-event-chat-gutter rule in globals.css */}
       <div
         data-event-chat-gutter
@@ -241,6 +243,9 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
         saving={saving}
         eventId={eventId}
         canManageSharing={detail.viewer.role === EventAuthorRole.Owner}
+        canManageScheduleAndLocation={
+          detail.viewer.role === EventAuthorRole.Owner
+        }
         onOpenChange={setEditOpen}
         onSubmit={submitEdit}
       />
@@ -278,7 +283,14 @@ function toUpdateBody(
   values: EventFormValues,
   isOwner: boolean,
 ): UpdateEventBody {
-  const base: UpdateEventBody = {
+  if (!isOwner) {
+    return {
+      title: values.title.trim(),
+      description: values.description.trim() || null,
+      imageUrl: values.imageUrl.trim() || null,
+    };
+  }
+  return {
     title: values.title.trim(),
     description: values.description.trim() || null,
     occursAt: values.occursAt,
@@ -287,12 +299,6 @@ function toUpdateBody(
     address: values.location.address || null,
     latitude: values.location.latitude,
     longitude: values.location.longitude,
-  };
-  if (!isOwner) {
-    return base;
-  }
-  return {
-    ...base,
     publicity: values.publicity,
     guestPermission: values.guestPermission,
   };

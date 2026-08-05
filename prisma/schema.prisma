@@ -59,6 +59,16 @@ enum EventAiReportType {
   BAD
 }
 
+enum EventPollStatus {
+  OPEN
+  FINISHED
+}
+
+enum EventPollSelectionMode {
+  SINGLE
+  MULTIPLE
+}
+
 model User {
   id              String   @id @default(cuid())
   name            String
@@ -291,6 +301,7 @@ model Event {
   messages  EventChatMessage[]
   presences EventGuestPresence[]
   aiReport  EventAiReport?
+  locationPolls EventLocationPoll[]
 
   @@index([userId, occursAt])
 }
@@ -300,14 +311,20 @@ model EventAttendee {
   eventId        String
   counterpartyId String
   status         EventAttendanceStatus @default(CERTAIN)
+  /// Set when the event owner adds the person; guests use authorGuestId.
+  authorUserId   String?
+  authorGuestId  String?
   createdAt      DateTime              @default(now())
 
   event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
   counterparty UserCounterparty @relation(fields: [counterpartyId], references: [id], onDelete: Cascade)
+  authorGuest  GuestUser?       @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
   payments     EventPayment[]
+  guestClaims  EventGuestPresence[]
 
   @@unique([eventId, counterpartyId])
   @@index([counterpartyId])
+  @@index([authorGuestId])
 }
 
 model EventLink {
@@ -383,6 +400,8 @@ model EventComment {
   id            String   @id @default(cuid())
   threadId      String
   body          String
+  /// When set, the comment renders as a large image-only attachment.
+  imageUrl      String?
   authorUserId  String?
   authorGuestId String?
   /// AI comments have neither author id and carry optional item suggestions.
@@ -424,6 +443,8 @@ model EventChatMessage {
   id            String   @id @default(cuid())
   eventId       String
   body          String
+  /// When set, the message renders as a large image-only attachment.
+  imageUrl      String?
   authorUserId  String?
   authorGuestId String?
   createdAt     DateTime @default(now())
@@ -444,21 +465,91 @@ model GuestUser {
   createdAt  DateTime @default(now())
   lastSeenAt DateTime @default(now())
 
-  presences EventGuestPresence[]
-  spendings EventSpending[]
-  comments  EventComment[]
-  messages  EventChatMessage[]
+  presences       EventGuestPresence[]
+  spendings       EventSpending[]
+  comments        EventComment[]
+  messages        EventChatMessage[]
+  pollOptions     EventLocationPollOption[]
+  pollVotes       EventLocationPollVote[]
+  addedAttendees  EventAttendee[]
 }
 
 model EventGuestPresence {
   id          String   @id @default(cuid())
   eventId     String
   guestUserId String
+  /// When set, this guest claimed an attendance list person for this event.
+  attendeeId  String?
   lastSeenAt  DateTime @default(now())
 
-  event Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  guest GuestUser @relation(fields: [guestUserId], references: [id], onDelete: Cascade)
+  event    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest    GuestUser      @relation(fields: [guestUserId], references: [id], onDelete: Cascade)
+  attendee EventAttendee? @relation(fields: [attendeeId], references: [id], onDelete: SetNull)
 
   @@unique([eventId, guestUserId])
+  @@unique([eventId, attendeeId])
   @@index([eventId, lastSeenAt])
+  @@index([attendeeId])
+}
+
+/// Housing / location vote for an event. At most one OPEN poll per event (enforced in service).
+model EventLocationPoll {
+  id               String                 @id @default(cuid())
+  eventId          String
+  title            String
+  selectionMode    EventPollSelectionMode @default(SINGLE)
+  endsAt           DateTime?
+  status           EventPollStatus        @default(OPEN)
+  finishedOptionId String?                @unique
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  event          Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  options        EventLocationPollOption[]
+  votes          EventLocationPollVote[]
+  finishedOption EventLocationPollOption?  @relation("FinishedPollOption", fields: [finishedOptionId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, status])
+}
+
+model EventLocationPollOption {
+  id            String   @id @default(cuid())
+  pollId        String
+  title         String
+  link          String?
+  address       String?
+  latitude      Decimal? @db.Decimal(10, 7)
+  longitude     Decimal? @db.Decimal(10, 7)
+  imageUrl      String?
+  authorUserId  String?
+  authorGuestId String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  poll          EventLocationPoll  @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  authorGuest   GuestUser?         @relation(fields: [authorGuestId], references: [id], onDelete: SetNull)
+  votes         EventLocationPollVote[]
+  finishedFor   EventLocationPoll? @relation("FinishedPollOption")
+
+  @@index([pollId, sortOrder])
+  @@index([authorGuestId])
+}
+
+model EventLocationPollVote {
+  id           String   @id @default(cuid())
+  pollId       String
+  optionId     String
+  voterUserId  String?
+  voterGuestId String?
+  createdAt    DateTime @default(now())
+
+  poll        EventLocationPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option      EventLocationPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  voterGuest  GuestUser?              @relation(fields: [voterGuestId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, optionId, voterUserId])
+  @@unique([pollId, optionId, voterGuestId])
+  @@index([pollId])
+  @@index([optionId])
+  @@index([voterGuestId])
 }

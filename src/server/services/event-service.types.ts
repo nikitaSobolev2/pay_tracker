@@ -9,6 +9,8 @@ import type {
   EventSpendingCategory,
 } from "@/types/enums";
 
+import type { EventLocationPollDto } from "./event-location-poll-service.types";
+
 export type EventLocationInput = {
   readonly address?: string | null;
   readonly latitude?: number | null;
@@ -66,6 +68,8 @@ export type EventAttendeeDto = {
   readonly counterpartyId: string;
   readonly name: string;
   readonly status: EventAttendanceStatus;
+  readonly authorUserId: string | null;
+  readonly authorGuestId: string | null;
 };
 
 export type EventAuthorDto = {
@@ -148,6 +152,7 @@ export type EventDetailDto = {
   readonly payments: readonly EventPaymentDto[];
   readonly summary: EventSummaryDto;
   readonly aiReport: EventAiReportDto | null;
+  readonly locationPoll: EventLocationPollDto | null;
 };
 
 export type EventAiSuggestedItemDto = {
@@ -176,6 +181,9 @@ export type EventViewerDto = {
   readonly canManagePayments: boolean;
   /** Drives guest-only chrome such as the locale switcher on the public page. */
   readonly isAuthenticated: boolean;
+  /** Guest-claimed attendance person for this event, if any. */
+  readonly claimedAttendeeId: string | null;
+  readonly guestUserId: string | null;
 };
 
 export type EventDetailResponse = {
@@ -194,6 +202,8 @@ export type AddAttendeeInput = {
   readonly ownerUserId: string;
   readonly counterpartyId?: string;
   readonly name?: string;
+  readonly authorUserId?: string | null;
+  readonly authorGuestId?: string | null;
 };
 
 export type UpdateAttendeeInput = {

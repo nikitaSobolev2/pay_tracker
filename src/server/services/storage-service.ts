@@ -19,7 +19,7 @@ const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
   "image/gif": "gif",
 };
 
-const EVENT_COVER_PREFIX = "events";
+const EVENT_IMAGE_PREFIX = "events";
 
 let client: MinioClient | null = null;
 let bucketReady: Promise<void> | null = null;
@@ -28,8 +28,32 @@ export function isSupportedImageType(contentType: string): boolean {
   return contentType in EXTENSION_BY_CONTENT_TYPE;
 }
 
+/** True when the URL points at an object we store under the events/ prefix. */
+export function isOwnedEventImageUrl(url: string): boolean {
+  try {
+    const base = `${readPublicBaseUrl()}/${EVENT_IMAGE_PREFIX}/`;
+    return url.startsWith(base);
+  } catch {
+    return false;
+  }
+}
+
 /** Stores the cover and returns the public URL served from the files subdomain. */
 export async function uploadEventCover(input: UploadInput): Promise<string> {
+  return uploadEventImage(input, "covers");
+}
+
+/** Stores a chat/thread attachment under the public events prefix. */
+export async function uploadEventAttachment(
+  input: UploadInput,
+): Promise<string> {
+  return uploadEventImage(input, "attachments");
+}
+
+async function uploadEventImage(
+  input: UploadInput,
+  folder: "covers" | "attachments",
+): Promise<string> {
   const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
   if (!extension) {
     throw new AppServiceError(
@@ -38,7 +62,7 @@ export async function uploadEventCover(input: UploadInput): Promise<string> {
     );
   }
 
-  const key = `${EVENT_COVER_PREFIX}/${randomUUID()}.${extension}`;
+  const key = `${EVENT_IMAGE_PREFIX}/${folder}/${randomUUID()}.${extension}`;
   await ensureBucket();
   await getClient().putObject(readBucket(), key, input.body, input.body.length, {
     "Content-Type": input.contentType,
@@ -74,7 +98,7 @@ function publicReadPolicy(bucket: string) {
         Effect: "Allow",
         Principal: { AWS: ["*"] },
         Action: ["s3:GetObject"],
-        Resource: [`arn:aws:s3:::${bucket}/${EVENT_COVER_PREFIX}/*`],
+        Resource: [`arn:aws:s3:::${bucket}/${EVENT_IMAGE_PREFIX}/*`],
       },
     ],
   };

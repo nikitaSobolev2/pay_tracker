@@ -98,7 +98,7 @@ function toOptionalDate(value: string | null | undefined): Date | null | undefin
   return value === null ? null : new Date(value);
 }
 
-/** Sharing settings and the owner name are owner-only; the rest follows canEdit. */
+/** Sharing, schedule, and location are owner-only; guests with edit may change title/description/cover. */
 function assertCanApplyPatch(
   canEdit: boolean,
   body: z.infer<typeof updateBodySchema>,
@@ -108,7 +108,12 @@ function assertCanApplyPatch(
     body.publicity !== undefined ||
     body.guestPermission !== undefined ||
     body.ownerDisplayName !== undefined ||
-    body.manualPerPersonAmount !== undefined;
+    body.manualPerPersonAmount !== undefined ||
+    body.occursAt !== undefined ||
+    body.endsAt !== undefined ||
+    body.address !== undefined ||
+    body.latitude !== undefined ||
+    body.longitude !== undefined;
   if (touchesOwnerOnlyFields) {
     requireOwner();
     return;

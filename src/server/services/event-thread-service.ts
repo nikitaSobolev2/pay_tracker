@@ -8,10 +8,12 @@ import { EventAuthorRole } from "@/types/enums";
 
 import { bumpEventContent } from "./event-content-revision";
 import type { EventAuthorDto } from "./event-service.types";
+import { normalizeMessageAttachment } from "./message-attachment";
 
 export type EventCommentDto = {
   readonly id: string;
   readonly body: string;
+  readonly imageUrl: string | null;
   readonly author: EventAuthorDto;
   readonly createdAt: string;
   readonly canDelete: boolean;
@@ -46,17 +48,17 @@ export type CreateThreadInput = {
   readonly eventId: string;
   readonly spendingId: string;
   readonly viewer: EventViewer;
-  readonly body: string;
+  readonly body?: string;
+  readonly imageUrl?: string | null;
 };
 
 export type CreateCommentInput = {
   readonly eventId: string;
   readonly threadId: string;
   readonly viewer: EventViewer;
-  readonly body: string;
+  readonly body?: string;
+  readonly imageUrl?: string | null;
 };
-
-const MAX_BODY_LENGTH = 2000;
 
 export async function listThreads(
   input: ListThreadsInput,
@@ -92,6 +94,7 @@ function toCommentDto(
   comment: {
     readonly id: string;
     readonly body: string;
+    readonly imageUrl: string | null;
     readonly authorUserId: string | null;
     readonly authorGuestId: string | null;
     readonly isAiGenerated: boolean;
@@ -123,6 +126,7 @@ function toCommentDto(
   return {
     id: comment.id,
     body: comment.body,
+    imageUrl: comment.imageUrl,
     author: resolveAuthor({
       ownerDisplayName: names.ownerDisplayName,
       ownerName: names.ownerName,
@@ -153,13 +157,18 @@ function sameMoney(
 
 export async function createThread(input: CreateThreadInput): Promise<string> {
   await assertSpendingBelongsToEvent(input.spendingId, input.eventId);
+  const content = normalizeMessageAttachment({
+    body: input.body,
+    imageUrl: input.imageUrl,
+  });
   const thread = await prisma.eventCommentThread.create({
     data: {
       eventId: input.eventId,
       spendingId: input.spendingId,
       comments: {
         create: {
-          body: normalizeBody(input.body),
+          body: content.body,
+          imageUrl: content.imageUrl,
           authorUserId: input.viewer.userId,
           authorGuestId: input.viewer.guestUserId,
         },
@@ -175,10 +184,15 @@ export async function createComment(
   input: CreateCommentInput,
 ): Promise<string> {
   await assertThreadBelongsToEvent(input.threadId, input.eventId);
+  const content = normalizeMessageAttachment({
+    body: input.body,
+    imageUrl: input.imageUrl,
+  });
   const comment = await prisma.eventComment.create({
     data: {
       threadId: input.threadId,
-      body: normalizeBody(input.body),
+      body: content.body,
+      imageUrl: content.imageUrl,
       authorUserId: input.viewer.userId,
       authorGuestId: input.viewer.guestUserId,
     },
@@ -314,10 +328,3 @@ async function assertThreadBelongsToEvent(
   }
 }
 
-function normalizeBody(body: string): string {
-  const trimmed = body.trim();
-  if (!trimmed) {
-    throw new AppServiceError(ApiErrorCode.Validation, "Comment is empty");
-  }
-  return trimmed.slice(0, MAX_BODY_LENGTH);
-}

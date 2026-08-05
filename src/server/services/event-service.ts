@@ -1,10 +1,11 @@
-import type { EventAccess } from "@/lib/event-access";
+import type { EventAccess, EventViewer } from "@/lib/event-access";
 import { AppServiceError } from "@/lib/errors";
 import { resolveAuthor } from "@/lib/event-author";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
 import { EventLinkType } from "@/types/enums";
 import { findOrCreateCounterparty } from "./counterparty-service";
+import { assertCanRemoveAttendee } from "./attendee-auth";
 import { bumpEventContent } from "./event-content-revision";
 import {
   calculateEventTotals,
@@ -12,6 +13,10 @@ import {
 } from "./event-settlement";
 import { buildEventSummary } from "./event-summary";
 import { parseStoredSuggestedItems } from "./event-analysis-schema";
+import {
+  getLocationPollForEvent,
+  readClaimedAttendeeId,
+} from "./event-location-poll-service";
 import type {
   AddAttendeeInput,
   CreateEventInput,
@@ -187,6 +192,14 @@ export async function getEventDetail(
     toSpendingDto(spending, event.ownerDisplayName, event.user.name),
   );
   const payments = event.payments.map(toPaymentDto);
+  const locationPoll = await getLocationPollForEvent(event.id, {
+    userId: access.viewer.userId,
+    guestUserId: access.viewer.guestUserId,
+  });
+  const claimedAttendeeId = await readClaimedAttendeeId(
+    event.id,
+    access.viewer.guestUserId,
+  );
 
   return {
     event: {
@@ -236,6 +249,7 @@ export async function getEventDetail(
             createdAt: event.aiReport.createdAt.toISOString(),
           }
         : null,
+      locationPoll,
     },
     viewer: {
       role: access.viewer.role,
@@ -243,6 +257,8 @@ export async function getEventDetail(
       canEdit: access.viewer.canEdit,
       canManagePayments: access.viewer.canManagePayments,
       isAuthenticated: access.viewer.isAuthenticated,
+      claimedAttendeeId,
+      guestUserId: access.viewer.guestUserId,
     },
   };
 }
@@ -319,7 +335,12 @@ export async function addAttendee(
   }
 
   const attendee = await prisma.eventAttendee.create({
-    data: { eventId: input.eventId, counterpartyId },
+    data: {
+      eventId: input.eventId,
+      counterpartyId,
+      authorUserId: input.authorUserId ?? null,
+      authorGuestId: input.authorGuestId ?? null,
+    },
     include: { counterparty: { select: { name: true } } },
   });
   await bumpEventContent(input.eventId);
@@ -340,15 +361,19 @@ export async function updateAttendeeStatus(
 }
 
 export async function removeAttendee(input: {
-  eventId: string;
-  attendeeId: string;
+  readonly eventId: string;
+  readonly attendeeId: string;
+  readonly viewer: EventViewer;
 }): Promise<void> {
-  const deleted = await prisma.eventAttendee.deleteMany({
+  const attendee = await prisma.eventAttendee.findFirst({
     where: { id: input.attendeeId, eventId: input.eventId },
+    select: { id: true, authorUserId: true, authorGuestId: true },
   });
-  if (deleted.count === 0) {
+  if (!attendee) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Attendee not found");
   }
+  assertCanRemoveAttendee(input.viewer, attendee);
+  await prisma.eventAttendee.delete({ where: { id: attendee.id } });
   await bumpEventContent(input.eventId);
 }
 
@@ -419,6 +444,8 @@ function toAttendeeDto(attendee: {
   id: string;
   counterpartyId: string;
   status: EventAttendeeDto["status"];
+  authorUserId?: string | null;
+  authorGuestId?: string | null;
   counterparty: { name: string };
 }): EventAttendeeDto {
   return {
@@ -426,6 +453,8 @@ function toAttendeeDto(attendee: {
     counterpartyId: attendee.counterpartyId,
     name: attendee.counterparty.name,
     status: attendee.status,
+    authorUserId: attendee.authorUserId ?? null,
+    authorGuestId: attendee.authorGuestId ?? null,
   };
 }
 

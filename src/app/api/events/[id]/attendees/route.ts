@@ -1,9 +1,12 @@
 import { z } from "zod";
 
 import { jsonOk } from "@/lib/api-response";
-import { assertCanEdit, requireEventAccess } from "@/lib/event-access";
+import { requireEventAccess } from "@/lib/event-access";
+import { AppServiceError } from "@/lib/errors";
 import { handleRouteError } from "@/lib/route-handler";
 import { addAttendee } from "@/server/services/event-service";
+import { ApiErrorCode } from "@/types/api";
+import { EventAuthorRole } from "@/types/enums";
 
 const createBodySchema = z
   .object({
@@ -22,13 +25,23 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const access = await requireEventAccess(id);
-    assertCanEdit(access.viewer);
+    if (
+      access.viewer.role !== EventAuthorRole.Owner &&
+      access.viewer.role !== EventAuthorRole.Guest
+    ) {
+      throw new AppServiceError(
+        ApiErrorCode.Forbidden,
+        "You cannot add people to this event",
+      );
+    }
     const body = createBodySchema.parse(await request.json());
     const attendee = await addAttendee({
       eventId: id,
       ownerUserId: access.event.userId,
       counterpartyId: body.counterpartyId,
       name: body.name,
+      authorUserId: access.viewer.userId,
+      authorGuestId: access.viewer.guestUserId,
     });
     return jsonOk({ attendee }, { status: 201 });
   } catch (error) {

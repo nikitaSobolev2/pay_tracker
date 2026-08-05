@@ -46,13 +46,20 @@ function DialogContent({
   children,
   showCloseButton = true,
   style,
+  overlayClassName,
+  overlayStyle,
+  container,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  overlayClassName?: string
+  overlayStyle?: React.CSSProperties
+  /** Portal mount node. Nested dialogs should pass `document.body`. */
+  container?: DialogPrimitive.Portal.Props["container"]
 }) {
   return (
-    <DialogPortal>
-      <DialogOverlay />
+    <DialogPortal container={container}>
+      <DialogOverlay className={overlayClassName} style={overlayStyle} />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
