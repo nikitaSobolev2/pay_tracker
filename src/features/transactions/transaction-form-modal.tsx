@@ -36,6 +36,7 @@ import {
 } from "@/features/transactions/date-quick-chips";
 import { DateTimePicker } from "@/features/transactions/date-time-picker";
 import { TitleTransactionSuggestions } from "@/features/transactions/title-transaction-suggestions";
+import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { useAppUser } from "@/hooks/use-app-user";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
@@ -71,9 +72,10 @@ type FormState = {
   categoryIds: string[];
   kind: TransactionKind;
   counterpartyName: string;
+  travelId: string | null;
 };
 
-function emptyForm(currency: string): FormState {
+function emptyForm(currency: string, travelId: string | null = null): FormState {
   return {
     amount: "",
     currency,
@@ -82,6 +84,7 @@ function emptyForm(currency: string): FormState {
     categoryIds: [],
     kind: TransactionKind.Default,
     counterpartyName: "",
+    travelId,
   };
 }
 
@@ -140,6 +143,7 @@ export function TransactionFormModal() {
     transactionModalOpen,
     transactionFormMode,
     editingTransaction,
+    preferredTravelId,
     closeTransactionModal,
     setTransactionFormMode,
   } = useUiStore();
@@ -203,13 +207,18 @@ export function TransactionFormModal() {
         categoryIds,
         kind: editingTransaction.kind,
         counterpartyName: editingTransaction.counterpartyName ?? "",
+        travelId: editingTransaction.travelId,
       });
-      // Preserve existing categories; allow auto-match only when edit has none.
       setCategoriesManual(categoryIds.length > 0);
       return;
     }
-    setForm(emptyForm(defaultCurrency));
-  }, [transactionModalOpen, editingTransaction, defaultCurrency]);
+    setForm(emptyForm(defaultCurrency, preferredTravelId));
+  }, [
+    transactionModalOpen,
+    editingTransaction,
+    defaultCurrency,
+    preferredTravelId,
+  ]);
 
   useEffect(() => {
     if (!transactionModalOpen) {
@@ -311,10 +320,11 @@ export function TransactionFormModal() {
   function resetKeepOpen() {
     const currency = form.currency || defaultCurrency;
     const occurredAt = form.occurredAt;
+    const travelId = form.travelId;
     setCategoriesManual(false);
     setSuggestionOwned(EMPTY_SUGGESTION_OWNED);
     setForm({
-      ...emptyForm(currency),
+      ...emptyForm(currency, travelId),
       occurredAt,
     });
     bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -437,6 +447,8 @@ export function TransactionFormModal() {
           ? form.counterpartyName.trim()
           : null,
         categoryIds: form.categoryIds,
+        travelId:
+          transactionType === TransactionType.Spending ? form.travelId : null,
       };
 
       if (editingTransaction) {
@@ -721,6 +733,15 @@ export function TransactionFormModal() {
                   }}
                 />
               </div>
+
+              {transactionType === TransactionType.Spending ? (
+                <TravelSuggestPicker
+                  value={form.travelId}
+                  onChange={(travelId) =>
+                    setForm((prev) => ({ ...prev, travelId }))
+                  }
+                />
+              ) : null}
             </>
           )}
         </ResponsiveDialogBody>

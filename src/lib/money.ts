@@ -40,6 +40,15 @@ export function formatChartMoney(
   return formatMoney(value, currency, { fractionDigits: 0 });
 }
 
+/** Whole units for travel amount fields (`100.0000` → `100`). */
+export function toIntegerAmountString(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return toDecimal(trimmed).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0);
+}
+
 export function decimalToString(value: Decimal): string {
   return value.toFixed(4);
 }

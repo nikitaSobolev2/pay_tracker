@@ -60,6 +60,11 @@ export async function createTransaction(
   }
 
   const validated = await validateTransactionWrite(input);
+  const travelId = await resolveTravelIdForWrite({
+    userId: input.userId,
+    type: validated.type,
+    travelId: input.travelId,
+  });
   const money = await resolveCanonicalMoney(
     validated.inputCurrency,
     validated.originalAmount,
@@ -80,6 +85,7 @@ export async function createTransaction(
         occurredAt: validated.occurredAt,
         kind: validated.kind,
         counterpartyId: validated.counterpartyId,
+        travelId,
         idempotencyKey: input.idempotencyKey,
         categories: {
           create: validated.categoryIds.map((categoryId) => ({ categoryId })),
@@ -245,6 +251,12 @@ export async function updateTransaction(
     counterpartyName,
     categoryIds: nextCategoryIds,
   });
+  const travelId = await resolveTravelIdForWrite({
+    userId: input.userId,
+    type: validated.type,
+    travelId:
+      input.travelId === undefined ? existing.travelId : input.travelId,
+  });
 
   const money = await resolveCanonicalMoney(
     validated.inputCurrency,
@@ -269,6 +281,7 @@ export async function updateTransaction(
         occurredAt: validated.occurredAt,
         kind: validated.kind,
         counterpartyId: validated.counterpartyId,
+        travelId,
         categories: {
           create: validated.categoryIds.map((categoryId) => ({ categoryId })),
         },
@@ -442,6 +455,7 @@ export function buildTransactionWhere(
     | "kinds"
     | "categoryIds"
     | "counterpartyIds"
+    | "travelId"
     | "hideUncategorized"
   >,
 ): Prisma.TransactionWhereInput {
@@ -458,6 +472,7 @@ export function buildTransactionWhere(
     ...(input.counterpartyIds && input.counterpartyIds.length > 0
       ? { counterpartyId: { in: input.counterpartyIds } }
       : {}),
+    ...(input.travelId ? { travelId: input.travelId } : {}),
     ...categoryFilter,
     ...(bounds.start || bounds.end
       ? {
@@ -676,10 +691,32 @@ async function mapTransactionDto(
     kind: row.kind,
     counterpartyId: row.counterpartyId,
     counterpartyName: row.counterparty?.name ?? null,
+    travelId: row.travelId,
     categories,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+async function resolveTravelIdForWrite(input: {
+  readonly userId: string;
+  readonly type: TransactionType;
+  readonly travelId?: string | null;
+}): Promise<string | null> {
+  if (input.type === TransactionType.Earning) {
+    return null;
+  }
+  if (input.travelId == null || input.travelId === "") {
+    return null;
+  }
+  const travel = await prisma.travel.findFirst({
+    where: { id: input.travelId, userId: input.userId },
+    select: { id: true },
+  });
+  if (!travel) {
+    throw new AppServiceError(ApiErrorCode.Validation, "Travel not found");
+  }
+  return travel.id;
 }
 
 const transactionInclude = {

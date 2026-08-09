@@ -5,6 +5,7 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Plane,
   Plus,
   Search,
   Settings,
@@ -28,10 +29,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { useAppUser } from "@/hooks/use-app-user";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { useActiveTravelStore } from "@/stores/active-travel.store";
 import { useUiStore } from "@/stores/ui.store";
 import { AppTheme, TransactionFormMode } from "@/types/enums";
 
@@ -51,6 +54,8 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user } = useAppUser();
   const openTransactionModal = useUiStore((state) => state.openTransactionModal);
+  const activeTravel = useActiveTravelStore((state) => state.travel);
+  const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [themeReady, setThemeReady] = useState(false);
@@ -58,6 +63,10 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   useEffect(() => {
     setThemeReady(true);
   }, []);
+
+  useEffect(() => {
+    void refreshActiveTravel();
+  }, [refreshActiveTravel]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -106,15 +115,43 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
       <ExchangeRatesDisplay className="ml-1 flex shrink-0 max-[1299px]:hidden" />
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 shrink-0 gap-1 px-2.5 text-xs sm:px-3 sm:text-sm"
-          onClick={() => openTransactionModal(TransactionFormMode.Spending)}
-        >
-          <Plus data-icon="inline-start" className="size-4 shrink-0" />
-          <span className="whitespace-nowrap">{t("addSpending")}</span>
-        </Button>
+        {activeTravel ? (
+          <Link
+            href={`/travels/${activeTravel.id}`}
+            className="mr-1 hidden max-w-[12rem] items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs lg:flex"
+            title={t("activeTravel")}
+          >
+            <Plane className="size-3.5 shrink-0 text-sky-600" />
+            <span className="truncate font-medium">{activeTravel.title}</span>
+            <TravelPhaseBadge phase={activeTravel.phase} />
+          </Link>
+        ) : null}
+        <div className="flex shrink-0 overflow-hidden rounded-xl border border-border/70">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 rounded-none border-0 px-2.5 text-xs sm:px-3 sm:text-sm"
+            onClick={() => openTransactionModal(TransactionFormMode.Spending)}
+          >
+            <Plus data-icon="inline-start" className="size-4 shrink-0" />
+            <span className="whitespace-nowrap">{t("addSpending")}</span>
+          </Button>
+          {activeTravel ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-none border-0 border-l border-border/70 bg-sky-500/15 px-2 text-sky-700 hover:bg-sky-500/25 dark:text-sky-200"
+              aria-label={t("addTravelSpending")}
+              onClick={() =>
+                openTransactionModal(TransactionFormMode.Spending, {
+                  travelId: activeTravel.id,
+                })
+              }
+            >
+              <Plane className="size-4" />
+            </Button>
+          ) : null}
+        </div>
         <Button
           size="sm"
           className="h-8 shrink-0 gap-1 px-2.5 text-xs sm:px-3 sm:text-sm"

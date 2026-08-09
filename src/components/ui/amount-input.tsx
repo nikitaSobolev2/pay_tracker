@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   formatAmountInputDisplay,
   sanitizeAmountRaw,
+  sanitizeIntegerAmountRaw,
 } from "@/lib/amount-input";
 import { looksLikeAmountExpression } from "@/lib/amount-expression";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ type AmountInputProps = Omit<
   readonly onValueChange: (rawAmount: string) => void;
   /** When true, keep + - * / so the "=" evaluator can run. */
   readonly allowExpression?: boolean;
+  /** Whole currency units only — no decimal entry or display. */
+  readonly integerOnly?: boolean;
 };
 
 function sanitizeExpressionRaw(value: string): string {
@@ -30,28 +33,43 @@ export function AmountInput({
   value,
   onValueChange,
   allowExpression = false,
+  integerOnly = false,
   className,
   ...props
 }: AmountInputProps) {
   const locale = useLocale();
-  const expressionMode = allowExpression && looksLikeAmountExpression(value);
+  const expressionMode =
+    !integerOnly && allowExpression && looksLikeAmountExpression(value);
+  const displayRaw = integerOnly
+    ? sanitizeIntegerAmountRaw(value, locale)
+    : value;
 
   return (
     <Input
       {...props}
-      inputMode={expressionMode ? "text" : "decimal"}
+      inputMode={expressionMode ? "text" : integerOnly ? "numeric" : "decimal"}
       autoComplete="off"
       className={cn("tabular-nums", className)}
       value={
-        expressionMode ? value : formatAmountInputDisplay(value, locale)
+        expressionMode
+          ? value
+          : formatAmountInputDisplay(displayRaw, locale)
       }
       onChange={(event) => {
         const next = event.target.value;
-        if (allowExpression && looksLikeAmountExpression(next)) {
+        if (
+          !integerOnly &&
+          allowExpression &&
+          looksLikeAmountExpression(next)
+        ) {
           onValueChange(sanitizeExpressionRaw(next));
           return;
         }
-        onValueChange(sanitizeAmountRaw(next, locale));
+        onValueChange(
+          integerOnly
+            ? sanitizeIntegerAmountRaw(next, locale)
+            : sanitizeAmountRaw(next, locale),
+        );
       }}
     />
   );

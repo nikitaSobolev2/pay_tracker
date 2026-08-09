@@ -4,6 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { classifySearchQuery } from "@/lib/search/query-classify";
+import { resolveTravelPhase } from "@/lib/travel-phase";
 import { TransactionKind } from "@/types/enums";
 
 import { toCategoryDtos } from "./category-service";
@@ -13,12 +14,24 @@ import type {
   SearchCounterpartyHit,
   SearchDateRangeHit,
   SearchDebtHit,
+  SearchEventHit,
   SearchInput,
   SearchResponse,
   SearchTransactionHit,
+  SearchTravelHit,
 } from "./search-service.types";
 
 const DEFAULT_LIMIT = 10;
+
+const EMPTY_GROUPS = {
+  categories: [] as SearchCategoryHit[],
+  counterparties: [] as SearchCounterpartyHit[],
+  debts: [] as SearchDebtHit[],
+  dateRanges: [] as SearchDateRangeHit[],
+  transactions: [] as SearchTransactionHit[],
+  events: [] as SearchEventHit[],
+  travels: [] as SearchTravelHit[],
+};
 
 type TxRow = Prisma.TransactionGetPayload<{
   include: {
@@ -32,13 +45,7 @@ export async function searchAll(input: SearchInput): Promise<SearchResponse> {
   const empty: SearchResponse = {
     query: input.query,
     queryKind: "empty",
-    groups: {
-      categories: [],
-      counterparties: [],
-      debts: [],
-      dateRanges: [],
-      transactions: [],
-    },
+    groups: { ...EMPTY_GROUPS },
   };
 
   const classified = classifySearchQuery(input.query, input.timezone);
@@ -75,9 +82,7 @@ export async function searchAll(input: SearchInput): Promise<SearchResponse> {
       query: input.query,
       queryKind: "date",
       groups: {
-        categories: [],
-        counterparties: [],
-        debts: [],
+        ...EMPTY_GROUPS,
         dateRanges,
         transactions,
       },
@@ -94,21 +99,21 @@ export async function searchAll(input: SearchInput): Promise<SearchResponse> {
       query: input.query,
       queryKind: "amount",
       groups: {
-        categories: [],
-        counterparties: [],
-        debts: [],
-        dateRanges: [],
+        ...EMPTY_GROUPS,
         transactions,
       },
     };
   }
 
   const needle = classified.normalized;
-  const [categories, counterparties, titleTransactions] = await Promise.all([
-    searchCategories(input.userId, needle, limit),
-    searchCounterparties(input.userId, needle, limit),
-    searchTransactionsByTitle(input, needle, limit),
-  ]);
+  const [categories, counterparties, titleTransactions, events, travels] =
+    await Promise.all([
+      searchCategories(input.userId, needle, limit),
+      searchCounterparties(input.userId, needle, limit),
+      searchTransactionsByTitle(input, needle, limit),
+      searchEvents(input.userId, needle, limit),
+      searchTravels(input.userId, needle, limit),
+    ]);
 
   const debts = await searchDebtsForCounterparties(
     input,
@@ -143,13 +148,107 @@ export async function searchAll(input: SearchInput): Promise<SearchResponse> {
     query: input.query,
     queryKind: "text",
     groups: {
+      ...EMPTY_GROUPS,
       categories,
       counterparties,
       debts,
-      dateRanges: [],
       transactions,
+      events,
+      travels,
     },
   };
+}
+
+async function searchEvents(
+  userId: string,
+  needle: string,
+  limit: number,
+): Promise<SearchEventHit[]> {
+  const rows = await prisma.event.findMany({
+    where: {
+      userId,
+      OR: [
+        { title: { contains: needle, mode: "insensitive" } },
+        { address: { contains: needle, mode: "insensitive" } },
+        { description: { contains: needle, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { occursAt: "desc" },
+    take: limit * 3,
+    select: {
+      id: true,
+      title: true,
+      address: true,
+      occursAt: true,
+    },
+  });
+
+  return rows
+    .map((row) => {
+      const titleScore = textScore(row.title.toLowerCase(), needle);
+      const addressScore = textScore((row.address ?? "").toLowerCase(), needle);
+      return {
+        kind: "event" as const,
+        id: row.id,
+        title: row.title,
+        address: row.address,
+        occursAt: row.occursAt.toISOString(),
+        score: Math.max(titleScore, addressScore * 0.9),
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+async function searchTravels(
+  userId: string,
+  needle: string,
+  limit: number,
+): Promise<SearchTravelHit[]> {
+  const rows = await prisma.travel.findMany({
+    where: {
+      userId,
+      OR: [
+        { title: { contains: needle, mode: "insensitive" } },
+        { placeLabel: { contains: needle, mode: "insensitive" } },
+        { placeCity: { contains: needle, mode: "insensitive" } },
+        { placeCountry: { contains: needle, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { startsAt: "desc" },
+    take: limit * 3,
+    select: {
+      id: true,
+      title: true,
+      placeLabel: true,
+      startsAt: true,
+      endsAt: true,
+      phaseOverride: true,
+    },
+  });
+
+  return rows
+    .map((row) => {
+      const titleScore = textScore(row.title.toLowerCase(), needle);
+      const placeScore = textScore(
+        (row.placeLabel ?? "").toLowerCase(),
+        needle,
+      );
+      return {
+        kind: "travel" as const,
+        id: row.id,
+        title: row.title,
+        placeLabel: row.placeLabel,
+        startsAt: row.startsAt.toISOString(),
+        endsAt: row.endsAt.toISOString(),
+        phase: resolveTravelPhase(row),
+        score: Math.max(titleScore, placeScore * 0.9),
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 async function searchCategories(

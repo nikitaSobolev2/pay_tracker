@@ -153,3 +153,28 @@ export const EventPollSelectionMode = {
 } as const;
 export type EventPollSelectionMode =
   (typeof EventPollSelectionMode)[keyof typeof EventPollSelectionMode];
+
+export const TravelPhase = {
+  Prepares: "PREPARES",
+  InProgress: "IN_PROGRESS",
+  Finished: "FINISHED",
+  Failed: "FAILED",
+} as const;
+export type TravelPhase = (typeof TravelPhase)[keyof typeof TravelPhase];
+
+export const TravelPlannedCategory = {
+  FoodDrinks: "FOOD_DRINKS",
+  TravelExpenses: "TRAVEL_EXPENSES",
+  Housing: "HOUSING",
+  Souvenirs: "SOUVENIRS",
+  Other: "OTHER",
+} as const;
+export type TravelPlannedCategory =
+  (typeof TravelPlannedCategory)[keyof typeof TravelPlannedCategory];
+
+export const TravelAiReportType = {
+  Ok: "OK",
+  Bad: "BAD",
+} as const;
+export type TravelAiReportType =
+  (typeof TravelAiReportType)[keyof typeof TravelAiReportType];

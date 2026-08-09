@@ -7,7 +7,14 @@ import {
   type ReactNode,
   type TransitionEvent,
 } from "react";
-import { ArrowLeft, Menu, Plus, Search, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  Menu,
+  Plane,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +22,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionTypeSwitcher } from "@/features/transactions/transaction-type-switcher";
 import { cn } from "@/lib/utils";
+import { useActiveTravelStore } from "@/stores/active-travel.store";
 import {
   useMobilePageChromeStore,
   type MobilePageChrome,
@@ -40,10 +48,16 @@ export function MobileNavIsland({ onOpenSearch }: MobileNavIslandProps) {
   const tCommon = useTranslations("common");
   const { toggleSidebar } = useSidebar();
   const openTransactionModal = useUiStore((state) => state.openTransactionModal);
+  const activeTravel = useActiveTravelStore((state) => state.travel);
+  const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
   const chrome = useMobilePageChromeStore((state) => state.chrome);
   const { renderedChrome, chromeOpen, onChromeTransitionEnd } =
     useAnimatedPageChrome(chrome);
   const showChromeSlot = renderedChrome != null;
+
+  useEffect(() => {
+    void refreshActiveTravel();
+  }, [refreshActiveTravel]);
 
   return (
     <div
@@ -80,7 +94,13 @@ export function MobileNavIsland({ onOpenSearch }: MobileNavIslandProps) {
           </div>
         ) : null}
 
-        <nav className="grid h-12 grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] items-center gap-1">
+        <nav
+          className={
+            activeTravel
+              ? "grid h-12 grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)_3rem] items-center gap-1"
+              : "grid h-12 grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)_3rem] items-center gap-1"
+          }
+        >
           <IslandIconButton
             ariaLabel={tCommon("search")}
             onClick={onOpenSearch}
@@ -94,6 +114,18 @@ export function MobileNavIsland({ onOpenSearch }: MobileNavIslandProps) {
           >
             <Plus className="size-4 text-rose-400" />
           </IslandLabelButton>
+          {activeTravel ? (
+            <IslandIconButton
+              ariaLabel={t("addTravelSpending")}
+              onClick={() =>
+                openTransactionModal(TransactionFormMode.Spending, {
+                  travelId: activeTravel.id,
+                })
+              }
+            >
+              <Plane className="size-5 text-sky-500" />
+            </IslandIconButton>
+          ) : null}
           <IslandLabelButton
             ariaLabel={t("earning")}
             label={t("earning")}

@@ -92,6 +92,15 @@ export function normalizeAmountRaw(value: string, locale = "en"): string {
   return sanitized.replace(/\.?0+$/, "");
 }
 
+/** Digits only — no decimal part (`100.99` → `100`). */
+export function sanitizeIntegerAmountRaw(value: string, locale = "en"): string {
+  const sanitized = sanitizeAmountRaw(value, locale);
+  if (!sanitized) {
+    return "";
+  }
+  return sanitized.split(".")[0] ?? "";
+}
+
 function stripLeadingZeros(digits: string): string {
   if (!digits) {
     return "0";

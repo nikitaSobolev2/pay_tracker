@@ -28,6 +28,7 @@ const listQuerySchema = z
     categoryIds: z.array(z.string().min(1)).optional(),
     counterpartyIds: z.array(z.string().min(1)).optional(),
     hideUncategorized: z.boolean().optional(),
+    travelId: z.string().min(1).optional(),
     sortBy: zodEnumFromConst(TransactionSortBy).optional(),
     sortDir: zodEnumFromConst(SortDirection).optional(),
     page: z.coerce.number().int().positive().optional(),
@@ -50,6 +51,7 @@ const createBodySchema = z.object({
   kind: zodEnumFromConst(TransactionKind).default(TransactionKind.Default),
   counterpartyName: z.string().max(200).nullable().optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
+  travelId: z.string().min(1).nullish(),
   idempotencyKey: z.string().min(1).max(100),
 });
 
@@ -79,6 +81,7 @@ export async function GET(request: Request) {
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:
         searchParams.get("hideUncategorized") === "true" ? true : undefined,
+      travelId: searchParams.get("travelId") ?? undefined,
       sortBy: searchParams.get("sortBy") ?? undefined,
       sortDir: searchParams.get("sortDir") ?? undefined,
       page: searchParams.get("page") ?? undefined,
@@ -118,6 +121,7 @@ export async function POST(request: Request) {
       kind: body.kind,
       counterpartyName: body.counterpartyName,
       categoryIds: body.categoryIds,
+      travelId: body.travelId,
       idempotencyKey: body.idempotencyKey,
     });
     return jsonOk({ transaction }, { status: 201 });

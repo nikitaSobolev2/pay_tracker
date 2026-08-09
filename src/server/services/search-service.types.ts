@@ -1,11 +1,17 @@
-import type { TransactionKind, TransactionType } from "@/types/enums";
+import type {
+  TransactionKind,
+  TransactionType,
+  TravelPhase,
+} from "@/types/enums";
 
 export type SearchResultKind =
   | "category"
   | "counterparty"
   | "debt"
   | "transaction"
-  | "dateRange";
+  | "dateRange"
+  | "event"
+  | "travel";
 
 export type SearchTransactionHit = {
   readonly kind: "transaction";
@@ -57,12 +63,34 @@ export type SearchDateRangeHit = {
   readonly score: number;
 };
 
+export type SearchEventHit = {
+  readonly kind: "event";
+  readonly id: string;
+  readonly title: string;
+  readonly address: string | null;
+  readonly occursAt: string;
+  readonly score: number;
+};
+
+export type SearchTravelHit = {
+  readonly kind: "travel";
+  readonly id: string;
+  readonly title: string;
+  readonly placeLabel: string | null;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly phase: TravelPhase;
+  readonly score: number;
+};
+
 export type SearchHit =
   | SearchTransactionHit
   | SearchCategoryHit
   | SearchCounterpartyHit
   | SearchDebtHit
-  | SearchDateRangeHit;
+  | SearchDateRangeHit
+  | SearchEventHit
+  | SearchTravelHit;
 
 export type SearchResponse = {
   readonly query: string;
@@ -73,6 +101,8 @@ export type SearchResponse = {
     readonly debts: SearchDebtHit[];
     readonly dateRanges: SearchDateRangeHit[];
     readonly transactions: SearchTransactionHit[];
+    readonly events: SearchEventHit[];
+    readonly travels: SearchTravelHit[];
   };
 };
 

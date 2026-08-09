@@ -20,6 +20,7 @@ const updateBodySchema = z.object({
   kind: zodEnumFromConst(TransactionKind).optional(),
   counterpartyName: z.string().max(200).nullable().optional(),
   categoryIds: z.array(z.string().min(1)).optional(),
+  travelId: z.string().min(1).nullish(),
 });
 
 type RouteContext = {
@@ -58,6 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       kind: body.kind,
       counterpartyName: body.counterpartyName,
       categoryIds: body.categoryIds,
+      travelId: body.travelId,
     });
     return jsonOk({ transaction });
   } catch (error) {

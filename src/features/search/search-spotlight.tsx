@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  CalendarDays,
   CalendarRange,
   HandCoins,
   Loader2,
+  Plane,
   Receipt,
   Search,
   Tags,
@@ -23,6 +25,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -119,7 +122,9 @@ export function SearchSpotlight({
       (groups?.counterparties.length ?? 0) > 0 ||
       (groups?.debts.length ?? 0) > 0 ||
       (groups?.dateRanges.length ?? 0) > 0 ||
-      (groups?.transactions.length ?? 0) > 0);
+      (groups?.transactions.length ?? 0) > 0 ||
+      (groups?.events.length ?? 0) > 0 ||
+      (groups?.travels.length ?? 0) > 0);
 
   return (
     <>
@@ -153,12 +158,7 @@ export function SearchSpotlight({
         }}
         title={t("shortcut")}
         description={t("placeholder")}
-        className={cn(
-          // Mobile: bottom sheet; desktop: centered top panel
-          "top-auto bottom-0 left-1/2 w-full max-w-none -translate-x-1/2 translate-y-0",
-          "max-h-[min(85dvh,40rem)] rounded-t-2xl rounded-b-none",
-          "sm:top-1/4 sm:bottom-auto sm:max-h-none sm:max-w-2xl sm:rounded-xl md:max-w-3xl",
-        )}
+        className="ui-dialog-popup--search"
       >
         <Command
           shouldFilter={false}
@@ -185,7 +185,7 @@ export function SearchSpotlight({
             inputGroupClassName="h-14! rounded-xl! *:data-[slot=input-group-addon]:pl-3! sm:h-11! [&_svg]:size-5 sm:[&_svg]:size-4"
             className="text-base sm:text-sm"
           />
-          <CommandList className="max-h-[min(55dvh,28rem)] sm:max-h-[min(28rem,60vh)]">
+          <CommandList className="max-h-[min(55dvh,28rem)] sm:!max-h-[min(40rem,70vh)]">
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-10 text-base text-muted-foreground sm:py-8 sm:text-sm">
                 <Loader2 className="size-5 animate-spin sm:size-4" />
@@ -339,6 +339,51 @@ export function SearchSpotlight({
                     >
                       {formatMoney(item.displayAmount, item.displayCurrency)}
                     </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+
+            {groups && groups.events.length > 0 ? (
+              <CommandGroup heading={t("groupEvents")}>
+                {groups.events.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`event-${item.id}`}
+                    onSelect={() => closeAndGo(`/event/${item.id}`)}
+                  >
+                    <CalendarDays />
+                    <span className="min-w-0 flex-1 truncate">
+                      {item.title}
+                      {item.address ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {item.address}
+                        </span>
+                      ) : null}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+
+            {groups && groups.travels.length > 0 ? (
+              <CommandGroup heading={t("groupTravels")}>
+                {groups.travels.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`travel-${item.id}`}
+                    onSelect={() => closeAndGo(`/travels/${item.id}`)}
+                  >
+                    <Plane />
+                    <span className="min-w-0 flex-1 truncate">
+                      {item.title}
+                      {item.placeLabel ? (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {item.placeLabel}
+                        </span>
+                      ) : null}
+                    </span>
+                    <TravelPhaseBadge phase={item.phase} />
                   </CommandItem>
                 ))}
               </CommandGroup>

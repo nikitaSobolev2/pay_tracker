@@ -7,6 +7,7 @@ export type FastQueueItem = {
   currency: string;
   occurredAt: string;
   idempotencyKey: string;
+  travelId?: string | null;
   createdAtLocal: string;
   status: FastQueueStatus;
   transactionId?: string;

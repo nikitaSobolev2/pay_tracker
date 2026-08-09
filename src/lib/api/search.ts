@@ -8,6 +8,8 @@ export type {
   SearchCounterpartyHit,
   SearchDebtHit,
   SearchDateRangeHit,
+  SearchEventHit,
+  SearchTravelHit,
   SearchTransactionHit,
 } from "@/server/services/search-service.types";
 

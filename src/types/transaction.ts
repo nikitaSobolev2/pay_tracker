@@ -24,6 +24,7 @@ export type TransactionDto = {
   kind: TransactionKind;
   counterpartyId: string | null;
   counterpartyName: string | null;
+  travelId: string | null;
   categories: TransactionCategoryDto[];
   createdAt: string;
   updatedAt: string;

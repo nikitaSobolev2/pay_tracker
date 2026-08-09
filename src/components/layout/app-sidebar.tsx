@@ -14,6 +14,7 @@ import {
   Smartphone,
   Sun,
   Tags,
+  Plane,
   Users,
   X,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { href: "/categories", key: "categories", icon: Tags },
   { href: "/counterparties", key: "counterparties", icon: Users },
   { href: "/events", key: "events", icon: CalendarDays },
+  { href: "/travels", key: "travels", icon: Plane },
 ] as const;
 
 const SETTINGS_ITEM = {

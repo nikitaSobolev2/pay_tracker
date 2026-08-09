@@ -18,6 +18,7 @@ export type CreateTransactionInput = {
   kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
+  travelId?: string | null;
   idempotencyKey: string;
 };
 
@@ -33,6 +34,7 @@ export type UpdateTransactionInput = {
   kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
+  travelId?: string | null;
 };
 
 export type ListTransactionsInput = {
@@ -48,6 +50,7 @@ export type ListTransactionsInput = {
   kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
+  travelId?: string;
   hideUncategorized?: boolean;
   sortBy?: TransactionSortBy;
   sortDir?: SortDirection;

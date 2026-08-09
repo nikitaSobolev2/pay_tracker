@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { createTransaction } from "@/lib/api/transactions";
+import { useActiveTravelStore } from "@/stores/active-travel.store";
 import type { FastQueueItem } from "@/stores/fast-transaction-queue.types";
 import { FastQueueStatus, TransactionKind, TransactionType } from "@/types/enums";
 
@@ -74,6 +75,10 @@ export const useFastTransactionQueueStore = create<FastQueueStore>()(
             occurredAt: item.occurredAt,
             kind: TransactionKind.Default,
             categoryIds: [],
+            travelId:
+              item.type === TransactionType.Spending
+                ? (item.travelId ?? null)
+                : null,
             idempotencyKey: item.idempotencyKey,
           });
           get().updateItem(localId, {
@@ -123,8 +128,15 @@ export function enqueueFastTransaction(input: {
   occurredAt: string;
   idempotencyKey: string;
   localId: string;
+  travelId?: string | null;
 }) {
+  const activeTravelId =
+    input.type === TransactionType.Spending
+      ? (input.travelId ??
+        useActiveTravelStore.getState().travel?.id ??
+        null)
+      : null;
   const store = useFastTransactionQueueStore.getState();
-  store.enqueue(input);
+  store.enqueue({ ...input, travelId: activeTravelId });
   void store.submitItem(input.localId);
 }

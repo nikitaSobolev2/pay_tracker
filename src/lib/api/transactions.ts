@@ -18,6 +18,7 @@ export type TransactionListParams = {
   kinds?: TransactionKind[];
   categoryIds?: string[];
   counterpartyIds?: string[];
+  travelId?: string;
   hideUncategorized?: boolean;
   sortBy?: TransactionSortBy;
   sortDir?: SortDirection;
@@ -41,6 +42,7 @@ export type CreateTransactionInput = {
   kind?: TransactionKind;
   counterpartyName?: string | null;
   categoryIds?: string[];
+  travelId?: string | null;
   idempotencyKey: string;
 };
 
@@ -53,6 +55,7 @@ export type UpdateTransactionInput = Partial<{
   kind: TransactionKind;
   counterpartyName: string | null;
   categoryIds: string[];
+  travelId: string | null;
 }>;
 
 function toListQuery(params: TransactionListParams): string {
@@ -66,6 +69,7 @@ function toListQuery(params: TransactionListParams): string {
     kinds: params.kinds?.join(","),
     categoryIds: params.categoryIds?.join(","),
     counterpartyIds: params.counterpartyIds?.join(","),
+    travelId: params.travelId,
     hideUncategorized: params.hideUncategorized ? "true" : undefined,
     sortBy: params.sortBy,
     sortDir: params.sortDir,

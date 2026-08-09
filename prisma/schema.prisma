@@ -69,6 +69,26 @@ enum EventPollSelectionMode {
   MULTIPLE
 }
 
+enum TravelPhase {
+  PREPARES
+  IN_PROGRESS
+  FINISHED
+  FAILED
+}
+
+enum TravelPlannedCategory {
+  FOOD_DRINKS
+  TRAVEL_EXPENSES
+  HOUSING
+  SOUVENIRS
+  OTHER
+}
+
+enum TravelAiReportType {
+  OK
+  BAD
+}
+
 model User {
   id              String   @id @default(cuid())
   name            String
@@ -92,6 +112,7 @@ model User {
   loginTransfers LoginTransfer[]
   sharedCharts   SharedChart[]
   events         Event[]
+  travels        Travel[]
 }
 
 model Session {
@@ -215,12 +236,14 @@ model Transaction {
   occurredAt     DateTime
   kind           TransactionKind       @default(DEFAULT)
   counterpartyId String?
+  travelId       String?
   idempotencyKey String
   isDeleted      Boolean               @default(false)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   counterparty   UserCounterparty?     @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
+  travel         Travel?               @relation(fields: [travelId], references: [id], onDelete: SetNull)
   categories     TransactionCategory[]
 
   @@unique([userId, idempotencyKey])
@@ -228,6 +251,7 @@ model Transaction {
   @@index([userId, type, occurredAt])
   @@index([userId, kind, counterpartyId])
   @@index([userId, isDeleted, occurredAt])
+  @@index([userId, travelId])
 }
 
 model ExchangeRate {
@@ -552,4 +576,75 @@ model EventLocationPollVote {
   @@index([pollId])
   @@index([optionId])
   @@index([voterGuestId])
+}
+
+model Travel {
+  id              String       @id @default(uuid())
+  userId          String
+  title           String
+  startsAt        DateTime
+  endsAt          DateTime
+  imageUrl        String?
+  placeCountry    String?
+  placeCity       String?
+  placeLabel      String?
+  currency        String
+  maxSpendingGoal Decimal?     @db.Decimal(18, 4)
+  phaseOverride   TravelPhase?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plannedSpendings TravelPlannedSpending[]
+  categoryBudgets  TravelCategoryBudget[]
+  transactions     Transaction[]
+  aiReport         TravelAiReport?
+
+  @@index([userId, startsAt])
+  @@index([userId, endsAt])
+}
+
+model TravelPlannedSpending {
+  id        String                @id @default(cuid())
+  travelId  String
+  title     String
+  category  TravelPlannedCategory @default(OTHER)
+  amount    Decimal               @db.Decimal(18, 4)
+  note      String?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
+
+  @@index([travelId, category])
+}
+
+/** Lump category total; when set, line items in that category are locked/hidden. */
+model TravelCategoryBudget {
+  id        String                @id @default(cuid())
+  travelId  String
+  category  TravelPlannedCategory
+  amount    Decimal               @db.Decimal(18, 4)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
+
+  @@unique([travelId, category])
+  @@index([travelId])
+}
+
+model TravelAiReport {
+  id             String             @id @default(cuid())
+  travelId       String             @unique
+  type           TravelAiReportType
+  reportMessage  String
+  contextMessage String?
+  responseLocale String?
+  extras         Json?
+  model          String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
 }

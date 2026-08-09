@@ -396,6 +396,48 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
   overflow: hidden !important;
 }
 
+/* Header search / command palette — single transform so Tailwind translate cannot double-shift. */
+.ui-dialog-popup.ui-dialog-popup--search {
+  top: auto !important;
+  right: auto !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: min(85dvh, 40rem) !important;
+  translate: none !important;
+  transform: translate(-50%, 0) !important;
+  border-radius: 1rem 1rem 0 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+@media (min-width: 640px) {
+  .ui-dialog-popup.ui-dialog-popup--search {
+    top: 12% !important;
+    bottom: auto !important;
+    width: min(48rem, calc(100vw - 2rem)) !important;
+    max-width: min(48rem, calc(100vw - 2rem)) !important;
+    max-height: min(80dvh, 48rem) !important;
+    border-radius: 0.75rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .ui-dialog-popup.ui-dialog-popup--search {
+    width: min(56rem, calc(100vw - 2rem)) !important;
+    max-width: min(56rem, calc(100vw - 2rem)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ui-dialog-popup.ui-dialog-popup--search {
+    width: min(64rem, calc(100vw - 2rem)) !important;
+    max-width: min(64rem, calc(100vw - 2rem)) !important;
+  }
+}
+
 .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="map"] {
   z-index: 1400 !important;
 }

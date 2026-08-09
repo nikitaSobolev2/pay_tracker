@@ -20,6 +20,7 @@ const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
 };
 
 const EVENT_IMAGE_PREFIX = "events";
+const TRAVEL_IMAGE_PREFIX = "travels";
 
 let client: MinioClient | null = null;
 let bucketReady: Promise<void> | null = null;
@@ -48,6 +49,34 @@ export async function uploadEventAttachment(
   input: UploadInput,
 ): Promise<string> {
   return uploadEventImage(input, "attachments");
+}
+
+/** True when the URL points at an object we store under the travels/ prefix. */
+export function isOwnedTravelImageUrl(url: string): boolean {
+  try {
+    const base = `${readPublicBaseUrl()}/${TRAVEL_IMAGE_PREFIX}/`;
+    return url.startsWith(base);
+  } catch {
+    return false;
+  }
+}
+
+/** Stores a travel cover and returns the public URL. */
+export async function uploadTravelCover(input: UploadInput): Promise<string> {
+  const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
+  if (!extension) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Unsupported image format",
+    );
+  }
+
+  const key = `${TRAVEL_IMAGE_PREFIX}/covers/${randomUUID()}.${extension}`;
+  await ensureBucket();
+  await getClient().putObject(readBucket(), key, input.body, input.body.length, {
+    "Content-Type": input.contentType,
+  });
+  return `${readPublicBaseUrl()}/${key}`;
 }
 
 async function uploadEventImage(
