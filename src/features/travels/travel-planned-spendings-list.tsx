@@ -20,15 +20,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  ResponsiveDialogBody,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogHeaderInner,
+} from "@/components/ui/responsive-dialog";
 import {
   Table,
   TableBody,
@@ -324,7 +325,7 @@ export function TravelPlannedSpendingsList({
           );
         })}
 
-        <PlannedSpendingEditSheet
+        <PlannedSpendingEditDialog
           open={editing != null}
           item={editing}
           onOpenChange={(open) => {
@@ -606,7 +607,7 @@ function DraftRowEditor({
   );
 }
 
-function PlannedSpendingEditSheet({
+function PlannedSpendingEditDialog({
   open,
   item,
   onOpenChange,
@@ -640,20 +641,19 @@ function PlannedSpendingEditSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="z-[80] gap-0 rounded-t-2xl sm:mx-auto sm:max-w-lg"
-      >
-        <SheetHeader className="border-b border-border/50 px-4 py-3">
-          <SheetTitle>{t("edit")}</SheetTitle>
-        </SheetHeader>
-        <div className="space-y-4 p-4">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent size="md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogHeaderInner>
+            <DialogTitle>{t("edit")}</DialogTitle>
+          </ResponsiveDialogHeaderInner>
+        </ResponsiveDialogHeader>
+        <ResponsiveDialogBody className="space-y-4">
           <div className="space-y-2">
             <Label>{t("spendingTitle")}</Label>
             <Input
               value={title}
-              className="h-12 rounded-xl text-base"
+              className="h-12 rounded-xl text-base md:h-11"
               onChange={(event) => setTitle(event.target.value)}
             />
           </div>
@@ -662,7 +662,7 @@ function PlannedSpendingEditSheet({
             <AmountInput
               integerOnly
               value={amount}
-              className="h-12 rounded-xl"
+              className="h-12 rounded-xl md:h-11"
               onValueChange={setAmount}
             />
           </div>
@@ -674,12 +674,21 @@ function PlannedSpendingEditSheet({
               onChange={(event) => setNote(event.target.value)}
             />
           </div>
-        </div>
-        <SheetFooter className="border-t border-border/50 p-4">
+        </ResponsiveDialogBody>
+        <ResponsiveDialogFooter>
           <Button
             type="button"
-            className="h-12 w-full rounded-xl text-base"
-            disabled={saving || !item}
+            variant="outline"
+            className="h-11 rounded-xl"
+            disabled={saving}
+            onClick={() => onOpenChange(false)}
+          >
+            {tCommon("cancel")}
+          </Button>
+          <Button
+            type="button"
+            className="h-11 rounded-xl"
+            disabled={saving || !item || !title.trim() || !amount.trim()}
             onClick={() => {
               if (!item) {
                 return;
@@ -703,8 +712,8 @@ function PlannedSpendingEditSheet({
           >
             {tCommon("save")}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </Dialog>
   );
 }

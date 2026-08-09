@@ -127,7 +127,10 @@ function publicReadPolicy(bucket: string) {
         Effect: "Allow",
         Principal: { AWS: ["*"] },
         Action: ["s3:GetObject"],
-        Resource: [`arn:aws:s3:::${bucket}/${EVENT_IMAGE_PREFIX}/*`],
+        Resource: [
+          `arn:aws:s3:::${bucket}/${EVENT_IMAGE_PREFIX}/*`,
+          `arn:aws:s3:::${bucket}/${TRAVEL_IMAGE_PREFIX}/*`,
+        ],
       },
     ],
   };
