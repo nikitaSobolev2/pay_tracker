@@ -28,6 +28,7 @@ function buildSystemPrompt(responseLanguage: string): string {
     "LANGUAGE LOCK (highest priority):",
     `- Response language: ${language}.`,
     `- EVERY user-facing string MUST be fully in ${language}: report_message, flexible_total_assessment.message, item_notes.*.message.`,
+    `- report_message headings, labels, bullets, and body text MUST all be in ${language}. Do not mix languages.`,
     "- JSON keys stay exactly as specified in English.",
     "",
     "Return ONLY a JSON object with this exact shape:",
@@ -45,6 +46,7 @@ function buildSystemPrompt(responseLanguage: string): string {
     "}",
     "",
     "Rules:",
+    "- Use the JSON context: title, place, tripDays, currency, totals, maxSpendingGoal, and items.",
     "- fixedTotal (HOUSING + TRAVEL_EXPENSES) is stuck cost. Mention only as fixed backdrop. Do NOT suggest changing those items.",
     "- Judge flexible spendings (FOOD_DRINKS, SOUVENIRS, OTHER) vs tripDays, place, and maxSpendingGoal.",
     "- Compare grandTotal and flexibleTotal to maxSpendingGoal when present.",
@@ -54,35 +56,55 @@ function buildSystemPrompt(responseLanguage: string): string {
     "- suggested_flexible_total: optional better flexible budget total, or null.",
     "- Numbers must be plain JSON numbers, not strings.",
     "- Do not invent item ids. Use only ids from items.",
+    "- Cite real numbers from the context (currency amounts, days). Never invent trip facts.",
     "",
-    "report_message markdown skeleton:",
+    "report_message MUST be rich Markdown (not a single paragraph). Target 120-350 words.",
+    "FILL every section with concrete analysis from the context. Do NOT copy placeholder lines.",
+    "Do NOT return an empty outline (headings alone, or skeleton bullets like “days / place / goal”).",
+    `Use this exact section skeleton in ${language} (keep these headings, replace guidance with real content):`,
     reportSkeleton,
+    "",
+    "Markdown rules for report_message:",
+    "- Prefer `##` / `###`, bullet lists, and a short blockquote for the verdict.",
+    "- Separate major sections with a blank line.",
+    "- Bold key numbers and item titles; keep tone practical.",
+    "- Escape any double quotes inside the JSON string properly.",
+    "- Do not wrap the whole report_message in a code fence.",
+    `- Final check: if any heading or sentence is not in ${language}, rewrite it before answering.`,
   ].join("\n");
 }
 
 function englishReportSkeleton(): string {
   return [
     "## Verdict",
+    "> One-line outcome for the flexible plan vs goal (ok / needs fixes).",
+    "",
     "## Snapshot",
-    "- trip days / place / goal",
-    "- fixed vs flexible totals",
+    "- Trip days, place, currency, grand total, fixed vs flexible totals, and goal if set.",
+    "",
     "## Flexible plan",
-    "- only issues or a short realism note",
+    "- Only issues among FOOD_DRINKS / SOUVENIRS / OTHER, or a short realism note if fine.",
+    "- Mention per-day flexible spend when useful.",
+    "",
     "## Goal",
-    "- under / tight / over / no goal",
+    "- under / tight / over / no goal, with numbers from the context.",
   ].join("\n");
 }
 
 function russianReportSkeleton(): string {
   return [
     "## Вердикт",
+    "> Одна строка итога по гибкому плану и лимиту (ок / нужны правки).",
+    "",
     "## Снимок",
-    "- дни / место / лимит",
-    "- фиксированные vs гибкие",
+    "- Дни поездки, место, валюта, общий итог, фиксированные vs гибкие суммы и лимит если есть.",
+    "",
     "## Гибкий план",
-    "- только проблемы или краткая оценка реалистичности",
+    "- Только проблемы среди FOOD_DRINKS / SOUVENIRS / OTHER, или краткая оценка реалистичности если всё ок.",
+    "- При необходимости укажи гибкие траты в день.",
+    "",
     "## Лимит",
-    "- under / tight / over / no_goal",
+    "- under / tight / over / no_goal с цифрами из контекста.",
   ].join("\n");
 }
 

@@ -101,12 +101,15 @@ export function parseTravelAnalysisResponse(
     }
   }
 
+  const reportMessage = parsed.data.report_message.trim();
+  assertReportMessageHasSubstance(reportMessage);
+
   return {
     type:
       parsed.data.travel_report_type === "ok"
         ? TravelAiReportType.Ok
         : TravelAiReportType.Bad,
-    reportMessage: parsed.data.report_message,
+    reportMessage,
     goalStatus: parsed.data.goal_status,
     flexibleAssessmentMessage:
       parsed.data.flexible_total_assessment?.message ?? "",
@@ -114,4 +117,22 @@ export function parseTravelAnalysisResponse(
       parsed.data.flexible_total_assessment?.suggested_flexible_total ?? null,
     itemNotes,
   };
+}
+
+/** Reject empty outlines the model sometimes copies from the prompt skeleton. */
+function assertReportMessageHasSubstance(message: string): void {
+  const body = message
+    .replace(/^#{1,6}\s+.+$/gm, "")
+    .replace(/^>\s*/gm, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Real travel reports cite days/amounts; skeleton-only replies have neither.
+  if (body.length < 80 || !/\d/.test(body)) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "AI returned an empty report outline",
+    );
+  }
 }
