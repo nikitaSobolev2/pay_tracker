@@ -1,6 +1,10 @@
 import type { EventAccess, EventViewer } from "@/lib/event-access";
 import { AppServiceError } from "@/lib/errors";
 import { resolveAuthor } from "@/lib/event-author";
+import {
+  pickNearestUpcomingEvent,
+  resolveEventTiming,
+} from "@/lib/event-timing";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
 import { EventLinkType } from "@/types/enums";
@@ -28,6 +32,7 @@ import type {
   EventPaymentDto,
   EventSettlementResponse,
   EventSpendingDto,
+  UpcomingEventChipDto,
   UpdateAttendeeInput,
   UpdateEventInput,
   UpdateLinkInput,
@@ -78,6 +83,53 @@ export async function listEvents(userId: string): Promise<EventListItemDto[]> {
     attendeeCount: event.attendees.length,
     total: sumSpendings(event.spendings),
   }));
+}
+
+/** Nearest upcoming or currently happening owned event for header chip. */
+export async function getNearestUpcomingEvent(
+  userId: string,
+): Promise<UpcomingEventChipDto | null> {
+  const now = new Date();
+  const events = await prisma.event.findMany({
+    where: {
+      userId,
+      OR: [{ endsAt: { gte: now } }, { endsAt: null, occursAt: { gte: now } }],
+    },
+    orderBy: { occursAt: "asc" },
+    take: 30,
+    select: {
+      id: true,
+      title: true,
+      occursAt: true,
+      endsAt: true,
+    },
+  });
+
+  const picked = pickNearestUpcomingEvent(
+    events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      occursAt: event.occursAt.toISOString(),
+      endsAt: event.endsAt?.toISOString() ?? null,
+    })),
+    now,
+  );
+  if (!picked) {
+    return null;
+  }
+
+  const timing = resolveEventTiming({ ...picked, now });
+  if (timing === "finished") {
+    return null;
+  }
+
+  return {
+    id: picked.id,
+    title: picked.title,
+    occursAt: picked.occursAt,
+    endsAt: picked.endsAt,
+    timing,
+  };
 }
 
 export async function createEvent(input: CreateEventInput): Promise<string> {

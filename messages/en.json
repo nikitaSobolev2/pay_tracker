@@ -78,7 +78,8 @@
     "profile": "Profile",
     "exchangeRates": "Current exchange rates to RUB",
     "exchangeRatesMonth": "Exchange rates vs previous month",
-    "activeTravel": "Active travel"
+    "activeTravel": "Active travel",
+    "upcomingEvent": "Upcoming event"
   },
   "common": {
     "save": "Save",
@@ -386,6 +387,8 @@
     "date": "Date and time",
     "scheduleStart": "Starts",
     "scheduleEnd": "Ends",
+    "timingUpcoming": "Upcoming",
+    "timingInProgress": "In progress",
     "scheduleAddEnd": "Add end time",
     "scheduleRemoveEnd": "Remove end time",
     "cover": "Cover image",

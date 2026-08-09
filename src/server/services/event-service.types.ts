@@ -56,6 +56,15 @@ export type EventListItemDto = {
   readonly total: string;
 };
 
+/** Compact chip for desktop header (nearest upcoming / in-progress). */
+export type UpcomingEventChipDto = {
+  readonly id: string;
+  readonly title: string;
+  readonly occursAt: string;
+  readonly endsAt: string | null;
+  readonly timing: "upcoming" | "inProgress";
+};
+
 export type EventLinkDto = {
   readonly id: string;
   readonly type: EventLinkType;

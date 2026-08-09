@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   Loader2,
   LogOut,
   Monitor,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { EventTimingBadge } from "@/features/events/event-timing-badge";
 import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { useAppUser } from "@/hooks/use-app-user";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -36,6 +38,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
 import { useUiStore } from "@/stores/ui.store";
+import { useUpcomingEventStore } from "@/stores/upcoming-event.store";
 import { AppTheme, TransactionFormMode } from "@/types/enums";
 
 const PROFILE_ITEM_CLASS =
@@ -56,6 +59,8 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const openTransactionModal = useUiStore((state) => state.openTransactionModal);
   const activeTravel = useActiveTravelStore((state) => state.travel);
   const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
+  const upcomingEvent = useUpcomingEventStore((state) => state.event);
+  const refreshUpcomingEvent = useUpcomingEventStore((state) => state.refresh);
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [themeReady, setThemeReady] = useState(false);
@@ -67,6 +72,10 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   useEffect(() => {
     void refreshActiveTravel();
   }, [refreshActiveTravel]);
+
+  useEffect(() => {
+    void refreshUpcomingEvent();
+  }, [refreshUpcomingEvent]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -93,7 +102,7 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   const ThemeIcon = themeIconFor(theme);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-2 border-b bg-background/90 py-0 pr-3 pl-2 backdrop-blur max-md:hidden md:pr-4 md:pl-2">
+    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-1.5 border-b bg-background/90 py-0 pr-3 pl-2 backdrop-blur max-md:hidden md:gap-2 md:pr-4 md:pl-2">
       <SidebarTrigger className="shrink-0" />
       <Separator
         orientation="vertical"
@@ -102,39 +111,65 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
       <Button
         type="button"
         variant="outline"
-        className="ml-1 h-8 w-full min-w-0 max-w-xs shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground sm:max-w-sm lg:max-w-md"
+        className="ml-1 h-8 min-w-28 w-full max-w-[11rem] shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground xl:max-w-xs min-[1600px]:max-w-sm min-[1800px]:max-w-md"
         onClick={onOpenSearch}
         aria-label={tSearch("shortcut")}
       >
         <Search className="size-4 shrink-0" />
         <span className="truncate text-sm">{tSearch("shortcut")}</span>
-        <kbd className="pointer-events-none ml-auto inline shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+        <kbd className="pointer-events-none ml-auto hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground min-[1600px]:inline">
           ⌘K
         </kbd>
       </Button>
-      <ExchangeRatesDisplay className="ml-1 flex shrink-0 max-[1299px]:hidden" />
+      <ExchangeRatesDisplay className="ml-1 hidden shrink-0 min-[1600px]:flex" />
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+      <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5 min-[1600px]:gap-2">
+        {upcomingEvent ? (
+          <Link
+            href={`/event/${upcomingEvent.id}`}
+            className="mr-0.5 hidden items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-1.5 text-xs lg:flex min-[1700px]:mr-1 min-[1700px]:max-w-[14rem] min-[1700px]:gap-2 min-[1700px]:px-2.5"
+            title={`${t("upcomingEvent")}: ${upcomingEvent.title}`}
+          >
+            <CalendarDays className="size-3.5 shrink-0 text-violet-600 dark:text-violet-300" />
+            <span className="hidden truncate font-medium min-[1700px]:inline">
+              {upcomingEvent.title}
+            </span>
+            <EventTimingBadge
+              timing={upcomingEvent.timing}
+              className="max-[1499px]:hidden"
+            />
+          </Link>
+        ) : null}
         {activeTravel ? (
           <Link
             href={`/travels/${activeTravel.id}`}
-            className="mr-1 hidden max-w-[12rem] items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs lg:flex"
-            title={t("activeTravel")}
+            className="mr-0.5 hidden items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2 py-1.5 text-xs lg:flex min-[1700px]:mr-1 min-[1700px]:max-w-[12rem] min-[1700px]:gap-2 min-[1700px]:px-2.5"
+            title={`${t("activeTravel")}: ${activeTravel.title}`}
           >
             <Plane className="size-3.5 shrink-0 text-sky-600" />
-            <span className="truncate font-medium">{activeTravel.title}</span>
-            <TravelPhaseBadge phase={activeTravel.phase} />
+            <span className="hidden truncate font-medium min-[1700px]:inline">
+              {activeTravel.title}
+            </span>
+            <TravelPhaseBadge
+              phase={activeTravel.phase}
+              className="max-[1499px]:hidden"
+            />
           </Link>
         ) : null}
         <div className="flex shrink-0 overflow-hidden rounded-xl border border-border/70">
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1 rounded-none border-0 px-2.5 text-xs sm:px-3 sm:text-sm"
+            className="h-8 gap-1 rounded-none border-0 px-2 text-xs min-[1600px]:px-3 min-[1600px]:text-sm"
             onClick={() => openTransactionModal(TransactionFormMode.Spending)}
           >
             <Plus data-icon="inline-start" className="size-4 shrink-0" />
-            <span className="whitespace-nowrap">{t("addSpending")}</span>
+            <span className="whitespace-nowrap min-[1600px]:hidden">
+              {t("spending")}
+            </span>
+            <span className="hidden whitespace-nowrap min-[1600px]:inline">
+              {t("addSpending")}
+            </span>
           </Button>
           {activeTravel ? (
             <Button
@@ -154,11 +189,16 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
         </div>
         <Button
           size="sm"
-          className="h-8 shrink-0 gap-1 px-2.5 text-xs sm:px-3 sm:text-sm"
+          className="h-8 shrink-0 gap-1 px-2 text-xs min-[1600px]:px-3 min-[1600px]:text-sm"
           onClick={() => openTransactionModal(TransactionFormMode.Earning)}
         >
           <Plus data-icon="inline-start" className="size-4 shrink-0" />
-          <span className="whitespace-nowrap">{t("addEarning")}</span>
+          <span className="whitespace-nowrap min-[1600px]:hidden">
+            {t("earning")}
+          </span>
+          <span className="hidden whitespace-nowrap min-[1600px]:inline">
+            {t("addEarning")}
+          </span>
         </Button>
 
         <Button
@@ -175,7 +215,7 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
           )}
         </Button>
 
-        <div className="shrink-0 max-[1299px]:hidden">
+        <div className="hidden shrink-0 min-[1300px]:block">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={

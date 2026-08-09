@@ -78,7 +78,8 @@
     "profile": "Профиль",
     "exchangeRates": "Текущий курс к рублю",
     "exchangeRatesMonth": "Курс к рублю за месяц",
-    "activeTravel": "Активное путешествие"
+    "activeTravel": "Активное путешествие",
+    "upcomingEvent": "Ближайшее событие"
   },
   "common": {
     "save": "Сохранить",
@@ -386,6 +387,8 @@
     "date": "Дата и время",
     "scheduleStart": "Начало",
     "scheduleEnd": "Конец",
+    "timingUpcoming": "Скоро",
+    "timingInProgress": "Сейчас",
     "scheduleAddEnd": "Добавить время окончания",
     "scheduleRemoveEnd": "Убрать время окончания",
     "cover": "Обложка",

@@ -7,6 +7,7 @@ import type {
   EventLinkDto,
   EventListItemDto,
   EventSettlementResponse,
+  UpcomingEventChipDto,
 } from "@/server/services/event-service.types";
 import type {
   EventLocationPollDto,
@@ -59,6 +60,10 @@ export type SpendingBody = {
 
 export function listEvents() {
   return apiFetch<{ events: EventListItemDto[] }>("/api/events");
+}
+
+export function fetchUpcomingEvent() {
+  return apiFetch<{ event: UpcomingEventChipDto | null }>("/api/events/upcoming");
 }
 
 export function createEvent(body: CreateEventBody) {

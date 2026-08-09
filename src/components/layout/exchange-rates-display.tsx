@@ -102,7 +102,9 @@ function RateQuote({ rate }: { readonly rate: ExchangeRateQuote }) {
         {getCurrencySymbol("RUB")}
       </span>
       {change !== null ? (
-        <span className="ml-1">{formatChangePercent(change)}</span>
+        <span className="ml-1 hidden min-[1800px]:inline">
+          {formatChangePercent(change)}
+        </span>
       ) : null}
     </span>
   );

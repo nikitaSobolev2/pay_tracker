@@ -185,6 +185,30 @@ function useAnimatedPageChrome(chrome: MobilePageChrome | null) {
 function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
   const hasBack = chrome.backAction != null;
   const hasAction = chrome.action != null;
+  const hasFilter =
+    chrome.typeFilter != null || chrome.segmentFilter != null;
+
+  // Events / travels / categories lists: only an add CTA → full-width labeled button.
+  if (
+    chrome.action?.kind === "add" &&
+    !hasBack &&
+    !hasFilter
+  ) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-12 w-full gap-1.5 rounded-full px-3 text-foreground hover:bg-foreground/10 active:bg-foreground/15"
+        onClick={chrome.action.onClick}
+        aria-label={chrome.action.label}
+      >
+        <Plus className="size-4 shrink-0" />
+        <span className="truncate text-sm font-medium">
+          {chrome.action.label}
+        </span>
+      </Button>
+    );
+  }
 
   return (
     <div
