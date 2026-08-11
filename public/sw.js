@@ -1,5 +1,5 @@
 /* PayTracker service worker — network-first shell + travel/transactions GET. */
-const CACHE = "paytracker-v5";
+const CACHE = "paytracker-v6";
 const FILE_CACHE = "paytracker-files-v1";
 const OFFLINE_URL = "/offline.html";
 
@@ -51,6 +51,10 @@ function isTicketFile(url) {
   return url.pathname.startsWith("/api/files/travel-ticket/");
 }
 
+function isAppFile(url) {
+  return url.pathname.startsWith("/api/files/");
+}
+
 function isStaticAsset(url) {
   if (url.pathname.startsWith("/_next/static/")) {
     return true;
@@ -66,6 +70,15 @@ function isStaticAsset(url) {
   return false;
 }
 
+/** iframe/embed/object loads — never fall back to the app shell HTML. */
+function isEmbeddedDocument(request) {
+  return (
+    request.destination === "iframe" ||
+    request.destination === "embed" ||
+    request.destination === "object"
+  );
+}
+
 async function offlineFallback() {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(OFFLINE_URL);
@@ -79,6 +92,14 @@ async function offlineFallback() {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     },
   );
+}
+
+function fileUnavailableResponse() {
+  return new Response("File unavailable offline", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function networkFirstNavigate(request) {
@@ -127,17 +148,23 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirst(request) {
+async function cacheFirstFile(request) {
   const cache = await caches.open(FILE_CACHE);
-  const cached = await cache.match(request);
+  const cached =
+    (await cache.match(request)) ||
+    (await cache.match(new URL(request.url).pathname));
   if (cached) {
     return cached;
   }
-  const response = await fetch(request);
-  if (response && response.status === 200) {
-    void cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (response && response.status === 200) {
+      void cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return fileUnavailableResponse();
   }
-  return response;
 }
 
 async function staleWhileRevalidate(request) {
@@ -164,13 +191,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.mode === "navigate") {
-    event.respondWith(networkFirstNavigate(request));
+  // PDF/image iframe "navigate" must use the file cache — never the app shell.
+  if (isTicketFile(url) || isAppFile(url)) {
+    event.respondWith(cacheFirstFile(request));
     return;
   }
 
-  if (isTicketFile(url)) {
-    event.respondWith(cacheFirst(request));
+  if (request.mode === "navigate") {
+    if (isEmbeddedDocument(request) || url.pathname.startsWith("/api/")) {
+      event.respondWith(
+        fetch(request).catch(() => fileUnavailableResponse()),
+      );
+      return;
+    }
+    event.respondWith(networkFirstNavigate(request));
     return;
   }
 

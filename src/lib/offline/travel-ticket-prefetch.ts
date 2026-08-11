@@ -16,6 +16,9 @@ export function prefetchTicketFilesForOffline(
     if (!ticket.fileUrl.startsWith(TICKET_FILE_PROXY_PREFIX)) {
       continue;
     }
-    void fetch(ticket.fileUrl).catch(() => undefined);
+    // Warm SW file cache (cache-first handler stores 200 responses).
+    void fetch(ticket.fileUrl, { credentials: "include" }).catch(
+      () => undefined,
+    );
   }
 }

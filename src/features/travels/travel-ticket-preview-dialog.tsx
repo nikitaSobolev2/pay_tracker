@@ -2,6 +2,7 @@
 
 import { ExternalLink, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import type { TravelTicketDto } from "@/server/services/travel-service.types";
 
-import { ticketPreviewKind } from "./travel-ticket-preview-kind";
+import {
+  ticketPreviewKind,
+  type TicketPreviewKind,
+} from "./travel-ticket-preview-kind";
 
 type TravelTicketPreviewDialogProps = {
   readonly ticket: TravelTicketDto | null;
@@ -26,6 +30,9 @@ export function TravelTicketPreviewDialog({
 }: TravelTicketPreviewDialogProps) {
   const t = useTranslations("travels");
   const kind = ticket ? ticketPreviewKind(ticket.contentType) : "other";
+  const pdfSrc = useTicketPdfObjectUrl(
+    open && kind === "pdf" ? ticket : null,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,36 +58,168 @@ export function TravelTicketPreviewDialog({
         </div>
 
         <div className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
-          {!ticket ? null : kind === "image" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={ticket.fileUrl}
-              alt={ticket.title}
-              className="max-h-full max-w-full object-contain"
-            />
-          ) : kind === "pdf" ? (
-            <iframe
-              title={ticket.title}
-              src={ticket.fileUrl}
-              className="h-full w-full rounded-lg bg-white"
-            />
-          ) : (
-            <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-6 py-8 text-center">
-              <p className="text-sm text-white/80">{ticket.fileName}</p>
-              <p className="text-sm text-white/60">{t("ticketPreviewUnavailable")}</p>
-              <a
-                href={ticket.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-500"
-              >
-                <ExternalLink className="size-4" />
-                {t("ticketOpenFile")}
-              </a>
-            </div>
-          )}
+          {ticket ? (
+            <TicketPreviewBody ticket={ticket} kind={kind} pdf={pdfSrc} />
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type PdfObjectUrlState = {
+  readonly src: string | null;
+  readonly failed: boolean;
+  readonly loading: boolean;
+};
+
+function useTicketPdfObjectUrl(
+  ticket: TravelTicketDto | null,
+): PdfObjectUrlState {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!ticket) {
+      setSrc(null);
+      setFailed(false);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setLoading(true);
+    setFailed(false);
+    setSrc(null);
+
+    void (async () => {
+      try {
+        const response = await fetch(ticket.fileUrl, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        const nextUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(nextUrl);
+          return;
+        }
+        objectUrl = nextUrl;
+        setSrc(nextUrl);
+        setFailed(false);
+      } catch {
+        if (!cancelled) {
+          setSrc(null);
+          setFailed(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [ticket]);
+
+  return { src, failed, loading };
+}
+
+function TicketPreviewBody({
+  ticket,
+  kind,
+  pdf,
+}: {
+  readonly ticket: TravelTicketDto;
+  readonly kind: TicketPreviewKind;
+  readonly pdf: PdfObjectUrlState;
+}) {
+  const t = useTranslations("travels");
+
+  if (kind === "image") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={ticket.fileUrl}
+        alt={ticket.title}
+        className="max-h-full max-w-full object-contain"
+      />
+    );
+  }
+
+  if (kind === "pdf") {
+    if (pdf.failed) {
+      const offline =
+        typeof navigator !== "undefined" && navigator.onLine === false;
+      return (
+        <TicketFallback
+          fileName={ticket.fileName}
+          fileUrl={ticket.fileUrl}
+          message={
+            offline ? t("ticketPreviewOffline") : t("ticketPreviewUnavailable")
+          }
+          openLabel={t("ticketOpenFile")}
+        />
+      );
+    }
+    if (pdf.src) {
+      return (
+        <iframe
+          title={ticket.title}
+          src={pdf.src}
+          className="h-full w-full rounded-lg bg-white"
+        />
+      );
+    }
+    if (pdf.loading) {
+      return <p className="text-sm text-white/60">{t("ticketPreviewLoading")}</p>;
+    }
+    return null;
+  }
+
+  return (
+    <TicketFallback
+      fileName={ticket.fileName}
+      fileUrl={ticket.fileUrl}
+      message={t("ticketPreviewUnavailable")}
+      openLabel={t("ticketOpenFile")}
+    />
+  );
+}
+
+function TicketFallback({
+  fileName,
+  fileUrl,
+  message,
+  openLabel,
+}: {
+  readonly fileName: string;
+  readonly fileUrl: string;
+  readonly message: string;
+  readonly openLabel: string;
+}) {
+  return (
+    <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-6 py-8 text-center">
+      <p className="text-sm text-white/80">{fileName}</p>
+      <p className="text-sm text-white/60">{message}</p>
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-500"
+      >
+        <ExternalLink className="size-4" />
+        {openLabel}
+      </a>
+    </div>
   );
 }
