@@ -30,6 +30,7 @@ import {
 } from "./travel-form-dialog";
 import { TravelInProgressSection } from "./travel-in-progress-section";
 import { TravelPhaseBadge } from "./travel-phase-badge";
+import { TravelPlacesToVisitList } from "./travel-places-to-visit-list";
 import { TravelPrepareSection } from "./travel-prepare-section";
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
 
@@ -224,6 +225,12 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
           </Select>
         </div>
       </header>
+
+      <TravelPlacesToVisitList
+        travelId={travel.id}
+        items={travel.placesToVisit}
+        onChanged={refresh}
+      />
 
       {travel.phase === TravelPhase.Prepares ? (
         <TravelPrepareSection travel={travel} onRefresh={refresh} />

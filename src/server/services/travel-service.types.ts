@@ -21,6 +21,16 @@ export type TravelCategoryBudgetDto = {
   readonly amount: string;
 };
 
+export type TravelPlaceToVisitDto = {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly link: string | null;
+  readonly address: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
 export type TravelAiReportDto = {
   readonly id: string;
   readonly type: TravelAiReportType;
@@ -67,6 +77,7 @@ export type TravelDetailDto = TravelListItemDto & {
   readonly placeCity: string | null;
   readonly plannedSpendings: TravelPlannedSpendingDto[];
   readonly categoryBudgets: TravelCategoryBudgetDto[];
+  readonly placesToVisit: TravelPlaceToVisitDto[];
   readonly summary: TravelSummaryDto;
   readonly aiReport: TravelAiReportDto | null;
 };
@@ -134,6 +145,23 @@ export type UpdatePlannedSpendingInput = {
   readonly category?: TravelPlannedCategory;
   readonly amount?: string;
   readonly note?: string | null;
+};
+
+export type CreatePlaceToVisitInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly link?: string | null;
+  readonly address?: string | null;
+};
+
+export type UpdatePlaceToVisitInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly placeId: string;
+  readonly title?: string;
+  readonly link?: string | null;
+  readonly address?: string | null;
 };
 
 export type TravelTransactionsPage = {

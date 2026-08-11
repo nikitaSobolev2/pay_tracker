@@ -597,6 +597,7 @@ model Travel {
   user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   plannedSpendings TravelPlannedSpending[]
   categoryBudgets  TravelCategoryBudget[]
+  placesToVisit    TravelPlaceToVisit[]
   transactions     Transaction[]
   aiReport         TravelAiReport?
 
@@ -631,6 +632,20 @@ model TravelCategoryBudget {
   travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
 
   @@unique([travelId, category])
+  @@index([travelId])
+}
+
+model TravelPlaceToVisit {
+  id        String   @id @default(cuid())
+  travelId  String
+  title     String
+  link      String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
+
   @@index([travelId])
 }
 

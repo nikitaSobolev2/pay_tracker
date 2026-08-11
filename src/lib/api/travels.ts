@@ -4,6 +4,7 @@ import type {
   TravelCategoryBudgetDto,
   TravelDetailDto,
   TravelListItemDto,
+  TravelPlaceToVisitDto,
   TravelPlannedSpendingDto,
   TravelSuggestItemDto,
 } from "@/server/services/travel-service.types";
@@ -30,6 +31,12 @@ export type PlannedSpendingBody = {
   category: TravelPlannedCategory;
   amount: string;
   note?: string | null;
+};
+
+export type PlaceToVisitBody = {
+  title: string;
+  link?: string | null;
+  address?: string | null;
 };
 
 export function listTravels() {
@@ -105,6 +112,31 @@ export function upsertCategoryBudget(
   return apiFetch<{ budget: TravelCategoryBudgetDto | null }>(
     `/api/travels/${travelId}/category-budgets`,
     { method: "PUT", body },
+  );
+}
+
+export function createPlaceToVisit(travelId: string, body: PlaceToVisitBody) {
+  return apiFetch<{ place: TravelPlaceToVisitDto }>(
+    `/api/travels/${travelId}/places-to-visit`,
+    { method: "POST", body },
+  );
+}
+
+export function updatePlaceToVisit(
+  travelId: string,
+  placeId: string,
+  body: Partial<PlaceToVisitBody>,
+) {
+  return apiFetch<{ place: TravelPlaceToVisitDto }>(
+    `/api/travels/${travelId}/places-to-visit/${placeId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deletePlaceToVisit(travelId: string, placeId: string) {
+  return apiFetch<{ ok: true }>(
+    `/api/travels/${travelId}/places-to-visit/${placeId}`,
+    { method: "DELETE" },
   );
 }
 

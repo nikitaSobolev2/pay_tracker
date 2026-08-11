@@ -17,15 +17,18 @@ import {
 
 import { convertRubToDisplay } from "./exchange-rate-service";
 import type {
+  CreatePlaceToVisitInput,
   CreatePlannedSpendingInput,
   CreateTravelInput,
   TravelAiReportDto,
   TravelCategoryBudgetDto,
   TravelDetailDto,
   TravelListItemDto,
+  TravelPlaceToVisitDto,
   TravelPlannedSpendingDto,
   TravelSuggestItemDto,
   TravelSummaryDto,
+  UpdatePlaceToVisitInput,
   UpdatePlannedSpendingInput,
   UpdateTravelInput,
   UpsertCategoryBudgetInput,
@@ -90,6 +93,7 @@ export async function getTravelDetail(
     include: {
       plannedSpendings: { orderBy: { createdAt: "asc" } },
       categoryBudgets: { orderBy: { category: "asc" } },
+      placesToVisit: { orderBy: { createdAt: "asc" } },
       aiReport: true,
       transactions: {
         where: { isDeleted: false, type: TransactionType.Spending },
@@ -109,6 +113,7 @@ export async function getTravelDetail(
 
   const plannedSpendings = travel.plannedSpendings.map(mapPlannedSpending);
   const categoryBudgets = travel.categoryBudgets.map(mapCategoryBudget);
+  const placesToVisit = travel.placesToVisit.map(mapPlaceToVisit);
   const summary = await buildSummary(travel, plannedSpendings, categoryBudgets);
   return {
     ...toListItem(travel, summary.plannedTotal, summary.actualTotal),
@@ -116,6 +121,7 @@ export async function getTravelDetail(
     placeCity: travel.placeCity,
     plannedSpendings,
     categoryBudgets,
+    placesToVisit,
     summary,
     aiReport: travel.aiReport ? mapAiReport(travel.aiReport) : null,
   };
@@ -343,6 +349,57 @@ export async function deletePlannedSpending(input: {
   }
 }
 
+export async function createPlaceToVisit(
+  input: CreatePlaceToVisitInput,
+): Promise<TravelPlaceToVisitDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const created = await prisma.travelPlaceToVisit.create({
+    data: {
+      travelId: input.travelId,
+      title: input.title.trim(),
+      link: emptyToNull(input.link),
+      address: emptyToNull(input.address),
+    },
+  });
+  return mapPlaceToVisit(created);
+}
+
+export async function updatePlaceToVisit(
+  input: UpdatePlaceToVisitInput,
+): Promise<TravelPlaceToVisitDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const existing = await prisma.travelPlaceToVisit.findFirst({
+    where: { id: input.placeId, travelId: input.travelId },
+  });
+  if (!existing) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Place to visit not found");
+  }
+  const updated = await prisma.travelPlaceToVisit.update({
+    where: { id: existing.id },
+    data: {
+      title: input.title?.trim(),
+      link: input.link === undefined ? undefined : emptyToNull(input.link),
+      address:
+        input.address === undefined ? undefined : emptyToNull(input.address),
+    },
+  });
+  return mapPlaceToVisit(updated);
+}
+
+export async function deletePlaceToVisit(input: {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly placeId: string;
+}): Promise<void> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const result = await prisma.travelPlaceToVisit.deleteMany({
+    where: { id: input.placeId, travelId: input.travelId },
+  });
+  if (result.count === 0) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Place to visit not found");
+  }
+}
+
 export async function assertTravelOwnedByUser(
   userId: string,
   travelId: string,
@@ -533,6 +590,26 @@ function mapCategoryBudget(row: {
   return {
     category: row.category,
     amount: decimalToString(toDecimal(row.amount.toString())),
+  };
+}
+
+function mapPlaceToVisit(row: {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly link: string | null;
+  readonly address: string | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}): TravelPlaceToVisitDto {
+  return {
+    id: row.id,
+    travelId: row.travelId,
+    title: row.title,
+    link: row.link,
+    address: row.address,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
