@@ -80,9 +80,6 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
   const cachedTravel = useTravelCacheStore((state) =>
     hasMounted ? state.byId[travelId] : undefined,
   );
-  const cacheHydrated = useTravelCacheStore((state) =>
-    hasMounted ? state.hydrated : false,
-  );
   const queueHydrated = useTravelOfflineQueueStore((state) =>
     hasMounted ? state.hydrated : false,
   );
@@ -162,14 +159,11 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       return;
     }
 
-    // Online: wait for persist so pending-queue check is accurate.
-    if (!cacheHydrated || !queueHydrated) {
-      return;
-    }
-
     void (async () => {
-      const pending = hasPendingForTravel(travelId);
-      if (pending) {
+      // Only trust the offline queue after persist finishes. Never block the
+      // network fetch on hydration — if persist never fires, we'd stay on
+      // skeletons forever (seen in production).
+      if (queueHydrated && hasPendingForTravel(travelId)) {
         const cached = getTravel(travelId) ?? readTravelFromStorage(travelId);
         if (cached) {
           setTravel(cached);
@@ -211,7 +205,6 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       cancelled = true;
     };
   }, [
-    cacheHydrated,
     getTravel,
     hasMounted,
     hasPendingForTravel,

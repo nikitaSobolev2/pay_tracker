@@ -199,9 +199,21 @@ export const useTravelOfflineQueueStore = create<TravelOfflineQueueStore>()(
       name: "paytracker-travel-offline-queue",
       partialize: (state) => ({ items: state.items }),
       onRehydrateStorage: () => (state, _error) => {
-        state?.purgeSuccess();
-        useTravelOfflineQueueStore.setState({ hydrated: true });
+        try {
+          state?.purgeSuccess();
+        } finally {
+          useTravelOfflineQueueStore.setState({ hydrated: true });
+        }
       },
     },
   ),
 );
+
+if (typeof window !== "undefined") {
+  useTravelOfflineQueueStore.persist.onFinishHydration(() => {
+    useTravelOfflineQueueStore.setState({ hydrated: true });
+  });
+  if (useTravelOfflineQueueStore.persist.hasHydrated()) {
+    useTravelOfflineQueueStore.setState({ hydrated: true });
+  }
+}

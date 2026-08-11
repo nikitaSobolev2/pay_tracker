@@ -168,6 +168,15 @@ export const useTravelCacheStore = create<TravelCacheStore>()(
   ),
 );
 
+if (typeof window !== "undefined") {
+  useTravelCacheStore.persist.onFinishHydration(() => {
+    useTravelCacheStore.setState({ hydrated: true });
+  });
+  if (useTravelCacheStore.persist.hasHydrated()) {
+    useTravelCacheStore.setState({ hydrated: true });
+  }
+}
+
 export function upsertPlaceInCache(
   travelId: string,
   place: TravelPlaceToVisitDto,
