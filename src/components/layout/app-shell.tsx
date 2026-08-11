@@ -6,10 +6,6 @@ import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNavIsland } from "@/components/layout/mobile-nav-island";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import {
-  ConnectivityFloatingChip,
-  ConnectivityRetryListener,
-} from "@/features/offline/connectivity-chip";
 import { ShareChartModal } from "@/features/share/share-chart-modal";
 import { SearchSpotlight } from "@/features/search/search-spotlight";
 import { TransactionFormModal } from "@/features/transactions/transaction-form-modal";
@@ -63,8 +59,6 @@ export function AppShell({ children }: AppShellProps) {
           />
           <TransactionFormModal />
           <TransactionFormLookupWarmup />
-          <ConnectivityRetryListener />
-          <ConnectivityFloatingChip />
           <ShareChartModal />
         </>
       ) : null}

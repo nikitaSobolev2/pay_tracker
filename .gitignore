@@ -48,8 +48,7 @@ next-env.d.ts
 /backups/
 /data/
 
-# PWA
-**/public/sw.js
+# PWA (generated workbox only — hand-written public/sw.js is tracked)
 **/public/workbox-*.js
 **/public/sw.js.map
 **/public/workbox-*.js.map

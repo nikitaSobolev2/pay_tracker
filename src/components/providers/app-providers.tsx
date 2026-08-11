@@ -8,6 +8,10 @@ import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  ConnectivityFloatingChip,
+  ConnectivityRetryListener,
+} from "@/features/offline/connectivity-chip";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { AppTheme } from "@/types/enums";
 
@@ -86,6 +90,9 @@ export function AppProviders({
       >
         <TooltipProvider>
           {children}
+          {/* Outside AppShell hydrate gate so Offline shows even before chrome mounts. */}
+          <ConnectivityRetryListener />
+          <ConnectivityFloatingChip />
           <Toaster richColors closeButton />
           <ServiceWorkerRegister />
         </TooltipProvider>

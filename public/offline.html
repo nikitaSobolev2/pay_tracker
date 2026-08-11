@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>PayTracker — Offline</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0a;
+        --fg: #f5f5f5;
+        --muted: #a3a3a3;
+        --card: #171717;
+        --border: #2a2a2a;
+        --accent: #f59e0b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: max(1.25rem, env(safe-area-inset-top))
+          max(1.25rem, env(safe-area-inset-right))
+          max(1.25rem, env(safe-area-inset-bottom))
+          max(1.25rem, env(safe-area-inset-left));
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        background:
+          radial-gradient(
+            120% 80% at 50% -20%,
+            rgba(245, 158, 11, 0.18),
+            transparent 55%
+          ),
+          var(--bg);
+        color: var(--fg);
+      }
+      main {
+        width: min(100%, 24rem);
+        border: 1px solid var(--border);
+        background: color-mix(in oklab, var(--card) 92%, transparent);
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      }
+      .icon {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto 1rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--accent);
+        font-size: 1.35rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.45;
+      }
+      .ru {
+        margin-top: 0.75rem;
+      }
+      button {
+        margin-top: 1.25rem;
+        width: 100%;
+        border: 0;
+        border-radius: 0.85rem;
+        padding: 0.85rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #111;
+        background: var(--accent);
+        cursor: pointer;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="icon" aria-hidden="true">⟳</div>
+      <h1>You're offline</h1>
+      <p>
+        PayTracker can't reach the server. Check your connection, then try
+        again. Pages you opened earlier may still work from cache.
+      </p>
+      <p class="ru" lang="ru">
+        Нет интернета. Проверьте соединение и нажмите «Повторить». Ранее
+        открытые страницы могут открыться из кэша.
+      </p>
+      <button type="button" id="retry">Retry / Повторить</button>
+    </main>
+    <script>
+      document.getElementById("retry").addEventListener("click", function () {
+        if (navigator.onLine) {
+          location.reload();
+          return;
+        }
+        location.href = "/";
+      });
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

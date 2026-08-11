@@ -2,7 +2,7 @@
 
 import { Loader2, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { scheduleAllOfflineFlushes } from "@/lib/offline/offline-flush";
@@ -12,28 +12,21 @@ import { useTransactionOfflineQueueStore } from "@/stores/transaction-offline-qu
 import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import { FastQueueStatus } from "@/types/enums";
 
+function subscribeOnline(onStoreChange: () => void) {
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+}
+
 function useOnlineStatus() {
-  const [online, setOnline] = useState(true);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    function onOnline() {
-      setOnline(true);
-    }
-    function onOffline() {
-      setOnline(false);
-    }
-    setOnline(navigator.onLine);
-    setReady(true);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
-
-  return { online, ready };
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true,
+  );
 }
 
 function usePendingSyncCounts() {
@@ -97,13 +90,8 @@ function ConnectivityStatusChip({
   readonly compact?: boolean;
 }) {
   const t = useTranslations("connectivity");
-  const { online, ready } = useOnlineStatus();
+  const online = useOnlineStatus();
   const { pendingCount, errorCount, total } = usePendingSyncCounts();
-
-  // Wait until mount so navigator.onLine + persisted queues don't mismatch SSR.
-  if (!ready) {
-    return null;
-  }
 
   let mode: "offline" | "syncing" | "hidden" = "hidden";
   if (!online) {
