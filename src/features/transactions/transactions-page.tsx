@@ -61,6 +61,7 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { fetchTransactionStats } from "@/lib/api/stats";
 import { listTransactions } from "@/lib/api/transactions";
+import { mergePendingOfflineTransactions } from "@/lib/offline/transaction-offline-pending";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type {
@@ -68,6 +69,7 @@ import type {
   PeriodComparison,
 } from "@/server/services/stats-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
+import { useTransactionOfflineQueueStore } from "@/stores/transaction-offline-queue.store";
 import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
@@ -111,6 +113,9 @@ export function TransactionsPage() {
   const [restorableDatePreset, setRestorableDatePreset] =
     useState<DateFilterPreset | null>(null);
   const [tableSort, setTableSort] = useState<TransactionTableSort>(null);
+  const pendingQueueItems = useTransactionOfflineQueueStore(
+    (state) => state.items,
+  );
 
   const filtersBlockRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -121,6 +126,14 @@ export function TransactionsPage() {
   const hasMore = items.length < total;
   hasMoreRef.current = hasMore;
   pageRef.current = page;
+
+  const displayItems = useMemo(
+    () =>
+      mergePendingOfflineTransactions(items, pendingQueueItems, {
+        type: pageType,
+      }),
+    [items, pageType, pendingQueueItems],
+  );
 
   const filtersActive = !filtersAreDefault(filters);
 
@@ -267,6 +280,13 @@ export function TransactionsPage() {
     setPage(0);
     setTotal(0);
 
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setInitialLoading(false);
+      setLoadingStats(false);
+      requestLockRef.current = false;
+      return;
+    }
+
     try {
       const [list, nextStats] = await Promise.all([
         listTransactions({ ...queryBase, page: 1, pageSize: PAGE_SIZE }),
@@ -276,6 +296,8 @@ export function TransactionsPage() {
       setPage(list.page);
       setTotal(list.total);
       setStats(nextStats);
+    } catch {
+      // Offline / network: keep empty server page; pending queue still merges in.
     } finally {
       setInitialLoading(false);
       setLoadingStats(false);
@@ -553,7 +575,7 @@ export function TransactionsPage() {
       ) : null}
 
       <TransactionTable
-        items={items}
+        items={displayItems}
         loading={initialLoading}
         loadingMore={loadingMore}
         onChanged={() => void reloadFirstPage()}

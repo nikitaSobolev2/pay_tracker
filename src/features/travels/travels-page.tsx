@@ -16,6 +16,7 @@ import {
   updateTravel,
 } from "@/lib/api/travels";
 import { formatChartMoney } from "@/lib/money";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { cn } from "@/lib/utils";
 import type { TravelListItemDto } from "@/server/services/travel-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
@@ -51,7 +52,9 @@ export function TravelsPage() {
         }
       })
       .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : t("loadFailed"));
+        if (!isNetworkError(error)) {
+          toast.error(error instanceof Error ? error.message : t("loadFailed"));
+        }
       })
       .finally(() => {
         if (!cancelled) {

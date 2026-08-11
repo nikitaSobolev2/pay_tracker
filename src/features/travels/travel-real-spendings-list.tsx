@@ -1,16 +1,17 @@
 "use client";
 
+import { Plus, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TransactionMobileList } from "@/features/transactions/transaction-mobile-list";
 import { listTransactions } from "@/lib/api/transactions";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { useTravelCacheStore } from "@/stores/travel-cache.store";
-import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import { useUiStore } from "@/stores/ui.store";
 import {
   DateRangeType,
@@ -18,6 +19,11 @@ import {
   TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
+
+import {
+  TravelSectionEmpty,
+  TravelSectionHeader,
+} from "./travel-section-card";
 
 type TravelRealSpendingsListProps = {
   readonly travelId: string;
@@ -38,16 +44,14 @@ export function TravelRealSpendingsList({
   const cachedItems = useTravelCacheStore(
     (state) => state.transactionsByTravelId[travelId],
   );
-  const hasPendingForTravel = useTravelOfflineQueueStore(
-    (state) => state.hasPendingForTravel,
-  );
   const [items, setItems] = useState<TransactionDto[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const pending = hasPendingForTravel(travelId);
-    if (pending || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    const offline =
+      typeof navigator !== "undefined" && navigator.onLine === false;
+    if (offline) {
       setItems(getTransactions(travelId));
       setLoading(false);
       return;
@@ -59,8 +63,15 @@ export function TravelRealSpendingsList({
         dateRangeType: DateRangeType.AllTime,
         pageSize: 100,
       });
-      putTransactions(travelId, result.items);
-      setItems(result.items);
+      // Keep unsynced local creates while other travel ops may still be pending.
+      const cached = getTransactions(travelId);
+      const serverIds = new Set(result.items.map((item) => item.id));
+      const localOnly = cached.filter(
+        (item) => item.id.startsWith("local:") && !serverIds.has(item.id),
+      );
+      const merged = [...localOnly, ...result.items];
+      putTransactions(travelId, merged);
+      setItems(merged);
     } catch (error: unknown) {
       const cached = getTransactions(travelId);
       if (cached.length > 0 || isNetworkError(error)) {
@@ -71,7 +82,7 @@ export function TravelRealSpendingsList({
     } finally {
       setLoading(false);
     }
-  }, [getTransactions, hasPendingForTravel, putTransactions, t, travelId]);
+  }, [getTransactions, putTransactions, t, travelId]);
 
   useEffect(() => {
     if (cachedItems) {
@@ -96,52 +107,86 @@ export function TravelRealSpendingsList({
   }, [load]);
 
   return (
-    <div className="space-y-3">
-      {showAddButton ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            className="h-11 rounded-xl"
-            onClick={() =>
-              openTransactionModal(TransactionFormMode.Spending, {
-                travelId,
-              })
-            }
-          >
-            {t("addTravelSpending")}
-          </Button>
-        </div>
-      ) : null}
-
-      <Card className="border-border/60 shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">{t("realSpendings")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">{t("loadFailed")}</p>
-          ) : items.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("spendingEmptyCategory")}
-            </p>
-          ) : (
-            <TransactionMobileList
-              variant="plain"
-              items={items}
-              selected={selected}
-              onToggleOne={(id) =>
-                setSelected((prev) =>
-                  prev.includes(id)
-                    ? prev.filter((item) => item !== id)
-                    : [...prev, id],
-                )
+    <Card className="border-border/60 bg-card/90 shadow-none">
+      <TravelSectionHeader
+        icon={Wallet}
+        title={t("realSpendings")}
+        count={items.length > 0 ? String(items.length) : undefined}
+        action={
+          showAddButton ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-lg"
+              onClick={() =>
+                openTransactionModal(TransactionFormMode.Spending, {
+                  travelId,
+                })
               }
-              onEnterSelection={(id) => setSelected([id])}
-              onEdit={(tx) => openEditTransactionModal(tx)}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            >
+              <Plus className="size-4" />
+              {t("addSpending")}
+            </Button>
+          ) : undefined
+        }
+      />
+      <CardContent className="p-3 sm:p-4">
+        <RealSpendingsContent
+          loading={loading}
+          items={items}
+          emptyText={t("spendingEmptyCategory")}
+          selected={selected}
+          onToggleOne={(id) =>
+            setSelected((prev) =>
+              prev.includes(id)
+                ? prev.filter((item) => item !== id)
+                : [...prev, id],
+            )
+          }
+          onEnterSelection={(id) => setSelected([id])}
+          onEdit={(tx) => openEditTransactionModal(tx)}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function RealSpendingsContent({
+  loading,
+  items,
+  emptyText,
+  selected,
+  onToggleOne,
+  onEnterSelection,
+  onEdit,
+}: {
+  readonly loading: boolean;
+  readonly items: TransactionDto[];
+  readonly emptyText: string;
+  readonly selected: string[];
+  readonly onToggleOne: (id: string) => void;
+  readonly onEnterSelection: (id: string) => void;
+  readonly onEdit: (item: TransactionDto) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="h-12 w-full rounded-xl" />
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return <TravelSectionEmpty icon={Wallet} text={emptyText} />;
+  }
+  return (
+    <TransactionMobileList
+      variant="plain"
+      items={items}
+      selected={selected}
+      onToggleOne={onToggleOne}
+      onEnterSelection={onEnterSelection}
+      onEdit={onEdit}
+    />
   );
 }

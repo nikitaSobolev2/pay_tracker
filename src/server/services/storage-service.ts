@@ -105,6 +105,83 @@ export type TravelTicketUploadResult = {
   readonly contentType: string;
 };
 
+const TRAVEL_TICKET_PROXY_PATH = "/api/files/travel-ticket";
+const TICKET_FILE_NAME_PATTERN = /^[0-9a-f-]{36}\.[a-z0-9]{1,8}$/i;
+
+/**
+ * Rewrites a stored ticket URL to the same-origin proxy route so the
+ * service worker can cache ticket files for offline viewing.
+ */
+export function travelTicketProxyUrl(fileUrl: string): string {
+  if (!isOwnedTravelTicketUrl(fileUrl)) {
+    return fileUrl;
+  }
+  const fileName = fileUrl.split("/").pop() ?? "";
+  if (!TICKET_FILE_NAME_PATTERN.test(fileName)) {
+    return fileUrl;
+  }
+  return `${TRAVEL_TICKET_PROXY_PATH}/${fileName}`;
+}
+
+function isOwnedTravelTicketUrl(url: string): boolean {
+  try {
+    const base = `${readPublicBaseUrl()}/${TRAVEL_IMAGE_PREFIX}/tickets/`;
+    return url.startsWith(base);
+  } catch {
+    return false;
+  }
+}
+
+export type TravelTicketFile = {
+  readonly body: Buffer;
+  readonly contentType: string;
+};
+
+/** Reads a stored ticket file so the proxy route can serve it same-origin. */
+export async function downloadTravelTicket(
+  fileName: string,
+): Promise<TravelTicketFile> {
+  if (!TICKET_FILE_NAME_PATTERN.test(fileName)) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Ticket file not found");
+  }
+  const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${fileName}`;
+  const bucket = readBucket();
+  const minio = getClient();
+  try {
+    const stat = await minio.statObject(bucket, key);
+    const stream = await minio.getObject(bucket, key);
+    const body = await readStreamToBuffer(stream);
+    const contentType =
+      (stat.metaData?.["content-type"] as string | undefined) ??
+      "application/octet-stream";
+    return { body, contentType };
+  } catch (error) {
+    if (isMissingObjectError(error)) {
+      throw new AppServiceError(ApiErrorCode.NotFound, "Ticket file not found");
+    }
+    throw error;
+  }
+}
+
+function isMissingObjectError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "code" in error &&
+    (error as { code?: string }).code === "NoSuchKey"
+  );
+}
+
+async function readStreamToBuffer(
+  stream: NodeJS.ReadableStream,
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 /** Stores a travel ticket file and returns the public URL. */
 export async function uploadTravelTicket(
   input: UploadInput,

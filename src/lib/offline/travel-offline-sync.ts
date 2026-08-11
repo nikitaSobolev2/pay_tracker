@@ -1,5 +1,6 @@
 "use client";
 
+import { scheduleTravelOfflineFlush } from "@/lib/offline/offline-flush";
 import type { TravelOfflineOp } from "@/stores/travel-offline-queue.types";
 import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 
@@ -9,6 +10,8 @@ export function enqueueTravelOp(input: {
   travelId: string;
   op: TravelOfflineOp;
   localId?: string;
+  /** Pre-change fields; reverting to these drops the pending op. */
+  baseline?: Record<string, unknown>;
 }): string {
   const localId = input.localId ?? crypto.randomUUID();
   const store = useTravelOfflineQueueStore.getState();
@@ -16,8 +19,9 @@ export function enqueueTravelOp(input: {
     localId,
     travelId: input.travelId,
     op: input.op,
+    baseline: input.baseline,
   });
-  void store.retryPending();
+  scheduleTravelOfflineFlush();
   return localId;
 }
 

@@ -57,6 +57,11 @@ export type ActivityHeatmapInput = {
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  travelId?: string;
+  /** Inclusive local calendar day yyyy-MM-dd (ignored when travelId is set). */
+  startDate?: string;
+  /** Inclusive local calendar day yyyy-MM-dd (ignored when travelId is set). */
+  endDate?: string;
 };
 
 export type ActivityDay = {
@@ -212,6 +217,7 @@ export type ListPageStatsInput = {
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  travelId?: string;
 };
 
 export type DebtsStatsInput = {

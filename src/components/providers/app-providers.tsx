@@ -8,19 +8,29 @@ import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { AppTheme } from "@/types/enums";
 
 type AppProvidersProps = {
-  locale: string;
-  messages: AbstractIntlMessages;
-  children: ReactNode;
+  readonly locale: string;
+  readonly messages: AbstractIntlMessages;
+  readonly children: ReactNode;
 };
 
 /**
  * Dev-only console noise:
  * - next-themes FOUC script false positive (React 19)
  * - Cursor browser injects `data-cursor-ref` into the DOM, which trips hydration
+ * - Base UI `useId` attrs can still mismatch under Next 16.2 overlays/extensions
  */
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    if (isNetworkError(event.reason)) {
+      event.preventDefault();
+    }
+  });
+}
+
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   const originalError = console.error;
   console.error = (...args: unknown[]) => {
@@ -46,12 +56,15 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     ) {
       return;
     }
+    const isHydrationNoise =
+      message.includes("hydrat") ||
+      message.includes("server rendered HTML");
     // Cursor browser injects data-cursor-ref into the live DOM before hydrate.
-    if (
-      message.includes("data-cursor-ref") &&
-      (message.includes("hydrat") ||
-        message.includes("server rendered HTML"))
-    ) {
+    if (isHydrationNoise && message.includes("data-cursor-ref")) {
+      return;
+    }
+    // Cosmetic Base UI id drift (tooltips/menus/dialogs) — not app state bugs.
+    if (isHydrationNoise && message.includes("base-ui-")) {
       return;
     }
     originalError.apply(console, args);

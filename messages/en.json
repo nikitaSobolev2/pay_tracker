@@ -81,6 +81,12 @@
     "activeTravel": "Active travel",
     "upcomingEvent": "Upcoming event"
   },
+  "connectivity": {
+    "offline": "Offline",
+    "syncing": "Syncing changes…",
+    "pendingCount": "{count} pending",
+    "errorCount": "{count} failed"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -140,6 +146,9 @@
     "daysAgoSuffix": "days ago",
     "hoursAgoSuffix": "hours ago",
     "saved": "Transaction saved",
+    "offlineSyncPending": "Waiting to sync transactions…",
+    "offlineSyncPendingCount": "{count} pending",
+    "offlineSyncErrorCount": "{count} failed",
     "deleteConfirm": "Delete selected transactions?",
     "filters": "Filters",
     "clearFilters": "Clear",
@@ -593,7 +602,6 @@
     "deleteFailed": "Failed to delete travel",
     "unavailable": "Travel not found.",
     "offlineNoCache": "Travel unavailable offline. Open it once while online.",
-    "offlineCachedNotice": "Showing cached travel data. Changes sync when you are back online.",
     "offlineSyncPending": "Waiting to sync travel changes…",
     "offlineSyncPendingCount": "{count} pending",
     "offlineSyncErrorCount": "{count} failed",
@@ -736,6 +744,7 @@
     "aiLanguage": "Report language",
     "dailySpend": "Daily spendings",
     "overview": "Overview",
+    "activityHeatmapHint": "Travel dates — earlier/later spendings extend the range. Click a day for details",
     "deltaUnder": "{amount} under plan",
     "deltaOver": "{amount} over plan"
   },

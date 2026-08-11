@@ -3,6 +3,7 @@
 import {
   Check,
   ChevronDown,
+  ClipboardList,
   Pencil,
   Plus,
   Trash2,
@@ -14,12 +15,7 @@ import { toast } from "sonner";
 
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +52,7 @@ import {
 } from "@/stores/travel-cache.store";
 import { TravelPlannedCategory } from "@/types/enums";
 
+import { TravelSectionHeader } from "./travel-section-card";
 import {
   CATEGORY_ICONS,
   CATEGORY_LABEL_KEYS,
@@ -166,16 +163,15 @@ export function TravelPlannedSpendingsList({
         entityId: item.id,
         body: { amount },
       },
+      baseline: { amount: item.amount },
     });
     await onChanged();
   }
 
   return (
-    <Card className="border-border/60 shadow-none">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">{t("spendings")}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <Card className="border-border/60 bg-card/90 shadow-none">
+      <TravelSectionHeader icon={ClipboardList} title={t("spendings")} />
+      <CardContent className="space-y-3 pt-3">
         {groups.map((group) => {
           const Icon = CATEGORY_ICONS[group.category];
           const isCollapsed = group.locked
@@ -237,6 +233,7 @@ export function TravelPlannedSpendingsList({
                         category: group.category,
                         amount,
                       },
+                      baseline: { amount: group.budget },
                     });
                     if (amount != null && amount !== "") {
                       setDrafts((prev) =>
@@ -370,6 +367,12 @@ export function TravelPlannedSpendingsList({
                 kind: "updatePlanned",
                 entityId: editing.id,
                 body: values,
+              },
+              baseline: {
+                title: editing.title,
+                amount: editing.amount,
+                note: editing.note,
+                category: editing.category,
               },
             });
             setEditing(null);

@@ -22,6 +22,7 @@ const querySchema = z.object({
   categoryIds: z.array(z.string().min(1)).optional(),
   counterpartyIds: z.array(z.string().min(1)).optional(),
   hideUncategorized: z.boolean().optional(),
+  travelId: z.string().min(1).optional(),
 }).refine(
   (value) =>
     Boolean(value.dateRangeType) ||
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:
         searchParams.get("hideUncategorized") === "true" ? true : undefined,
+      travelId: searchParams.get("travelId") ?? undefined,
     });
     const stats = await getListPageStats({
       userId: user.id,

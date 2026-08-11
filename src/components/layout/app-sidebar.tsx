@@ -9,6 +9,7 @@ import {
   LogOut,
   Monitor,
   Moon,
+  Search,
   Settings,
   Share2,
   Smartphone,
@@ -35,11 +36,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { EventTimingBadge } from "@/features/events/event-timing-badge";
 import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { authClient } from "@/lib/auth-client";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
+import { useUpcomingEventStore } from "@/stores/upcoming-event.store";
 import { AppTheme } from "@/types/enums";
 
 const NAV_ITEMS = [
@@ -81,12 +85,17 @@ function isNavItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebar() {
+export function AppSidebar({
+  onOpenSearch,
+}: {
+  readonly onOpenSearch: () => void;
+}) {
   const t = useTranslations("nav");
   const tApp = useTranslations("app");
   const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
   const tHeader = useTranslations("header");
+  const tSearch = useTranslations("search");
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -95,6 +104,8 @@ export function AppSidebar() {
   const [themeReady, setThemeReady] = useState(false);
   const activeTravel = useActiveTravelStore((state) => state.travel);
   const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
+  const upcomingEvent = useUpcomingEventStore((state) => state.event);
+  const refreshUpcomingEvent = useUpcomingEventStore((state) => state.refresh);
 
   useEffect(() => {
     setThemeReady(true);
@@ -103,6 +114,10 @@ export function AppSidebar() {
   useEffect(() => {
     void refreshActiveTravel();
   }, [refreshActiveTravel]);
+
+  useEffect(() => {
+    void refreshUpcomingEvent();
+  }, [refreshUpcomingEvent]);
 
   function handleNavigate() {
     if (isMobile) {
@@ -177,24 +192,65 @@ export function AppSidebar() {
         </Button>
       </SidebarHeader>
       <SidebarContent className="flex-1">
-        {activeTravel ? (
-          <SidebarGroup className="px-2 pt-2 md:hidden">
-            <SidebarGroupContent>
-              <Link
-                href={`/travels/${activeTravel.id}`}
-                onClick={handleNavigate}
-                className="flex items-center gap-2.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2.5"
-                title={`${tHeader("activeTravel")}: ${activeTravel.title}`}
-              >
-                <Plane className="size-4 shrink-0 text-sky-600" />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {activeTravel.title}
-                </span>
-                <TravelPhaseBadge phase={activeTravel.phase} />
-              </Link>
+        {upcomingEvent || activeTravel ? (
+          <SidebarGroup className="gap-2 px-2 pt-2 md:hidden">
+            <SidebarGroupContent className="space-y-2">
+              {upcomingEvent ? (
+                <Link
+                  href={`/event/${upcomingEvent.id}`}
+                  onClick={handleNavigate}
+                  className="flex items-center gap-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5"
+                  title={`${tHeader("upcomingEvent")}: ${upcomingEvent.title}`}
+                >
+                  <CalendarDays className="size-4 shrink-0 text-violet-600 dark:text-violet-300" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {upcomingEvent.title}
+                  </span>
+                  <EventTimingBadge timing={upcomingEvent.timing} />
+                </Link>
+              ) : null}
+              {activeTravel ? (
+                <Link
+                  href={`/travels/${activeTravel.id}`}
+                  onClick={handleNavigate}
+                  className="flex items-center gap-2.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2.5"
+                  title={`${tHeader("activeTravel")}: ${activeTravel.title}`}
+                >
+                  <Plane className="size-4 shrink-0 text-sky-600" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {activeTravel.title}
+                  </span>
+                  <TravelPhaseBadge phase={activeTravel.phase} />
+                </Link>
+              ) : null}
             </SidebarGroupContent>
           </SidebarGroup>
         ) : null}
+        <SidebarGroup className="hidden px-2 pt-2 md:flex">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    type="button"
+                    tooltip={tSearch("shortcut")}
+                    size="lg"
+                    className="h-12 gap-3 rounded-xl px-3.5 text-base font-medium md:h-12 md:text-base [&_svg]:size-5 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:rounded-xl"
+                    onClick={onOpenSearch}
+                    aria-label={tSearch("shortcut")}
+                  >
+                    <Search />
+                    <span className="min-w-0 flex-1 truncate">
+                      {tCommon("search")}
+                    </span>
+                    <kbd className="pointer-events-none ml-auto hidden shrink-0 rounded border border-sidebar-border bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden min-[1400px]:inline">
+                      ⌘K
+                    </kbd>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        <SidebarSeparator className="mx-2 hidden md:flex" />
         <SidebarGroup className="mt-auto px-2 py-1 md:mt-0">
           <SidebarGroupContent className="text-base">
             <SidebarMenu className="gap-1">

@@ -8,7 +8,10 @@ import {
   countTravelDays,
   resolveTravelPhase,
 } from "@/lib/travel-phase";
-import { isOwnedTravelObjectUrl } from "@/server/services/storage-service";
+import {
+  isOwnedTravelObjectUrl,
+  travelTicketProxyUrl,
+} from "@/server/services/storage-service";
 import { ApiErrorCode } from "@/types/api";
 import {
   TravelPhase,
@@ -252,7 +255,9 @@ export async function getActiveTravel(
     .filter((travel) => travel.phase === TravelPhase.Prepares)
     .filter((travel) => {
       const startsAt = new Date(travel.startsAt).getTime();
-      return startsAt >= now && startsAt <= windowEnd;
+      const endsAt = new Date(travel.endsAt).getTime();
+      // Upcoming within the window, or already started but not finished.
+      return startsAt <= windowEnd && endsAt >= now;
     })
     .sort(
       (left, right) =>
@@ -797,7 +802,7 @@ function mapTicket(row: {
     id: row.id,
     travelId: row.travelId,
     title: row.title,
-    fileUrl: row.fileUrl,
+    fileUrl: travelTicketProxyUrl(row.fileUrl),
     fileName: row.fileName,
     contentType: row.contentType,
     createdAt: row.createdAt.toISOString(),

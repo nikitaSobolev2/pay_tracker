@@ -38,6 +38,8 @@ const SKELETON_WEEKS = 53;
 type ActivityHeatmapCardProps = {
   readonly title: string;
   readonly currency: string;
+  /** Overrides default charts.activityHint description. */
+  readonly description?: string;
   /** Non-date filters applied to the heatmap and the per-day drill-down. */
   readonly filters?: ActivityHeatmapParams;
   /** When set, renders from snapshot and loads day stats via public share API. */
@@ -46,16 +48,23 @@ type ActivityHeatmapCardProps = {
   readonly disableShare?: boolean;
   /** side = beside heatmap (app pages); below = under heatmap (shared page). */
   readonly drilldownLayout?: "side" | "below";
+  /**
+   * column = GitHub-style (days down each week column).
+   * row = calendar-style (Mon–Sun across each week row). Travel page only.
+   */
+  readonly weekFlow?: "column" | "row";
 };
 
 export function ActivityHeatmapCard({
   title,
   currency,
+  description,
   filters,
   sharedData,
   shareId,
   disableShare = false,
   drilldownLayout = "side",
+  weekFlow = "column",
 }: ActivityHeatmapCardProps) {
   const t = useTranslations("charts");
   const tHome = useTranslations("home");
@@ -88,6 +97,9 @@ export function ActivityHeatmapCard({
           setData(result);
         }
       })
+      .catch(() => {
+        // Offline / network: keep prior heatmap data.
+      })
       .finally(() => {
         if (!cancelled) {
           setLoading(false);
@@ -105,7 +117,9 @@ export function ActivityHeatmapCard({
       return;
     }
     function onTransactionsChanged() {
-      fetchActivityHeatmap(filters).then(setData);
+      fetchActivityHeatmap(filters)
+        .then(setData)
+        .catch(() => undefined);
     }
     window.addEventListener(
       "paytracker:transactions-changed",
@@ -120,11 +134,12 @@ export function ActivityHeatmapCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, isSharedView]);
 
-  const columns = useMemo(() => toColumns(data?.days ?? []), [data]);
+  const weeks = useMemo(() => toWeekChunks(data?.days ?? []), [data]);
   const maxEarning = Number(data?.maxEarning ?? "0");
   const maxSpending = Number(data?.maxSpending ?? "0");
-  const columnCount = columns.length;
-  const scrollResetKey = `${data?.days.length ?? 0}:${columnCount}:${filterKey}`;
+  const weekCount = weeks.length;
+  const daysByRow = weekFlow === "row";
+  const scrollResetKey = `${data?.days.length ?? 0}:${weekCount}:${weekFlow}:${filterKey}`;
   const { scrollRef } = useContainedHorizontalScroll(scrollResetKey, {
     enablePointerDrag: false,
   });
@@ -153,7 +168,12 @@ export function ActivityHeatmapCard({
             startDate: date,
             endDate: date,
           });
-      request.then(setDayStats).finally(() => setDayLoading(false));
+      request
+        .then(setDayStats)
+        .catch(() => {
+          setDayStats(null);
+        })
+        .finally(() => setDayLoading(false));
     },
     [selected, filters, shareId],
   );
@@ -180,7 +200,7 @@ export function ActivityHeatmapCard({
       >
         <StatCard
           title={title}
-          description={t("activityHint")}
+          description={description ?? t("activityHint")}
           sharePayload={
             disableShare || loading || !data
               ? null
@@ -193,7 +213,7 @@ export function ActivityHeatmapCard({
                 }
           }
           loading={loading}
-          skeleton={<HeatmapSkeleton />}
+          skeleton={<HeatmapSkeleton weekFlow={weekFlow} />}
           className="min-w-0"
         >
           {data && data.days.length > 0 ? (
@@ -201,45 +221,66 @@ export function ActivityHeatmapCard({
               <div className="space-y-3">
                 <div
                   ref={scrollRef}
-                  className="touch-none overflow-x-auto overscroll-contain scrollbar-none md:overflow-visible md:touch-auto"
+                  className={cn(
+                    "overscroll-contain scrollbar-none",
+                    daysByRow
+                      ? "overflow-x-visible"
+                      : "touch-none overflow-x-auto md:overflow-visible md:touch-auto",
+                  )}
                 >
-                  <div
-                    className="inline-block min-w-full space-y-2 md:block md:w-full md:space-y-3"
-                    style={
-                      {
-                        "--heatmap-cols": columnCount,
-                      } as CSSProperties
-                    }
-                  >
-                    <MonthLabels columns={columns} locale={locale} />
+                  {daysByRow ? (
+                    <HeatmapByWeekRows
+                      weeks={weeks}
+                      locale={locale}
+                      maxEarning={maxEarning}
+                      maxSpending={maxSpending}
+                      currency={currency}
+                      selected={selected}
+                      onSelect={selectDay}
+                      incomeLabel={tHome("income")}
+                      spendingLabel={tHome("spendingLabel")}
+                      netLabel={tHome("net")}
+                      emptyLabel={t("noTransactions")}
+                    />
+                  ) : (
                     <div
-                      className={cn(
-                        "grid gap-1 md:gap-0.75",
-                        "grid-rows-7 grid-flow-col",
-                        "grid-cols-[repeat(var(--heatmap-cols),1rem)]",
-                        "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,1fr))]",
-                      )}
+                      className="inline-block min-w-full space-y-2 md:block md:w-full md:space-y-3"
+                      style={
+                        {
+                          "--heatmap-cols": weekCount,
+                        } as CSSProperties
+                      }
                     >
-                      {data.days.map((day) => (
-                        <HeatmapCell
-                          key={day.date}
-                          date={day.date}
-                          earning={Number(day.earning)}
-                          spending={Number(day.spending)}
-                          maxEarning={maxEarning}
-                          maxSpending={maxSpending}
-                          currency={currency}
-                          locale={locale}
-                          selected={day.date === selected}
-                          onSelect={selectDay}
-                          incomeLabel={tHome("income")}
-                          spendingLabel={tHome("spendingLabel")}
-                          netLabel={tHome("net")}
-                          emptyLabel={t("noTransactions")}
-                        />
-                      ))}
+                      <MonthLabels weeks={weeks} locale={locale} />
+                      <div
+                        className={cn(
+                          "grid gap-1 md:gap-0.75",
+                          "grid-rows-7 grid-flow-col",
+                          "grid-cols-[repeat(var(--heatmap-cols),minmax(0.75rem,1fr))]",
+                          "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,max(0.75rem,calc((100%-0.5rem)/7))))]",
+                        )}
+                      >
+                        {data.days.map((day) => (
+                          <HeatmapCell
+                            key={day.date}
+                            date={day.date}
+                            earning={Number(day.earning)}
+                            spending={Number(day.spending)}
+                            maxEarning={maxEarning}
+                            maxSpending={maxSpending}
+                            currency={currency}
+                            locale={locale}
+                            selected={day.date === selected}
+                            onSelect={selectDay}
+                            incomeLabel={tHome("income")}
+                            spendingLabel={tHome("spendingLabel")}
+                            netLabel={tHome("net")}
+                            emptyLabel={t("noTransactions")}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <Legend
                   lessLabel={t("less")}
@@ -400,20 +441,81 @@ function HeatmapCell({
   );
 }
 
+function HeatmapByWeekRows({
+  weeks,
+  locale,
+  maxEarning,
+  maxSpending,
+  currency,
+  selected,
+  onSelect,
+  incomeLabel,
+  spendingLabel,
+  netLabel,
+  emptyLabel,
+}: {
+  readonly weeks: ActivityHeatmapDay[][];
+  readonly locale: string;
+  readonly maxEarning: number;
+  readonly maxSpending: number;
+  readonly currency: string;
+  readonly selected: string | null;
+  readonly onSelect: (date: string, earning: number, spending: number) => void;
+  readonly incomeLabel: string;
+  readonly spendingLabel: string;
+  readonly netLabel: string;
+  readonly emptyLabel: string;
+}) {
+  const monthLabels = weekRowMonthLabels(weeks, locale);
+
+  return (
+    <div className="space-y-1 md:space-y-0.75">
+      {weeks.map((week, weekIndex) => (
+        <div
+          key={week[0]?.date ?? `week-${weekIndex}`}
+          className="grid grid-cols-[2rem_repeat(7,minmax(0,1fr))] items-center gap-1 md:gap-0.75"
+        >
+          <span className="truncate text-[10px] text-muted-foreground">
+            {monthLabels[weekIndex]}
+          </span>
+          {week.map((day) => (
+            <HeatmapCell
+              key={day.date}
+              date={day.date}
+              earning={Number(day.earning)}
+              spending={Number(day.spending)}
+              maxEarning={maxEarning}
+              maxSpending={maxSpending}
+              currency={currency}
+              locale={locale}
+              selected={day.date === selected}
+              onSelect={onSelect}
+              incomeLabel={incomeLabel}
+              spendingLabel={spendingLabel}
+              netLabel={netLabel}
+              emptyLabel={emptyLabel}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MonthLabels({
-  columns,
+  weeks,
   locale,
 }: {
-  readonly columns: string[][];
+  readonly weeks: ActivityHeatmapDay[][];
   readonly locale: string;
 }) {
-  const labels = columns.map((week, index) => {
-    const first = week[0];
+  const labels = weeks.map((week, index) => {
+    const first = week[0]?.date;
     if (!first) {
       return "";
     }
     const month = Number(first.slice(5, 7)) - 1;
-    const previousFirst = columns[index - 1]?.[0];
+    const previousFirst = weeks[index - 1]?.[0]?.date;
     const previousMonth = previousFirst
       ? Number(previousFirst.slice(5, 7)) - 1
       : -1;
@@ -430,8 +532,8 @@ function MonthLabels({
     <div
       className={cn(
         "grid gap-1 text-[10px] text-muted-foreground md:gap-0.75",
-        "grid-cols-[repeat(var(--heatmap-cols),1rem)]",
-        "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,1fr))]",
+        "grid-cols-[repeat(var(--heatmap-cols),minmax(0.75rem,1fr))]",
+        "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,max(0.75rem,calc((100%-0.5rem)/7))))]",
       )}
     >
       {labels.map((label, index) => (
@@ -493,7 +595,32 @@ function Legend({
   );
 }
 
-function HeatmapSkeleton() {
+function HeatmapSkeleton({
+  weekFlow = "column",
+}: {
+  readonly weekFlow?: "column" | "row";
+}) {
+  if (weekFlow === "row") {
+    return (
+      <div className="space-y-1 md:space-y-0.75">
+        {Array.from({ length: 7 }, (_, weekIndex) => (
+          <div
+            key={`skel-week-${weekIndex}`}
+            className="grid grid-cols-[2rem_repeat(7,minmax(0,1fr))] items-center gap-1 md:gap-0.75"
+          >
+            <Skeleton className="h-2.5 w-6" />
+            {Array.from({ length: 7 }, (_, dayIndex) => (
+              <Skeleton
+                key={`skel-${weekIndex}-${dayIndex}`}
+                className="aspect-square rounded-[3px]"
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto scrollbar-none md:overflow-visible">
@@ -510,8 +637,8 @@ function HeatmapSkeleton() {
             className={cn(
               "grid gap-1 md:gap-0.75",
               "grid-rows-7 grid-flow-col",
-              "grid-cols-[repeat(var(--heatmap-cols),1rem)]",
-              "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,1fr))]",
+              "grid-cols-[repeat(var(--heatmap-cols),minmax(0.75rem,1fr))]",
+              "md:grid-cols-[repeat(var(--heatmap-cols),minmax(0,max(0.75rem,calc((100%-0.5rem)/7))))]",
             )}
           >
             {Array.from({ length: SKELETON_WEEKS * 7 }, (_, index) => (
@@ -567,12 +694,36 @@ function cellStyle(
   return {};
 }
 
-function toColumns(days: { date: string }[]): string[][] {
-  const columns: string[][] = [];
+function toWeekChunks(days: ActivityHeatmapDay[]): ActivityHeatmapDay[][] {
+  const weeks: ActivityHeatmapDay[][] = [];
   for (let index = 0; index < days.length; index += 7) {
-    columns.push(days.slice(index, index + 7).map((day) => day.date));
+    weeks.push(days.slice(index, index + 7));
   }
-  return columns;
+  return weeks;
+}
+
+function weekRowMonthLabels(
+  weeks: ActivityHeatmapDay[][],
+  locale: string,
+): string[] {
+  return weeks.map((week, index) => {
+    const first = week[0]?.date;
+    if (!first) {
+      return "";
+    }
+    const month = Number(first.slice(5, 7)) - 1;
+    const previousFirst = weeks[index - 1]?.[0]?.date;
+    const previousMonth = previousFirst
+      ? Number(previousFirst.slice(5, 7)) - 1
+      : -1;
+    if (month === previousMonth) {
+      return "";
+    }
+    return new Intl.DateTimeFormat(locale, {
+      timeZone: "UTC",
+      month: "short",
+    }).format(new Date(Date.UTC(2000, month, 1)));
+  });
 }
 
 function formatDayLabel(date: string, locale: string): string {

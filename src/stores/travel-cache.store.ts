@@ -160,8 +160,9 @@ export const useTravelCacheStore = create<TravelCacheStore>()(
         byId: state.byId,
         transactionsByTravelId: state.transactionsByTravelId,
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated(true);
+      onRehydrateStorage: () => (_state, _error) => {
+        // Always mark finished — error path passes undefined state.
+        useTravelCacheStore.setState({ hydrated: true });
       },
     },
   ),

@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,12 @@ import {
   deleteTransaction,
   listTransactions,
 } from "@/lib/api/transactions";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
+import { mergePendingOfflineTransactions } from "@/lib/offline/transaction-offline-pending";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { MoneyAmount } from "@/server/services/stats-service.types";
+import { useTransactionOfflineQueueStore } from "@/stores/transaction-offline-queue.store";
 import { useUiStore } from "@/stores/ui.store";
 import { DateRangeType } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
@@ -58,11 +61,19 @@ export function RecentTransactionsList({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
+  const pendingQueueItems = useTransactionOfflineQueueStore(
+    (state) => state.items,
+  );
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const requestLockRef = useRef(false);
   const pageRef = useRef(0);
   const hasMoreRef = useRef(false);
+
+  const displayItems = useMemo(
+    () => mergePendingOfflineTransactions(items, pendingQueueItems),
+    [items, pendingQueueItems],
+  );
 
   const hasMore = items.length < total;
   hasMoreRef.current = hasMore;
@@ -90,17 +101,27 @@ export function RecentTransactionsList({
     setTotal(0);
     setSelected([]);
 
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setInitialLoading(false);
+      requestLockRef.current = false;
+      return;
+    }
+
     try {
       const result = await listQuery(1);
       setItems(result.items);
       setPage(result.page);
       setTotal(result.total);
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Failed to load transactions",
-      );
+      if (isNetworkError(loadError)) {
+        setError(null);
+      } else {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load transactions",
+        );
+      }
     } finally {
       setInitialLoading(false);
       requestLockRef.current = false;
@@ -120,6 +141,14 @@ export function RecentTransactionsList({
       setTotal(0);
       setSelected([]);
 
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        if (!cancelled) {
+          setInitialLoading(false);
+        }
+        requestLockRef.current = false;
+        return;
+      }
+
       try {
         const result = await listQuery(1);
         if (cancelled) {
@@ -130,11 +159,15 @@ export function RecentTransactionsList({
         setTotal(result.total);
       } catch (loadError) {
         if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Failed to load transactions",
-          );
+          if (isNetworkError(loadError)) {
+            setError(null);
+          } else {
+            setError(
+              loadError instanceof Error
+                ? loadError.message
+                : "Failed to load transactions",
+            );
+          }
         }
       } finally {
         if (!cancelled) {
@@ -144,7 +177,7 @@ export function RecentTransactionsList({
       }
     }
 
-    loadFirstPage();
+    void loadFirstPage();
 
     function onTransactionsChanged() {
       void reloadFirstPage();
@@ -249,7 +282,7 @@ export function RecentTransactionsList({
   return (
     <StatCard
       title={t("recent")}
-      loading={initialLoading}
+      loading={initialLoading && displayItems.length === 0}
       skeleton={
         <TransactionMobileList
           items={[]}
@@ -304,13 +337,13 @@ export function RecentTransactionsList({
         </div>
       ) : null}
 
-      {!initialLoading && items.length === 0 && !error ? (
+      {!initialLoading && displayItems.length === 0 && !error ? (
         <div className="text-sm text-muted-foreground">{t("noRecent")}</div>
       ) : null}
 
-      {items.length > 0 || loadingMore ? (
+      {displayItems.length > 0 || loadingMore ? (
         <TransactionMobileList
-          items={items}
+          items={displayItems}
           loadingMore={loadingMore}
           selected={selected}
           onToggleOne={toggleOne}

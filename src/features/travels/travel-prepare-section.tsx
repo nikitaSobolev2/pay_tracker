@@ -67,6 +67,7 @@ export function TravelPrepareSection({
     enqueueTravelOp({
       travelId: travel.id,
       op: { kind: "updateTravel", body: { maxSpendingGoal: next } },
+      baseline: { maxSpendingGoal: travel.summary.maxSpendingGoal },
     });
     await onRefresh();
     setSavingGoal(false);

@@ -13,6 +13,9 @@ const querySchema = z.object({
   categoryIds: z.array(z.string().min(1)).optional(),
   counterpartyIds: z.array(z.string().min(1)).optional(),
   hideUncategorized: z.boolean().optional(),
+  travelId: z.string().min(1).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 function parseCsvParam(value: string | null): string[] | undefined {
@@ -36,6 +39,9 @@ export async function GET(request: Request) {
       counterpartyIds: parseCsvParam(searchParams.get("counterpartyIds")),
       hideUncategorized:
         searchParams.get("hideUncategorized") === "true" ? true : undefined,
+      travelId: searchParams.get("travelId") ?? undefined,
+      startDate: searchParams.get("startDate") ?? undefined,
+      endDate: searchParams.get("endDate") ?? undefined,
     });
     const heatmap = await getActivityHeatmap({
       userId: user.id,

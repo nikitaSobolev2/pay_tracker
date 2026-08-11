@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
 import { listTransactions } from "@/lib/api/transactions";
 import { formatChartMoney, toDecimal } from "@/lib/money";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import type { CategorySlice } from "@/server/services/stats-service.types";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import { TransactionType } from "@/types/enums";
@@ -47,7 +48,9 @@ export function TravelFinishedSection({
         }
       })
       .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : t("loadFailed"));
+        if (!isNetworkError(error)) {
+          toast.error(error instanceof Error ? error.message : t("loadFailed"));
+        }
       });
     return () => {
       cancelled = true;

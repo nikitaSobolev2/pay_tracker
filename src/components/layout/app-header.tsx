@@ -8,7 +8,6 @@ import {
   Moon,
   Plane,
   Plus,
-  Search,
   Settings,
   Smartphone,
   Sun,
@@ -32,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EventTimingBadge } from "@/features/events/event-timing-badge";
 import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
+import { ConnectivityHeaderChip } from "@/features/offline/connectivity-chip";
 import { useAppUser } from "@/hooks/use-app-user";
 import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -44,14 +44,9 @@ import { AppTheme, TransactionFormMode } from "@/types/enums";
 const PROFILE_ITEM_CLASS =
   "min-h-11 gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium [&_svg]:size-4";
 
-type AppHeaderProps = {
-  readonly onOpenSearch: () => void;
-};
-
 /** Desktop top header (md+). Mobile uses MobileNavIsland. */
-export function AppHeader({ onOpenSearch }: AppHeaderProps) {
+export function AppHeader() {
   const t = useTranslations("header");
-  const tSearch = useTranslations("search");
   const tAuth = useTranslations("auth");
   const tNav = useTranslations("nav");
   const { theme, setTheme } = useTheme();
@@ -104,26 +99,11 @@ export function AppHeader({ onOpenSearch }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center gap-1.5 border-b bg-background/90 py-0 pr-3 pl-2 backdrop-blur max-md:hidden md:gap-2 md:pr-4 md:pl-2">
       <SidebarTrigger className="shrink-0" />
-      <Separator
-        orientation="vertical"
-        className="my-2.5"
-      />
-      <Button
-        type="button"
-        variant="outline"
-        className="ml-1 h-8 min-w-28 w-full max-w-[11rem] shrink justify-start gap-2 rounded-xl border-border/70 bg-card/40 px-3 text-muted-foreground xl:max-w-xs min-[1600px]:max-w-sm min-[1800px]:max-w-md"
-        onClick={onOpenSearch}
-        aria-label={tSearch("shortcut")}
-      >
-        <Search className="size-4 shrink-0" />
-        <span className="truncate text-sm">{tSearch("shortcut")}</span>
-        <kbd className="pointer-events-none ml-auto hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground min-[1600px]:inline">
-          ⌘K
-        </kbd>
-      </Button>
+      <Separator orientation="vertical" className="my-2.5" />
       <ExchangeRatesDisplay className="ml-1 hidden shrink-0 min-[1600px]:flex" />
 
       <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5 min-[1600px]:gap-2">
+        <ConnectivityHeaderChip />
         {upcomingEvent ? (
           <Link
             href={`/event/${upcomingEvent.id}`}

@@ -55,8 +55,11 @@ import {
   updateTransaction,
 } from "@/lib/api/transactions";
 import { matchCategoriesByTitle } from "@/lib/category-title-match";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
+import { enqueueOfflineTransactionCreate } from "@/stores/transaction-offline-queue.store";
+import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
 import {
   makeLocalEntityId,
   useTravelCacheStore,
@@ -231,10 +234,20 @@ export function TransactionFormModal() {
       setCategoriesReady(false);
       return;
     }
+    const cached =
+      useTransactionFormLookupStore.getState().getCategories(transactionType);
+    if (cached.length > 0) {
+      setAvailableCategories(cached);
+      setCategoriesReady(true);
+    } else {
+      setCategoriesReady(false);
+    }
     let cancelled = false;
-    setCategoriesReady(false);
     void listCategories(transactionType)
       .then((result) => {
+        useTransactionFormLookupStore
+          .getState()
+          .setCategories(transactionType, result.categories);
         if (!cancelled) {
           setAvailableCategories(result.categories);
           setCategoriesReady(true);
@@ -242,7 +255,9 @@ export function TransactionFormModal() {
       })
       .catch(() => {
         if (!cancelled) {
-          setAvailableCategories([]);
+          if (cached.length === 0) {
+            setAvailableCategories([]);
+          }
           setCategoriesReady(true);
         }
       });
@@ -257,10 +272,21 @@ export function TransactionFormModal() {
       setCounterpartiesReady(false);
       return;
     }
+    const cached = useTransactionFormLookupStore
+      .getState()
+      .getCounterparties(counterpartyLoadKind);
+    if (cached.length > 0) {
+      setCounterparties(cached);
+      setCounterpartiesReady(true);
+    } else {
+      setCounterpartiesReady(false);
+    }
     let cancelled = false;
-    setCounterpartiesReady(false);
     void listCounterparties({ kind: counterpartyLoadKind })
       .then((result) => {
+        useTransactionFormLookupStore
+          .getState()
+          .setCounterparties(counterpartyLoadKind, result.counterparties);
         if (!cancelled) {
           setCounterparties(result.counterparties);
           setCounterpartiesReady(true);
@@ -268,7 +294,9 @@ export function TransactionFormModal() {
       })
       .catch(() => {
         if (!cancelled) {
-          setCounterparties([]);
+          if (cached.length === 0) {
+            setCounterparties([]);
+          }
           setCounterpartiesReady(true);
         }
       });
@@ -473,10 +501,7 @@ export function TransactionFormModal() {
         toast.success(t("saved"));
         closeTransactionModal();
       } else {
-        await createTransaction({
-          ...payload,
-          idempotencyKey: uuidv4(),
-        });
+        await saveStandaloneCreate(payload);
         toast.success(t("saved"));
         resetKeepOpen();
       }
@@ -485,6 +510,36 @@ export function TransactionFormModal() {
       toast.error(error instanceof Error ? error.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveStandaloneCreate(payload: {
+    type: TransactionType;
+    originalAmount: string;
+    inputCurrency: string;
+    title: string | null;
+    occurredAt: string;
+    kind: TransactionKind;
+    counterpartyName: string | null;
+    categoryIds: string[];
+    travelId: string | null;
+  }) {
+    const body = {
+      ...payload,
+      idempotencyKey: uuidv4(),
+    };
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      enqueueOfflineTransactionCreate(body);
+      return;
+    }
+    try {
+      await createTransaction(body);
+    } catch (error) {
+      if (isNetworkError(error)) {
+        enqueueOfflineTransactionCreate(body);
+        return;
+      }
+      throw error;
     }
   }
 
@@ -815,7 +870,12 @@ export function TransactionFormModal() {
                   type={transactionType}
                   selectedIds={form.categoryIds}
                   categories={availableCategories}
-                  onCategoriesChange={setAvailableCategories}
+                  onCategoriesChange={(categories) => {
+                    setAvailableCategories(categories);
+                    useTransactionFormLookupStore
+                      .getState()
+                      .setCategories(transactionType, categories);
+                  }}
                   onChange={(categoryIds) => {
                     setCategoriesManual(true);
                     setSuggestionOwned((prev) => ({

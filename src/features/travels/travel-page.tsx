@@ -17,6 +17,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { prefetchTicketFilesForOffline } from "@/lib/offline/travel-ticket-prefetch";
 import { fetchTravel } from "@/lib/api/travels";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
@@ -32,7 +33,7 @@ import {
   type TravelFormValues,
 } from "./travel-form-dialog";
 import { TravelInProgressSection } from "./travel-in-progress-section";
-import { TravelOfflineQueueBanner } from "./travel-offline-queue-banner";
+import { TravelActivityHeatmap } from "./travel-activity-heatmap";
 import { TravelPhaseBadge } from "./travel-phase-badge";
 import { TravelPlacesToVisitList } from "./travel-places-to-visit-list";
 import { TravelPrepareSection } from "./travel-prepare-section";
@@ -40,29 +41,62 @@ import { TravelThingsToGrabList } from "./travel-things-to-grab-list";
 import { TravelTicketsList } from "./travel-tickets-list";
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
 
+const TRAVEL_CACHE_STORAGE_KEY = "paytracker-travel-cache";
+
+/** Sync read so offline cold load can render before zustand persist finishes. */
+function readTravelFromStorage(travelId: string): TravelDetailDto | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const fromStore = useTravelCacheStore.getState().byId[travelId];
+  if (fromStore) {
+    return fromStore;
+  }
+  try {
+    const raw = window.localStorage.getItem(TRAVEL_CACHE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as {
+      state?: { byId?: Record<string, TravelDetailDto> };
+    };
+    return parsed.state?.byId?.[travelId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function TravelPage({ travelId }: { readonly travelId: string }) {
   const t = useTranslations("travels");
   const formatSchedule = useTravelScheduleLabel();
   const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
   const putTravel = useTravelCacheStore((state) => state.putTravel);
   const getTravel = useTravelCacheStore((state) => state.getTravel);
-  const cachedTravel = useTravelCacheStore((state) => state.byId[travelId]);
   const hasPendingForTravel = useTravelOfflineQueueStore(
     (state) => state.hasPendingForTravel,
   );
+  /** Gate persist-store reads until after mount so SSR HTML matches client. */
+  const [hasMounted, setHasMounted] = useState(false);
+  const cachedTravel = useTravelCacheStore((state) =>
+    hasMounted ? state.byId[travelId] : undefined,
+  );
+  const cacheHydrated = useTravelCacheStore((state) =>
+    hasMounted ? state.hydrated : false,
+  );
+  const queueHydrated = useTravelOfflineQueueStore((state) =>
+    hasMounted ? state.hydrated : false,
+  );
   const [travel, setTravel] = useState<TravelDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fromCache, setFromCache] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     const pending = hasPendingForTravel(travelId);
     if (pending || (typeof navigator !== "undefined" && !navigator.onLine)) {
-      const cached = getTravel(travelId);
+      const cached = getTravel(travelId) ?? readTravelFromStorage(travelId);
       if (cached) {
         setTravel(cached);
-        setFromCache(true);
       }
       return;
     }
@@ -70,13 +104,12 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       const result = await fetchTravel(travelId);
       putTravel(result.travel);
       setTravel(result.travel);
-      setFromCache(false);
+      prefetchTicketFilesForOffline(result.travel.tickets);
       await refreshActiveTravel();
     } catch (error) {
-      const cached = getTravel(travelId);
+      const cached = getTravel(travelId) ?? readTravelFromStorage(travelId);
       if (cached) {
         setTravel(cached);
-        setFromCache(true);
         return;
       }
       if (!isNetworkError(error)) {
@@ -93,14 +126,59 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
   ]);
 
   useEffect(() => {
-    if (cachedTravel) {
-      setTravel(cachedTravel);
-    }
-  }, [cachedTravel]);
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!hasMounted) {
+      return;
+    }
+    if (cachedTravel) {
+      setTravel(cachedTravel);
+      setLoading(false);
+    }
+  }, [cachedTravel, hasMounted]);
+
+  useEffect(() => {
+    if (!hasMounted) {
+      return;
+    }
     let cancelled = false;
+
+    // Client-only seed: useState init is SSR-null and does not re-run on hydrate.
+    const seeded = getTravel(travelId) ?? readTravelFromStorage(travelId);
+    if (seeded) {
+      setTravel(seeded);
+      setLoading(false);
+    }
+
+    const offline =
+      typeof navigator !== "undefined" && navigator.onLine === false;
+    if (offline) {
+      if (!seeded) {
+        toast.error(t("offlineNoCache"));
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Online: wait for persist so pending-queue check is accurate.
+    if (!cacheHydrated || !queueHydrated) {
+      return;
+    }
+
     void (async () => {
+      const pending = hasPendingForTravel(travelId);
+      if (pending) {
+        const cached = getTravel(travelId) ?? readTravelFromStorage(travelId);
+        if (cached) {
+          setTravel(cached);
+        }
+        if (!cancelled) {
+          setLoading(false);
+        }
+        return;
+      }
       try {
         const result = await fetchTravel(travelId);
         if (cancelled) {
@@ -108,16 +186,15 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         }
         putTravel(result.travel);
         setTravel(result.travel);
-        setFromCache(false);
+        prefetchTicketFilesForOffline(result.travel.tickets);
         await refreshActiveTravel();
       } catch (error) {
         if (cancelled) {
           return;
         }
-        const cached = getTravel(travelId);
+        const cached = getTravel(travelId) ?? readTravelFromStorage(travelId);
         if (cached) {
           setTravel(cached);
-          setFromCache(true);
         } else if (!isNetworkError(error)) {
           toast.error(error instanceof Error ? error.message : t("loadFailed"));
         } else {
@@ -129,10 +206,21 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         }
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [getTravel, putTravel, refreshActiveTravel, t, travelId]);
+  }, [
+    cacheHydrated,
+    getTravel,
+    hasMounted,
+    hasPendingForTravel,
+    putTravel,
+    queueHydrated,
+    refreshActiveTravel,
+    t,
+    travelId,
+  ]);
 
   useEffect(() => {
     function onSynced(event: Event) {
@@ -211,7 +299,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
     }
   }
 
-  if (loading) {
+  if (!hasMounted || loading) {
     return (
       <div className="mx-auto w-full max-w-4xl space-y-4 pb-10">
         <Skeleton className="h-48 w-full rounded-2xl" />
@@ -242,13 +330,6 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-10">
-      <TravelOfflineQueueBanner travelId={travel.id} />
-      {fromCache ? (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-          {t("offlineCachedNotice")}
-        </p>
-      ) : null}
-
       <header className="space-y-4">
         <PageTitleWithBack fallbackHref="/travels">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -286,7 +367,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
           <img
             src={travel.imageUrl}
             alt=""
-            className="h-44 w-full rounded-2xl object-cover sm:h-56"
+            className="h-44 w-full rounded-2xl object-cover ring-1 ring-border/50 sm:h-56"
           />
         ) : null}
 
@@ -307,10 +388,10 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
               }
             }}
           >
-            <SelectTrigger className="h-11 w-[12rem] rounded-xl">
+            <SelectTrigger className="h-11 w-48 rounded-xl">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="z-[80]">
+            <SelectContent className="z-80">
               <SelectItem value="auto">{t("phaseAuto")}</SelectItem>
               <SelectItem value={TravelPhase.Prepares}>
                 {t("phasePrepares")}
@@ -357,6 +438,8 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       travel.phase === TravelPhase.Failed ? (
         <TravelFinishedSection travel={travel} />
       ) : null}
+
+      <TravelActivityHeatmap travel={travel} />
 
       <TravelFormDialog
         open={editOpen}

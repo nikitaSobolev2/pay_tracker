@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Backpack, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,12 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,6 +36,11 @@ import {
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
 import type { TravelThingToGrabDto } from "@/server/services/travel-service.types";
+
+import {
+  TravelSectionEmpty,
+  TravelSectionHeader,
+} from "./travel-section-card";
 
 type TravelThingsToGrabListProps = {
   readonly travelId: string;
@@ -93,6 +93,7 @@ export function TravelThingsToGrabList({
         entityId: item.id,
         body: { isChecked: nextChecked },
       },
+      baseline: { isChecked: item.isChecked },
     });
     await onChanged();
     setTogglingId(null);
@@ -116,24 +117,29 @@ export function TravelThingsToGrabList({
   return (
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
-        <CardHeader className="border-b border-border/50 pb-3">
-          <CardTitle className="text-base font-semibold tracking-tight">
-            {t("thingsToGrab")}
-          </CardTitle>
-        </CardHeader>
+        <TravelSectionHeader
+          icon={Backpack}
+          title={t("thingsToGrab")}
+          count={
+            items.length > 0
+              ? `${items.filter((item) => item.isChecked).length}/${items.length}`
+              : undefined
+          }
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-lg"
+              onClick={openCreate}
+            >
+              <Plus className="size-4" />
+              {t("grabAdd")}
+            </Button>
+          }
+        />
         <CardContent className="space-y-3 p-3 pt-3 sm:p-4">
-          <Button
-            type="button"
-            className="h-11 w-full gap-1.5 rounded-xl"
-            onClick={openCreate}
-          >
-            <Plus className="size-4" />
-            {t("grabAdd")}
-          </Button>
           {items.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("grabsEmpty")}
-            </p>
+            <TravelSectionEmpty icon={Backpack} text={t("grabsEmpty")} />
           ) : (
             <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
               {items.map((item) => (
@@ -216,7 +222,7 @@ function GrabRow({
   const tCommon = useTranslations("common");
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 px-3 py-2.5 sm:gap-x-3">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 px-3 py-2 sm:gap-x-3">
       <Checkbox
         className="size-5"
         checked={item.isChecked}
@@ -231,21 +237,18 @@ function GrabRow({
         )}
       >
         {item.title}
-      </p>
-      <p
-        className={cn(
-          "justify-self-end text-sm font-medium tabular-nums text-muted-foreground",
-          item.isChecked && "line-through",
-        )}
-      >
-        {t("grabQuantityValue", { count: item.amount })}
+        {item.amount > 1 ? (
+          <span className="ml-1.5 text-sm font-medium tabular-nums text-muted-foreground">
+            {t("grabQuantityValue", { count: item.amount })}
+          </span>
+        ) : null}
       </p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-xl"
+          className="size-9 rounded-lg"
           aria-label={tCommon("edit")}
           onClick={onEdit}
         >
@@ -255,7 +258,7 @@ function GrabRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-xl text-destructive"
+          className="size-9 rounded-lg text-destructive"
           aria-label={t("grabDelete")}
           onClick={onDelete}
         >
@@ -331,6 +334,10 @@ function GrabFormDialog({
       enqueueTravelOp({
         travelId,
         op: { kind: "updateThing", entityId: item.id, body },
+        baseline: {
+          title: item.title,
+          amount: item.amount,
+        },
       });
     } else {
       const entityLocalId = makeLocalEntityId();

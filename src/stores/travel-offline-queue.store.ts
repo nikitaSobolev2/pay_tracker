@@ -3,7 +3,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { executeTravelOfflineOp, isNetworkError } from "@/lib/offline/travel-offline-execute";
+import { coalesceTravelQueueItems } from "@/lib/offline/travel-offline-coalesce";
+import {
+  executeTravelOfflineOp,
+  isNetworkError,
+} from "@/lib/offline/travel-offline-execute";
 import type {
   TravelOfflineOp,
   TravelOfflineQueueItem,
@@ -19,6 +23,7 @@ type TravelOfflineQueueStore = {
     travelId: string;
     op: TravelOfflineOp;
     createdAtLocal?: string;
+    baseline?: Record<string, unknown>;
   }) => void;
   updateItem: (localId: string, patch: Partial<TravelOfflineQueueItem>) => void;
   remapEntityIdsInQueue: (localId: string, serverId: string) => void;
@@ -73,16 +78,18 @@ export const useTravelOfflineQueueStore = create<TravelOfflineQueueStore>()(
       setHydrated: (value) => set({ hydrated: value }),
       enqueue: (input) =>
         set((state) => ({
-          items: [
-            ...state.items,
+          items: coalesceTravelQueueItems(
+            state.items,
             {
               localId: input.localId,
               travelId: input.travelId,
               op: input.op,
               createdAtLocal: input.createdAtLocal ?? new Date().toISOString(),
               status: FastQueueStatus.Pending,
+              baseline: input.baseline,
             },
-          ],
+            inFlight,
+          ),
         })),
       updateItem: (localId, patch) =>
         set((state) => ({
@@ -123,7 +130,11 @@ export const useTravelOfflineQueueStore = create<TravelOfflineQueueStore>()(
           errorMessage: undefined,
         });
         try {
-          const remaps = await executeTravelOfflineOp(item);
+          const latest = get().items.find((row) => row.localId === localId);
+          if (!latest) {
+            return;
+          }
+          const remaps = await executeTravelOfflineOp(latest);
           for (const remap of remaps) {
             get().remapEntityIdsInQueue(remap.localId, remap.serverId);
           }
@@ -133,13 +144,13 @@ export const useTravelOfflineQueueStore = create<TravelOfflineQueueStore>()(
           });
           window.dispatchEvent(
             new CustomEvent("paytracker:travel-offline-synced", {
-              detail: { travelId: item.travelId },
+              detail: { travelId: latest.travelId },
             }),
           );
           if (
-            item.op.kind === "createTransaction" ||
-            item.op.kind === "updateTransaction" ||
-            item.op.kind === "deleteTransaction"
+            latest.op.kind === "createTransaction" ||
+            latest.op.kind === "updateTransaction" ||
+            latest.op.kind === "deleteTransaction"
           ) {
             window.dispatchEvent(
               new CustomEvent("paytracker:transactions-changed"),
@@ -187,10 +198,9 @@ export const useTravelOfflineQueueStore = create<TravelOfflineQueueStore>()(
     {
       name: "paytracker-travel-offline-queue",
       partialize: (state) => ({ items: state.items }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, _error) => {
         state?.purgeSuccess();
-        state?.setHydrated(true);
-        void state?.retryPending();
+        useTravelOfflineQueueStore.setState({ hydrated: true });
       },
     },
   ),

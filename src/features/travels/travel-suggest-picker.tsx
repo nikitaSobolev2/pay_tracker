@@ -2,16 +2,20 @@
 
 import { Plane, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { suggestTravels } from "@/lib/api/travels";
+import { listTravels } from "@/lib/api/travels";
 import { cn } from "@/lib/utils";
-import type { TravelSuggestItemDto } from "@/server/services/travel-service.types";
+import type {
+  TravelListItemDto,
+  TravelSuggestItemDto,
+} from "@/server/services/travel-service.types";
+import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
 
 import { TravelPhaseBadge } from "./travel-phase-badge";
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
@@ -22,6 +26,19 @@ export type TravelSuggestPickerProps = {
   readonly className?: string;
 };
 
+function toSuggestItem(travel: TravelListItemDto): TravelSuggestItemDto {
+  return {
+    id: travel.id,
+    title: travel.title,
+    startsAt: travel.startsAt,
+    endsAt: travel.endsAt,
+    placeLabel: travel.placeLabel,
+    imageUrl: travel.imageUrl,
+    phase: travel.phase,
+    currency: travel.currency,
+  };
+}
+
 export function TravelSuggestPicker({
   value,
   onChange,
@@ -31,27 +48,52 @@ export function TravelSuggestPicker({
   const formatSchedule = useTravelScheduleLabel();
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 200);
-  const [items, setItems] = useState<TravelSuggestItemDto[]>([]);
+  const cachedTravels = useTransactionFormLookupStore((state) => state.travels);
+  const filterTravels = useTransactionFormLookupStore(
+    (state) => state.filterTravels,
+  );
+  const setTravels = useTransactionFormLookupStore((state) => state.setTravels);
+  const items = useMemo(
+    () => filterTravels(debounced),
+    [debounced, filterTravels, cachedTravels],
+  );
   const [selected, setSelected] = useState<TravelSuggestItemDto | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
   useEffect(() => {
+    if (!value) {
+      setSelected(null);
+      return;
+    }
+    const match = cachedTravels.find((travel) => travel.id === value);
+    if (match) {
+      setSelected(match);
+    }
+  }, [cachedTravels, value]);
+
+  useEffect(() => {
     let cancelled = false;
-    void suggestTravels(debounced).then((result) => {
-      if (!cancelled) {
-        setItems(result.travels);
+    void listTravels()
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        const next = result.travels.map(toSuggestItem);
+        setTravels(next);
         if (value) {
-          const match = result.travels.find((travel) => travel.id === value);
+          const match = next.find((travel) => travel.id === value);
           if (match) {
             setSelected(match);
           }
         }
-      }
-    });
+      })
+      .catch(() => {
+        // Offline: keep persisted travels list.
+      });
     return () => {
       cancelled = true;
     };
-  }, [debounced, value]);
+  }, [setTravels, value]);
 
   function apply(travel: TravelSuggestItemDto | null) {
     setSelected(travel);

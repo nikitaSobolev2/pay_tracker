@@ -8,11 +8,19 @@ import {
   updateThingToGrab,
 } from "@/server/services/travel-service";
 
-const updateBodySchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  amount: z.number().int().min(1).max(9999).optional(),
-  isChecked: z.boolean().optional(),
-});
+const updateBodySchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    amount: z.number().int().min(1).max(9999).optional(),
+    isChecked: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.title !== undefined ||
+      value.amount !== undefined ||
+      value.isChecked !== undefined,
+    { message: "At least one field is required" },
+  );
 
 type RouteContext = {
   params: Promise<{ id: string; itemId: string }>;
@@ -22,7 +30,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const user = await requireUser();
     const { id, itemId } = await context.params;
-    const body = updateBodySchema.parse(await request.json());
+    const body = updateBodySchema.parse(
+      await request.json().catch(() => ({})),
+    );
     const item = await updateThingToGrab({
       userId: user.id,
       travelId: id,

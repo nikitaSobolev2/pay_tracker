@@ -16,12 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,6 +36,11 @@ import {
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
 import type { TravelPlaceToVisitDto } from "@/server/services/travel-service.types";
+
+import {
+  TravelSectionEmpty,
+  TravelSectionHeader,
+} from "./travel-section-card";
 
 type TravelPlacesToVisitListProps = {
   readonly travelId: string;
@@ -94,6 +94,7 @@ export function TravelPlacesToVisitList({
         entityId: item.id,
         body: { isChecked: nextChecked },
       },
+      baseline: { isChecked: item.isChecked },
     });
     await onChanged();
     setTogglingId(null);
@@ -117,24 +118,29 @@ export function TravelPlacesToVisitList({
   return (
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
-        <CardHeader className="border-b border-border/50 pb-3">
-          <CardTitle className="text-base font-semibold tracking-tight">
-            {t("placesToVisit")}
-          </CardTitle>
-        </CardHeader>
+        <TravelSectionHeader
+          icon={MapPin}
+          title={t("placesToVisit")}
+          count={
+            items.length > 0
+              ? `${items.filter((item) => item.isChecked).length}/${items.length}`
+              : undefined
+          }
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-lg"
+              onClick={openCreate}
+            >
+              <Plus className="size-4" />
+              {t("placeAdd")}
+            </Button>
+          }
+        />
         <CardContent className="space-y-3 p-3 pt-3 sm:p-4">
-          <Button
-            type="button"
-            className="h-11 w-full gap-1.5 rounded-xl"
-            onClick={openCreate}
-          >
-            <Plus className="size-4" />
-            {t("placeAdd")}
-          </Button>
           {items.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("placesEmpty")}
-            </p>
+            <TravelSectionEmpty icon={MapPin} text={t("placesEmpty")} />
           ) : (
             <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
               {items.map((item) => (
@@ -217,7 +223,7 @@ function PlaceRow({
   const tCommon = useTranslations("common");
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_auto] items-center gap-x-2 px-3 py-2.5 sm:gap-x-3">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 px-3 py-2 sm:gap-x-3">
       <Checkbox
         className="size-5"
         checked={item.isChecked}
@@ -225,17 +231,17 @@ function PlaceRow({
         onCheckedChange={onToggle}
         aria-label={t("placeToggleChecked")}
       />
-      <p
-        className={cn(
-          "min-w-0 truncate text-[15px] font-medium leading-snug",
-          item.isChecked && "text-muted-foreground line-through",
-        )}
-      >
-        {item.title}
-      </p>
-      <div className="flex min-w-0 flex-col items-end gap-0.5 justify-self-stretch">
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "truncate text-[15px] font-medium leading-snug",
+            item.isChecked && "text-muted-foreground line-through",
+          )}
+        >
+          {item.title}
+        </p>
         {item.address ? (
-          <p className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="size-3 shrink-0 opacity-70" />
             <span className="truncate">{item.address}</span>
           </p>
@@ -245,15 +251,12 @@ function PlaceRow({
             href={item.link}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex max-w-full items-center gap-1 text-xs text-sky-600 hover:underline dark:text-sky-400"
+            className="mt-0.5 flex max-w-full items-center gap-1 text-xs text-sky-600 hover:underline dark:text-sky-400"
             onClick={(event) => event.stopPropagation()}
           >
             <ExternalLink className="size-3 shrink-0" />
             <span className="truncate">{displayLink(item.link)}</span>
           </a>
-        ) : null}
-        {!item.address && !item.link ? (
-          <span className="text-xs text-muted-foreground/40">—</span>
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-0.5">
@@ -261,7 +264,7 @@ function PlaceRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-xl"
+          className="size-9 rounded-lg"
           aria-label={tCommon("edit")}
           onClick={onEdit}
         >
@@ -271,7 +274,7 @@ function PlaceRow({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-xl text-destructive"
+          className="size-9 rounded-lg text-destructive"
           aria-label={t("placeDelete")}
           onClick={onDelete}
         >
@@ -354,6 +357,11 @@ function PlaceFormDialog({
       enqueueTravelOp({
         travelId,
         op: { kind: "updatePlace", entityId: item.id, body },
+        baseline: {
+          title: item.title,
+          link: item.link,
+          address: item.address,
+        },
       });
     } else {
       const entityLocalId = makeLocalEntityId();

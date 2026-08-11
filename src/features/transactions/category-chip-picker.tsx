@@ -57,11 +57,13 @@ export function CategoryChipPicker({
       return;
     }
     let cancelled = false;
-    listCategories(type).then((result) => {
-      if (!cancelled) {
-        setCategoriesInternal(result.categories);
-      }
-    });
+    listCategories(type)
+      .then((result) => {
+        if (!cancelled) {
+          setCategoriesInternal(result.categories);
+        }
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };

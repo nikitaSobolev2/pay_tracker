@@ -41,12 +41,17 @@ export async function apiFetch<T>(
     body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(path, {
-    method: options.method ?? "GET",
-    credentials: "include",
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: options.method ?? "GET",
+      credentials: "include",
+      headers,
+      body,
+    });
+  } catch {
+    throw new ApiClientError(0, null, "Network request failed");
+  }
 
   if (!response.ok) {
     const errorBody = await parseJson<ApiErrorBody>(response);

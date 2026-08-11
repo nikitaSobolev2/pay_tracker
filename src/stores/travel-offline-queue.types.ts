@@ -106,4 +106,9 @@ export type TravelOfflineQueueItem = {
   status: FastQueueStatus;
   errorMessage?: string;
   op: TravelOfflineOp;
+  /**
+   * Pre-change field snapshot for the first pending update on this entity.
+   * When the coalesced op matches this baseline, the queue item is dropped.
+   */
+  baseline?: Record<string, unknown>;
 };

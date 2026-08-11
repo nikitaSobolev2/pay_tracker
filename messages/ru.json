@@ -81,6 +81,12 @@
     "activeTravel": "Активное путешествие",
     "upcomingEvent": "Ближайшее событие"
   },
+  "connectivity": {
+    "offline": "Офлайн",
+    "syncing": "Синхронизация…",
+    "pendingCount": "{count} в очереди",
+    "errorCount": "{count} с ошибкой"
+  },
   "common": {
     "save": "Сохранить",
     "cancel": "Отмена",
@@ -140,6 +146,9 @@
     "daysAgoSuffix": "дн. назад",
     "hoursAgoSuffix": "ч. назад",
     "saved": "Транзакция сохранена",
+    "offlineSyncPending": "Ожидание синхронизации транзакций…",
+    "offlineSyncPendingCount": "{count} в очереди",
+    "offlineSyncErrorCount": "{count} с ошибкой",
     "deleteConfirm": "Удалить выбранные транзакции?",
     "filters": "Фильтры",
     "clearFilters": "Сбросить",
@@ -593,7 +602,6 @@
     "deleteFailed": "Не удалось удалить путешествие",
     "unavailable": "Путешествие не найдено.",
     "offlineNoCache": "Путешествие недоступно офлайн. Откройте его один раз с интернетом.",
-    "offlineCachedNotice": "Показаны сохранённые данные. Изменения синхронизируются при появлении сети.",
     "offlineSyncPending": "Ожидание синхронизации изменений…",
     "offlineSyncPendingCount": "{count} в очереди",
     "offlineSyncErrorCount": "{count} с ошибкой",
@@ -736,6 +744,7 @@
     "aiLanguage": "Язык отчёта",
     "dailySpend": "Траты по дням",
     "overview": "Обзор",
+    "activityHeatmapHint": "Даты поездки — более ранние/поздние траты расширяют диапазон. Нажми день для деталей",
     "deltaUnder": "{amount} меньше плана",
     "deltaOver": "{amount} больше плана"
   },

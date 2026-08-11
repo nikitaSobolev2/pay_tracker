@@ -18,12 +18,21 @@ const optionalUrl = z
     return value;
   });
 
-const updateBodySchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  link: optionalUrl,
-  address: z.string().max(500).nullish(),
-  isChecked: z.boolean().optional(),
-});
+const updateBodySchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    link: optionalUrl,
+    address: z.string().max(500).nullish(),
+    isChecked: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.title !== undefined ||
+      value.link !== undefined ||
+      value.address !== undefined ||
+      value.isChecked !== undefined,
+    { message: "At least one field is required" },
+  );
 
 type RouteContext = {
   params: Promise<{ id: string; placeId: string }>;
@@ -33,7 +42,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const user = await requireUser();
     const { id, placeId } = await context.params;
-    const body = updateBodySchema.parse(await request.json());
+    const body = updateBodySchema.parse(
+      await request.json().catch(() => ({})),
+    );
     const place = await updatePlaceToVisit({
       userId: user.id,
       travelId: id,

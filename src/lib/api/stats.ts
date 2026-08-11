@@ -27,6 +27,7 @@ export type ListStatsParams = {
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  travelId?: string;
 };
 
 export function fetchOverviewStats(
@@ -55,6 +56,7 @@ export function fetchTransactionStats(params: ListStatsParams = {}) {
       categoryIds: params.categoryIds?.join(","),
       counterpartyIds: params.counterpartyIds?.join(","),
       hideUncategorized: params.hideUncategorized ? "true" : undefined,
+      travelId: params.travelId,
     })}`,
   );
 }
@@ -65,6 +67,9 @@ export type ActivityHeatmapParams = {
   categoryIds?: string[];
   counterpartyIds?: string[];
   hideUncategorized?: boolean;
+  travelId?: string;
+  startDate?: string;
+  endDate?: string;
 };
 
 export function fetchActivityHeatmap(params: ActivityHeatmapParams = {}) {
@@ -75,6 +80,9 @@ export function fetchActivityHeatmap(params: ActivityHeatmapParams = {}) {
       categoryIds: params.categoryIds?.join(","),
       counterpartyIds: params.counterpartyIds?.join(","),
       hideUncategorized: params.hideUncategorized ? "true" : undefined,
+      travelId: params.travelId,
+      startDate: params.startDate,
+      endDate: params.endDate,
     })}`,
   );
 }

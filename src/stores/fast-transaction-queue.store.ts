@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { scheduleFastQueueFlush } from "@/lib/offline/offline-flush";
 import { createTransaction } from "@/lib/api/transactions";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
 import type { FastQueueItem } from "@/stores/fast-transaction-queue.types";
@@ -112,10 +113,9 @@ export const useFastTransactionQueueStore = create<FastQueueStore>()(
     {
       name: "paytracker-fast-queue",
       partialize: (state) => ({ items: state.items }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, _error) => {
         state?.purgeSuccess();
-        state?.setHydrated(true);
-        void state?.retryPending();
+        useFastTransactionQueueStore.setState({ hydrated: true });
       },
     },
   ),
@@ -138,5 +138,5 @@ export function enqueueFastTransaction(input: {
       : null;
   const store = useFastTransactionQueueStore.getState();
   store.enqueue({ ...input, travelId: activeTravelId });
-  void store.submitItem(input.localId);
+  scheduleFastQueueFlush();
 }

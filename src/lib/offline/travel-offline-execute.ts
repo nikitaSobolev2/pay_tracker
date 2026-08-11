@@ -43,7 +43,8 @@ export function isNetworkError(error: unknown): boolean {
     return true;
   }
   if (error instanceof ApiClientError) {
-    return false;
+    // status 0 = fetch threw (offline / connection reset)
+    return error.status === 0;
   }
   if (error instanceof TypeError) {
     return true;

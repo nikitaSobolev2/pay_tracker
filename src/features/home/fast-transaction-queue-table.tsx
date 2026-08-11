@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
+import { scheduleFastQueueFlush } from "@/lib/offline/offline-flush";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { useFastTransactionQueueStore } from "@/stores/fast-transaction-queue.store";
@@ -24,16 +25,13 @@ export function FastTransactionQueueTable() {
   const formatReadableDateTime = useReadableDateTime();
   const items = useFastTransactionQueueStore((state) => state.items);
   const hydrated = useFastTransactionQueueStore((state) => state.hydrated);
-  const retryPending = useFastTransactionQueueStore(
-    (state) => state.retryPending,
-  );
 
   useEffect(() => {
     function onOnline() {
-      void retryPending();
+      scheduleFastQueueFlush({ immediate: true });
     }
     function onFocus() {
-      void retryPending();
+      scheduleFastQueueFlush();
     }
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
@@ -41,7 +39,7 @@ export function FastTransactionQueueTable() {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("focus", onFocus);
     };
-  }, [retryPending]);
+  }, []);
 
   if (!hydrated || items.length === 0) {
     return null;

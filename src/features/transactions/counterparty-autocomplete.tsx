@@ -10,6 +10,7 @@ import {
   type CounterpartyDto,
 } from "@/lib/api/counterparties";
 import { cn } from "@/lib/utils";
+import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
 import type { TransactionKind } from "@/types/enums";
 
 type CounterpartyAutocompleteProps = {
@@ -42,12 +43,25 @@ export function CounterpartyAutocomplete({
     if (chipsProp || inactive) {
       return;
     }
+    const cached = useTransactionFormLookupStore
+      .getState()
+      .getCounterparties(kind);
+    if (cached.length > 0) {
+      setChipsInternal(cached);
+    }
     let cancelled = false;
-    void listCounterparties({ kind }).then((result) => {
-      if (!cancelled) {
-        setChipsInternal(result.counterparties);
-      }
-    });
+    void listCounterparties({ kind })
+      .then((result) => {
+        useTransactionFormLookupStore
+          .getState()
+          .setCounterparties(kind, result.counterparties);
+        if (!cancelled) {
+          setChipsInternal(result.counterparties);
+        }
+      })
+      .catch(() => {
+        // Offline: keep cached chips.
+      });
     return () => {
       cancelled = true;
     };
@@ -55,13 +69,35 @@ export function CounterpartyAutocomplete({
 
   useEffect(() => {
     let cancelled = false;
-    void listCounterparties({ kind, q: debounced || undefined }).then(
-      (result) => {
+    function applyFromCache() {
+      const cached = useTransactionFormLookupStore
+        .getState()
+        .getCounterparties(kind);
+      const needle = debounced.trim().toLowerCase();
+      const next = needle
+        ? cached.filter((item) =>
+            item.name.toLowerCase().includes(needle),
+          )
+        : cached;
+      if (!cancelled) {
+        setSuggestions(next);
+      }
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      applyFromCache();
+      return () => {
+        cancelled = true;
+      };
+    }
+    void listCounterparties({ kind, q: debounced || undefined })
+      .then((result) => {
         if (!cancelled) {
           setSuggestions(result.counterparties);
         }
-      },
-    );
+      })
+      .catch(() => {
+        applyFromCache();
+      });
     return () => {
       cancelled = true;
     };
