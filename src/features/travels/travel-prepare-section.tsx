@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
-import { updateTravel } from "@/lib/api/travels";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { toDecimal, toIntegerAmountString } from "@/lib/money";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import type { CategorySlice } from "@/server/services/stats-service.types";
+import { useTravelCacheStore } from "@/stores/travel-cache.store";
 import { TransactionType } from "@/types/enums";
 
 import { TravelAiControls } from "./travel-ai-controls";
@@ -21,6 +21,7 @@ import {
 } from "./travel-planned-categories";
 import { TravelGoalProgressCard, TravelMoneyCard } from "./travel-money-cards";
 import { TravelPlannedSpendingsList } from "./travel-planned-spendings-list";
+import { TravelRealSpendingsList } from "./travel-real-spendings-list";
 
 export function TravelPrepareSection({
   travel,
@@ -55,14 +56,20 @@ export function TravelPrepareSection({
 
   async function saveGoal(next: string | null) {
     setSavingGoal(true);
-    try {
-      await updateTravel(travel.id, { maxSpendingGoal: next });
-      await onRefresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("updateFailed"));
-    } finally {
-      setSavingGoal(false);
-    }
+    useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
+      ...current,
+      maxSpendingGoal: next,
+      summary: {
+        ...current.summary,
+        maxSpendingGoal: next,
+      },
+    }));
+    enqueueTravelOp({
+      travelId: travel.id,
+      op: { kind: "updateTravel", body: { maxSpendingGoal: next } },
+    });
+    await onRefresh();
+    setSavingGoal(false);
   }
 
   return (
@@ -148,6 +155,8 @@ export function TravelPrepareSection({
         categoryBudgets={travel.categoryBudgets}
         onChanged={onRefresh}
       />
+
+      <TravelRealSpendingsList travelId={travel.id} />
     </div>
   );
 }

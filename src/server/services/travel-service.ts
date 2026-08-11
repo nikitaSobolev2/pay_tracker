@@ -8,6 +8,7 @@ import {
   countTravelDays,
   resolveTravelPhase,
 } from "@/lib/travel-phase";
+import { isOwnedTravelObjectUrl } from "@/server/services/storage-service";
 import { ApiErrorCode } from "@/types/api";
 import {
   TravelPhase,
@@ -19,7 +20,9 @@ import { convertRubToDisplay } from "./exchange-rate-service";
 import type {
   CreatePlaceToVisitInput,
   CreatePlannedSpendingInput,
+  CreateThingToGrabInput,
   CreateTravelInput,
+  CreateTravelTicketInput,
   TravelAiReportDto,
   TravelCategoryBudgetDto,
   TravelDetailDto,
@@ -28,9 +31,13 @@ import type {
   TravelPlannedSpendingDto,
   TravelSuggestItemDto,
   TravelSummaryDto,
+  TravelThingToGrabDto,
+  TravelTicketDto,
   UpdatePlaceToVisitInput,
   UpdatePlannedSpendingInput,
+  UpdateThingToGrabInput,
   UpdateTravelInput,
+  UpdateTravelTicketInput,
   UpsertCategoryBudgetInput,
 } from "./travel-service.types";
 
@@ -93,7 +100,13 @@ export async function getTravelDetail(
     include: {
       plannedSpendings: { orderBy: { createdAt: "asc" } },
       categoryBudgets: { orderBy: { category: "asc" } },
-      placesToVisit: { orderBy: { createdAt: "asc" } },
+      placesToVisit: {
+        orderBy: [{ isChecked: "asc" }, { createdAt: "asc" }],
+      },
+      thingsToGrab: {
+        orderBy: [{ isChecked: "asc" }, { createdAt: "asc" }],
+      },
+      tickets: { orderBy: { createdAt: "asc" } },
       aiReport: true,
       transactions: {
         where: { isDeleted: false, type: TransactionType.Spending },
@@ -114,6 +127,8 @@ export async function getTravelDetail(
   const plannedSpendings = travel.plannedSpendings.map(mapPlannedSpending);
   const categoryBudgets = travel.categoryBudgets.map(mapCategoryBudget);
   const placesToVisit = travel.placesToVisit.map(mapPlaceToVisit);
+  const thingsToGrab = travel.thingsToGrab.map(mapThingToGrab);
+  const tickets = travel.tickets.map(mapTicket);
   const summary = await buildSummary(travel, plannedSpendings, categoryBudgets);
   return {
     ...toListItem(travel, summary.plannedTotal, summary.actualTotal),
@@ -122,6 +137,8 @@ export async function getTravelDetail(
     plannedSpendings,
     categoryBudgets,
     placesToVisit,
+    thingsToGrab,
+    tickets,
     summary,
     aiReport: travel.aiReport ? mapAiReport(travel.aiReport) : null,
   };
@@ -215,12 +232,33 @@ export async function deleteTravel(
   await prisma.travel.delete({ where: { id: travelId } });
 }
 
-/** Returns the single in-progress travel, if any. */
+const UPCOMING_TRAVEL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** In-progress travel, or nearest preparing trip starting within 30 days. */
 export async function getActiveTravel(
   userId: string,
 ): Promise<TravelListItemDto | null> {
   const travels = await listTravels(userId);
-  return travels.find((travel) => travel.phase === TravelPhase.InProgress) ?? null;
+  const inProgress = travels.find(
+    (travel) => travel.phase === TravelPhase.InProgress,
+  );
+  if (inProgress) {
+    return inProgress;
+  }
+
+  const now = Date.now();
+  const windowEnd = now + UPCOMING_TRAVEL_WINDOW_MS;
+  const upcoming = travels
+    .filter((travel) => travel.phase === TravelPhase.Prepares)
+    .filter((travel) => {
+      const startsAt = new Date(travel.startsAt).getTime();
+      return startsAt >= now && startsAt <= windowEnd;
+    })
+    .sort(
+      (left, right) =>
+        new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+    );
+  return upcoming[0] ?? null;
 }
 
 export async function suggestTravels(input: {
@@ -381,6 +419,7 @@ export async function updatePlaceToVisit(
       link: input.link === undefined ? undefined : emptyToNull(input.link),
       address:
         input.address === undefined ? undefined : emptyToNull(input.address),
+      isChecked: input.isChecked,
     },
   });
   return mapPlaceToVisit(updated);
@@ -397,6 +436,115 @@ export async function deletePlaceToVisit(input: {
   });
   if (result.count === 0) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Place to visit not found");
+  }
+}
+
+export async function createThingToGrab(
+  input: CreateThingToGrabInput,
+): Promise<TravelThingToGrabDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const amount = parsePositiveQuantity(input.amount);
+  const created = await prisma.travelThingToGrab.create({
+    data: {
+      travelId: input.travelId,
+      title: input.title.trim(),
+      amount,
+    },
+  });
+  return mapThingToGrab(created);
+}
+
+export async function updateThingToGrab(
+  input: UpdateThingToGrabInput,
+): Promise<TravelThingToGrabDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const existing = await prisma.travelThingToGrab.findFirst({
+    where: { id: input.itemId, travelId: input.travelId },
+  });
+  if (!existing) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Thing to grab not found");
+  }
+  const amount =
+    input.amount === undefined
+      ? undefined
+      : parsePositiveQuantity(input.amount);
+  const updated = await prisma.travelThingToGrab.update({
+    where: { id: existing.id },
+    data: {
+      title: input.title?.trim(),
+      amount,
+      isChecked: input.isChecked,
+    },
+  });
+  return mapThingToGrab(updated);
+}
+
+export async function deleteThingToGrab(input: {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly itemId: string;
+}): Promise<void> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const result = await prisma.travelThingToGrab.deleteMany({
+    where: { id: input.itemId, travelId: input.travelId },
+  });
+  if (result.count === 0) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Thing to grab not found");
+  }
+}
+
+export async function createTravelTicket(
+  input: CreateTravelTicketInput,
+): Promise<TravelTicketDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  if (!isOwnedTravelObjectUrl(input.fileUrl)) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Ticket file must be an uploaded travel file",
+    );
+  }
+  const created = await prisma.travelTicket.create({
+    data: {
+      travelId: input.travelId,
+      title: input.title.trim(),
+      fileUrl: input.fileUrl,
+      fileName: input.fileName.trim(),
+      contentType: input.contentType.trim(),
+    },
+  });
+  return mapTicket(created);
+}
+
+export async function updateTravelTicket(
+  input: UpdateTravelTicketInput,
+): Promise<TravelTicketDto> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const existing = await prisma.travelTicket.findFirst({
+    where: { id: input.ticketId, travelId: input.travelId },
+  });
+  if (!existing) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Travel ticket not found");
+  }
+  const updated = await prisma.travelTicket.update({
+    where: { id: existing.id },
+    data: {
+      title: input.title?.trim(),
+    },
+  });
+  return mapTicket(updated);
+}
+
+export async function deleteTravelTicket(input: {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly ticketId: string;
+}): Promise<void> {
+  await requireOwnedTravel(input.userId, input.travelId);
+  const result = await prisma.travelTicket.deleteMany({
+    where: { id: input.ticketId, travelId: input.travelId },
+  });
+  if (result.count === 0) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Travel ticket not found");
   }
 }
 
@@ -599,6 +747,7 @@ function mapPlaceToVisit(row: {
   readonly title: string;
   readonly link: string | null;
   readonly address: string | null;
+  readonly isChecked: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }): TravelPlaceToVisitDto {
@@ -608,6 +757,49 @@ function mapPlaceToVisit(row: {
     title: row.title,
     link: row.link,
     address: row.address,
+    isChecked: row.isChecked,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapThingToGrab(row: {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly amount: number;
+  readonly isChecked: boolean;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}): TravelThingToGrabDto {
+  return {
+    id: row.id,
+    travelId: row.travelId,
+    title: row.title,
+    amount: row.amount,
+    isChecked: row.isChecked,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapTicket(row: {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly fileUrl: string;
+  readonly fileName: string;
+  readonly contentType: string;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}): TravelTicketDto {
+  return {
+    id: row.id,
+    travelId: row.travelId,
+    title: row.title,
+    fileUrl: row.fileUrl,
+    fileName: row.fileName,
+    contentType: row.contentType,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -715,6 +907,16 @@ function assertDateRange(startsAt: Date, endsAt: Date): void {
       "End date must be on or after start date",
     );
   }
+}
+
+function parsePositiveQuantity(value: number): number {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Quantity must be a positive whole number",
+    );
+  }
+  return value;
 }
 
 function parsePositiveMoney(value: string): Decimal {

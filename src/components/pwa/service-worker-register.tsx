@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 
 /**
- * PWA SW is intentionally disabled: next-pwa is not wired in next.config, but
- * clients still had /sw.js registrations that Safari kept after bad deploys.
- * Unregister + clear caches on every load so stuck Mac Safari sessions recover.
+ * Registers the PayTracker service worker for offline travel shell + API GETs.
+ * Soft-reloads once when an updated worker takes control (avoids Safari loops).
  */
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -13,19 +12,41 @@ export function ServiceWorkerRegister() {
       return;
     }
 
-    void navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        void registration.unregister();
-      }
-    });
+    let refreshing = false;
 
-    if ("caches" in window) {
-      void caches.keys().then((keys) => {
-        for (const key of keys) {
-          void caches.delete(key);
-        }
-      });
+    function onControllerChange() {
+      if (refreshing) {
+        return;
+      }
+      refreshing = true;
+      window.location.reload();
     }
+
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    if (hadController) {
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        onControllerChange,
+      );
+    }
+
+    void navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        void registration.update();
+      })
+      .catch(() => {
+        // Registration can fail on insecure origins; ignore.
+      });
+
+    return () => {
+      if (hadController) {
+        navigator.serviceWorker.removeEventListener(
+          "controllerchange",
+          onControllerChange,
+        );
+      }
+    };
   }, []);
 
   return null;

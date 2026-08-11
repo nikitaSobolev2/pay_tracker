@@ -27,6 +27,28 @@ export type TravelPlaceToVisitDto = {
   readonly title: string;
   readonly link: string | null;
   readonly address: string | null;
+  readonly isChecked: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type TravelThingToGrabDto = {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly amount: number;
+  readonly isChecked: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type TravelTicketDto = {
+  readonly id: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly fileUrl: string;
+  readonly fileName: string;
+  readonly contentType: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
@@ -78,6 +100,8 @@ export type TravelDetailDto = TravelListItemDto & {
   readonly plannedSpendings: TravelPlannedSpendingDto[];
   readonly categoryBudgets: TravelCategoryBudgetDto[];
   readonly placesToVisit: TravelPlaceToVisitDto[];
+  readonly thingsToGrab: TravelThingToGrabDto[];
+  readonly tickets: TravelTicketDto[];
   readonly summary: TravelSummaryDto;
   readonly aiReport: TravelAiReportDto | null;
 };
@@ -162,6 +186,39 @@ export type UpdatePlaceToVisitInput = {
   readonly title?: string;
   readonly link?: string | null;
   readonly address?: string | null;
+  readonly isChecked?: boolean;
+};
+
+export type CreateThingToGrabInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly amount: number;
+};
+
+export type UpdateThingToGrabInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly itemId: string;
+  readonly title?: string;
+  readonly amount?: number;
+  readonly isChecked?: boolean;
+};
+
+export type CreateTravelTicketInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly title: string;
+  readonly fileUrl: string;
+  readonly fileName: string;
+  readonly contentType: string;
+};
+
+export type UpdateTravelTicketInput = {
+  readonly userId: string;
+  readonly travelId: string;
+  readonly ticketId: string;
+  readonly title?: string;
 };
 
 export type TravelTransactionsPage = {

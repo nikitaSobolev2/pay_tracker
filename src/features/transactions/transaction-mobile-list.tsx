@@ -31,7 +31,9 @@ import {
   deleteTransaction,
   restoreTransaction,
 } from "@/lib/api/transactions";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
+import { useTravelCacheStore } from "@/stores/travel-cache.store";
 import type { TransactionDto } from "@/types/transaction";
 
 type TransactionMobileListProps = {
@@ -207,16 +209,27 @@ function TransactionMobileRow({
     }
     setBusy(true);
     try {
-      await deleteTransaction(item.id);
+      if (item.travelId) {
+        useTravelCacheStore
+          .getState()
+          .removeTransaction(item.travelId, item.id);
+        enqueueTravelOp({
+          travelId: item.travelId,
+          op: { kind: "deleteTransaction", entityId: item.id },
+        });
+      } else {
+        await deleteTransaction(item.id);
+      }
       setSoftDeleted(true);
       setActionsRevealed(false);
       onSoftDeleted?.(item.id);
+      window.dispatchEvent(new CustomEvent("paytracker:transactions-changed"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed");
     } finally {
       setBusy(false);
     }
-  }, [busy, item.id, onSoftDeleted, softDeleted]);
+  }, [busy, item.id, item.travelId, onSoftDeleted, softDeleted]);
 
   const performRestore = useCallback(async () => {
     if (busy) {

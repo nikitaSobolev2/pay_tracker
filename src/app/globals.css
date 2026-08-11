@@ -413,6 +413,23 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
   gap: 0 !important;
 }
 
+.ui-dialog-popup.ui-dialog-popup--ticket-preview {
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  translate: none !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
 @media (min-width: 640px) {
   .ui-dialog-popup.ui-dialog-popup--search {
     top: 12% !important;

@@ -23,6 +23,10 @@ import {
   ResponsiveDialogHeaderInner,
 } from "@/components/ui/responsive-dialog";
 import { uploadTravelCover } from "@/lib/api/travels";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
+import { storeFileForOffline } from "@/lib/offline/travel-offline-files";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { useTravelCacheStore } from "@/stores/travel-cache.store";
 
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
 
@@ -39,6 +43,7 @@ export type TravelFormValues = {
 export type TravelFormDialogProps = {
   readonly open: boolean;
   readonly mode: "create" | "edit";
+  readonly travelId?: string;
   readonly initialValues: TravelFormValues;
   readonly saving: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -62,6 +67,7 @@ export function emptyTravelFormValues(): TravelFormValues {
 export function TravelFormDialog({
   open,
   mode,
+  travelId,
   initialValues,
   saving,
   onOpenChange,
@@ -72,6 +78,32 @@ export function TravelFormDialog({
   const formatSchedule = useTravelScheduleLabel();
   const [values, setValues] = useState(initialValues);
   const [loadedValues, setLoadedValues] = useState(initialValues);
+
+  async function uploadCover(file: File): Promise<{ url: string }> {
+    try {
+      return await uploadTravelCover(file);
+    } catch (error) {
+      if (!travelId || (!isNetworkError(error) && navigator.onLine)) {
+        throw error;
+      }
+      const fileId = await storeFileForOffline(file);
+      const previewUrl = URL.createObjectURL(file);
+      enqueueTravelOp({
+        travelId,
+        op: {
+          kind: "uploadCover",
+          fileId,
+          fileName: file.name,
+          contentType: file.type || "application/octet-stream",
+        },
+      });
+      useTravelCacheStore.getState().patchTravel(travelId, (current) => ({
+        ...current,
+        imageUrl: previewUrl,
+      }));
+      return { url: previewUrl };
+    }
+  }
 
   if (open && loadedValues !== initialValues) {
     setLoadedValues(initialValues);
@@ -154,7 +186,7 @@ export function TravelFormDialog({
           <CoverImageField
             value={values.imageUrl}
             onChange={(imageUrl) => setValues((prev) => ({ ...prev, imageUrl }))}
-            onUpload={(file) => uploadTravelCover(file)}
+            onUpload={uploadCover}
             label={t("cover")}
             dropHint={t("coverDropHint")}
             formatsHint={t("coverFormats")}

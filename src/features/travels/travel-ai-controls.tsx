@@ -147,6 +147,10 @@ function TravelAiAnalyzeDialog({
   }, [lastResponseLocale, open, running, userLocale]);
 
   async function run() {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error(t("aiRequiresOnline"));
+      return;
+    }
     setRunning(true);
     try {
       await analyzeTravel(travelId, { responseLocale, contextMessage });

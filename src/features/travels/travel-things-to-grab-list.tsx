@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -35,35 +35,34 @@ import {
 } from "@/components/ui/responsive-dialog";
 import {
   makeLocalEntityId,
-  removePlaceFromCache,
-  upsertPlaceInCache,
+  removeThingFromCache,
+  upsertThingInCache,
 } from "@/stores/travel-cache.store";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
-import type { TravelPlaceToVisitDto } from "@/server/services/travel-service.types";
+import type { TravelThingToGrabDto } from "@/server/services/travel-service.types";
 
-type TravelPlacesToVisitListProps = {
+type TravelThingsToGrabListProps = {
   readonly travelId: string;
-  readonly items: readonly TravelPlaceToVisitDto[];
+  readonly items: readonly TravelThingToGrabDto[];
   readonly onChanged: () => Promise<void>;
 };
 
-type PlaceFormValues = {
+type GrabFormValues = {
   title: string;
-  link: string;
-  address: string;
+  amount: string;
 };
 
-export function TravelPlacesToVisitList({
+export function TravelThingsToGrabList({
   travelId,
   items,
   onChanged,
-}: TravelPlacesToVisitListProps) {
+}: TravelThingsToGrabListProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<TravelPlaceToVisitDto | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<TravelPlaceToVisitDto | null>(
+  const [editing, setEditing] = useState<TravelThingToGrabDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TravelThingToGrabDto | null>(
     null,
   );
   const [deleting, setDeleting] = useState(false);
@@ -74,15 +73,15 @@ export function TravelPlacesToVisitList({
     setDialogOpen(true);
   }
 
-  function openEdit(item: TravelPlaceToVisitDto) {
+  function openEdit(item: TravelThingToGrabDto) {
     setEditing(item);
     setDialogOpen(true);
   }
 
-  async function toggleChecked(item: TravelPlaceToVisitDto) {
+  async function toggleChecked(item: TravelThingToGrabDto) {
     setTogglingId(item.id);
     const nextChecked = !item.isChecked;
-    upsertPlaceInCache(travelId, {
+    upsertThingInCache(travelId, {
       ...item,
       isChecked: nextChecked,
       updatedAt: new Date().toISOString(),
@@ -90,7 +89,7 @@ export function TravelPlacesToVisitList({
     enqueueTravelOp({
       travelId,
       op: {
-        kind: "updatePlace",
+        kind: "updateThing",
         entityId: item.id,
         body: { isChecked: nextChecked },
       },
@@ -104,10 +103,10 @@ export function TravelPlacesToVisitList({
       return;
     }
     setDeleting(true);
-    removePlaceFromCache(travelId, deleteTarget.id);
+    removeThingFromCache(travelId, deleteTarget.id);
     enqueueTravelOp({
       travelId,
-      op: { kind: "deletePlace", entityId: deleteTarget.id },
+      op: { kind: "deleteThing", entityId: deleteTarget.id },
     });
     setDeleteTarget(null);
     await onChanged();
@@ -119,7 +118,7 @@ export function TravelPlacesToVisitList({
       <Card className="border-border/60 bg-card/90 shadow-none">
         <CardHeader className="border-b border-border/50 pb-3">
           <CardTitle className="text-base font-semibold tracking-tight">
-            {t("placesToVisit")}
+            {t("thingsToGrab")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 p-3 pt-3 sm:p-4">
@@ -129,16 +128,16 @@ export function TravelPlacesToVisitList({
             onClick={openCreate}
           >
             <Plus className="size-4" />
-            {t("placeAdd")}
+            {t("grabAdd")}
           </Button>
           {items.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("placesEmpty")}
+              {t("grabsEmpty")}
             </p>
           ) : (
             <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
               {items.map((item) => (
-                <PlaceRow
+                <GrabRow
                   key={item.id}
                   item={item}
                   toggling={togglingId === item.id}
@@ -152,7 +151,7 @@ export function TravelPlacesToVisitList({
         </CardContent>
       </Card>
 
-      <PlaceFormDialog
+      <GrabFormDialog
         open={dialogOpen}
         travelId={travelId}
         item={editing}
@@ -174,9 +173,9 @@ export function TravelPlacesToVisitList({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("placeDeleteTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>{t("grabDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("placeDeleteConfirm", { title: deleteTarget?.title ?? "" })}
+              {t("grabDeleteConfirm", { title: deleteTarget?.title ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -191,7 +190,7 @@ export function TravelPlacesToVisitList({
                 void handleDelete();
               }}
             >
-              {t("placeDelete")}
+              {t("grabDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -200,14 +199,14 @@ export function TravelPlacesToVisitList({
   );
 }
 
-function PlaceRow({
+function GrabRow({
   item,
   toggling,
   onToggle,
   onEdit,
   onDelete,
 }: {
-  readonly item: TravelPlaceToVisitDto;
+  readonly item: TravelThingToGrabDto;
   readonly toggling: boolean;
   readonly onToggle: () => void;
   readonly onEdit: () => void;
@@ -217,13 +216,13 @@ function PlaceRow({
   const tCommon = useTranslations("common");
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_auto] items-center gap-x-2 px-3 py-2.5 sm:gap-x-3">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 px-3 py-2.5 sm:gap-x-3">
       <Checkbox
         className="size-5"
         checked={item.isChecked}
         disabled={toggling}
         onCheckedChange={onToggle}
-        aria-label={t("placeToggleChecked")}
+        aria-label={t("grabToggleChecked")}
       />
       <p
         className={cn(
@@ -233,29 +232,14 @@ function PlaceRow({
       >
         {item.title}
       </p>
-      <div className="flex min-w-0 flex-col items-end gap-0.5 justify-self-stretch">
-        {item.address ? (
-          <p className="flex max-w-full items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="size-3 shrink-0 opacity-70" />
-            <span className="truncate">{item.address}</span>
-          </p>
-        ) : null}
-        {item.link ? (
-          <a
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex max-w-full items-center gap-1 text-xs text-sky-600 hover:underline dark:text-sky-400"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ExternalLink className="size-3 shrink-0" />
-            <span className="truncate">{displayLink(item.link)}</span>
-          </a>
-        ) : null}
-        {!item.address && !item.link ? (
-          <span className="text-xs text-muted-foreground/40">—</span>
-        ) : null}
-      </div>
+      <p
+        className={cn(
+          "justify-self-end text-sm font-medium tabular-nums text-muted-foreground",
+          item.isChecked && "line-through",
+        )}
+      >
+        {t("grabQuantityValue", { count: item.amount })}
+      </p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           type="button"
@@ -272,7 +256,7 @@ function PlaceRow({
           variant="ghost"
           size="icon"
           className="size-10 rounded-xl text-destructive"
-          aria-label={t("placeDelete")}
+          aria-label={t("grabDelete")}
           onClick={onDelete}
         >
           <Trash2 className="size-4" />
@@ -282,7 +266,7 @@ function PlaceRow({
   );
 }
 
-function PlaceFormDialog({
+function GrabFormDialog({
   open,
   travelId,
   item,
@@ -291,16 +275,15 @@ function PlaceFormDialog({
 }: {
   readonly open: boolean;
   readonly travelId: string;
-  readonly item: TravelPlaceToVisitDto | null;
+  readonly item: TravelThingToGrabDto | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onSaved: () => Promise<void>;
 }) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
-  const [values, setValues] = useState<PlaceFormValues>({
+  const [values, setValues] = useState<GrabFormValues>({
     title: item?.title ?? "",
-    link: item?.link ?? "",
-    address: item?.address ?? "",
+    amount: item ? String(item.amount) : "1",
   });
   const [loadedItem, setLoadedItem] = useState(item);
   const [syncedOpen, setSyncedOpen] = useState(false);
@@ -311,8 +294,7 @@ function PlaceFormDialog({
     setLoadedItem(item);
     setValues({
       title: item?.title ?? "",
-      link: item?.link ?? "",
-      address: item?.address ?? "",
+      amount: item ? String(item.amount) : "1",
     });
   }
   if (!open && syncedOpen) {
@@ -322,59 +304,59 @@ function PlaceFormDialog({
     setLoadedItem(item);
     setValues({
       title: item?.title ?? "",
-      link: item?.link ?? "",
-      address: item?.address ?? "",
+      amount: item ? String(item.amount) : "1",
     });
   }
 
   async function handleSave() {
     const title = values.title.trim();
+    const amount = Number.parseInt(values.amount, 10);
     if (!title) {
-      toast.error(t("placeTitleRequired"));
+      toast.error(t("grabTitleRequired"));
       return;
     }
-    const link = values.link.trim();
-    if (link && !isValidHttpUrl(link)) {
-      toast.error(t("placeLinkInvalid"));
+    if (!Number.isInteger(amount) || amount < 1) {
+      toast.error(t("grabAmountRequired"));
       return;
     }
     setSaving(true);
-    const body = {
-      title,
-      link: link || null,
-      address: values.address.trim() || null,
-    };
+    const body = { title, amount };
     const now = new Date().toISOString();
     if (item) {
-      upsertPlaceInCache(travelId, {
+      upsertThingInCache(travelId, {
         ...item,
         ...body,
         updatedAt: now,
       });
       enqueueTravelOp({
         travelId,
-        op: { kind: "updatePlace", entityId: item.id, body },
+        op: { kind: "updateThing", entityId: item.id, body },
       });
     } else {
       const entityLocalId = makeLocalEntityId();
-      upsertPlaceInCache(travelId, {
+      upsertThingInCache(travelId, {
         id: entityLocalId,
         travelId,
         title: body.title,
-        link: body.link,
-        address: body.address,
+        amount: body.amount,
         isChecked: false,
         createdAt: now,
         updatedAt: now,
       });
       enqueueTravelOp({
         travelId,
-        op: { kind: "createPlace", entityLocalId, body },
+        op: { kind: "createThing", entityLocalId, body },
       });
     }
     await onSaved();
     setSaving(false);
   }
+
+  const parsedAmount = Number.parseInt(values.amount, 10);
+  const canSave =
+    Boolean(values.title.trim()) &&
+    Number.isInteger(parsedAmount) &&
+    parsedAmount >= 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -382,45 +364,40 @@ function PlaceFormDialog({
         <ResponsiveDialogHeader>
           <ResponsiveDialogHeaderInner>
             <DialogTitle>
-              {item ? t("placeEditTitle") : t("placeAddTitle")}
+              {item ? t("grabEditTitle") : t("grabAddTitle")}
             </DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
         <ResponsiveDialogBody className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="travel-place-title">{t("placeTitle")}</Label>
+            <Label htmlFor="travel-grab-title">{t("grabTitle")}</Label>
             <Input
-              id="travel-place-title"
+              id="travel-grab-title"
               value={values.title}
               className="h-12 rounded-xl text-base md:h-11"
-              placeholder={t("placeTitlePlaceholder")}
+              placeholder={t("grabTitlePlaceholder")}
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, title: event.target.value }))
               }
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="travel-place-link">{t("placeLink")}</Label>
+            <Label htmlFor="travel-grab-amount">{t("grabAmount")}</Label>
             <Input
-              id="travel-place-link"
-              value={values.link}
+              id="travel-grab-amount"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={9999}
+              step={1}
+              value={values.amount}
               className="h-12 rounded-xl text-base md:h-11"
-              placeholder={t("placeLinkPlaceholder")}
-              inputMode="url"
+              placeholder="1"
               onChange={(event) =>
-                setValues((prev) => ({ ...prev, link: event.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="travel-place-address">{t("placeAddress")}</Label>
-            <Input
-              id="travel-place-address"
-              value={values.address}
-              className="h-12 rounded-xl text-base md:h-11"
-              placeholder={t("placeAddressPlaceholder")}
-              onChange={(event) =>
-                setValues((prev) => ({ ...prev, address: event.target.value }))
+                setValues((prev) => ({
+                  ...prev,
+                  amount: event.target.value.replace(/[^\d]/g, ""),
+                }))
               }
             />
           </div>
@@ -437,8 +414,8 @@ function PlaceFormDialog({
           </Button>
           <Button
             type="button"
-            className={cn("h-11 rounded-xl")}
-            disabled={saving || !values.title.trim()}
+            className="h-11 rounded-xl"
+            disabled={saving || !canSave}
             onClick={() => void handleSave()}
           >
             {tCommon("save")}
@@ -447,22 +424,4 @@ function PlaceFormDialog({
       </ResponsiveDialogContent>
     </Dialog>
   );
-}
-
-function displayLink(url: string): string {
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname + (parsed.pathname === "/" ? "" : parsed.pathname);
-  } catch {
-    return url;
-  }
-}
-
-function isValidHttpUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
 }

@@ -7,6 +7,8 @@ import type {
   TravelPlaceToVisitDto,
   TravelPlannedSpendingDto,
   TravelSuggestItemDto,
+  TravelThingToGrabDto,
+  TravelTicketDto,
 } from "@/server/services/travel-service.types";
 import type { TravelPhase, TravelPlannedCategory } from "@/types/enums";
 
@@ -37,6 +39,20 @@ export type PlaceToVisitBody = {
   title: string;
   link?: string | null;
   address?: string | null;
+  isChecked?: boolean;
+};
+
+export type ThingToGrabBody = {
+  title: string;
+  amount: number;
+  isChecked?: boolean;
+};
+
+export type TravelTicketBody = {
+  title: string;
+  fileUrl: string;
+  fileName: string;
+  contentType: string;
 };
 
 export function listTravels() {
@@ -140,6 +156,56 @@ export function deletePlaceToVisit(travelId: string, placeId: string) {
   );
 }
 
+export function createThingToGrab(travelId: string, body: ThingToGrabBody) {
+  return apiFetch<{ item: TravelThingToGrabDto }>(
+    `/api/travels/${travelId}/things-to-grab`,
+    { method: "POST", body },
+  );
+}
+
+export function updateThingToGrab(
+  travelId: string,
+  itemId: string,
+  body: Partial<ThingToGrabBody>,
+) {
+  return apiFetch<{ item: TravelThingToGrabDto }>(
+    `/api/travels/${travelId}/things-to-grab/${itemId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deleteThingToGrab(travelId: string, itemId: string) {
+  return apiFetch<{ ok: true }>(
+    `/api/travels/${travelId}/things-to-grab/${itemId}`,
+    { method: "DELETE" },
+  );
+}
+
+export function createTravelTicket(travelId: string, body: TravelTicketBody) {
+  return apiFetch<{ ticket: TravelTicketDto }>(
+    `/api/travels/${travelId}/tickets`,
+    { method: "POST", body },
+  );
+}
+
+export function updateTravelTicket(
+  travelId: string,
+  ticketId: string,
+  body: { title: string },
+) {
+  return apiFetch<{ ticket: TravelTicketDto }>(
+    `/api/travels/${travelId}/tickets/${ticketId}`,
+    { method: "PATCH", body },
+  );
+}
+
+export function deleteTravelTicket(travelId: string, ticketId: string) {
+  return apiFetch<{ ok: true }>(
+    `/api/travels/${travelId}/tickets/${ticketId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function analyzeTravel(
   travelId: string,
   body: { responseLocale: string; contextMessage?: string | null },
@@ -157,4 +223,16 @@ export function uploadTravelCover(file: File) {
     method: "POST",
     formData,
   });
+}
+
+export function uploadTravelTicketFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<{ url: string; fileName: string; contentType: string }>(
+    "/api/uploads/travel-ticket",
+    {
+      method: "POST",
+      formData,
+    },
+  );
 }

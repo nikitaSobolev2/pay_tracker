@@ -598,6 +598,8 @@ model Travel {
   plannedSpendings TravelPlannedSpending[]
   categoryBudgets  TravelCategoryBudget[]
   placesToVisit    TravelPlaceToVisit[]
+  thingsToGrab     TravelThingToGrab[]
+  tickets          TravelTicket[]
   transactions     Transaction[]
   aiReport         TravelAiReport?
 
@@ -641,8 +643,38 @@ model TravelPlaceToVisit {
   title     String
   link      String?
   address   String?
+  isChecked Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
+
+  @@index([travelId])
+}
+
+model TravelThingToGrab {
+  id        String   @id @default(cuid())
+  travelId  String
+  title     String
+  amount    Int
+  isChecked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
+
+  @@index([travelId])
+}
+
+model TravelTicket {
+  id          String   @id @default(cuid())
+  travelId    String
+  title       String
+  fileUrl     String
+  fileName    String
+  contentType String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
 

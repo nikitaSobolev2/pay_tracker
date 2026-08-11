@@ -15,12 +15,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  fetchTravel,
-  updateTravel,
-} from "@/lib/api/travels";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { fetchTravel } from "@/lib/api/travels";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
+import {
+  useTravelCacheStore,
+} from "@/stores/travel-cache.store";
+import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import { TravelPhase } from "@/types/enums";
 
 import { TravelFinishedSection } from "./travel-finished-section";
@@ -29,38 +32,96 @@ import {
   type TravelFormValues,
 } from "./travel-form-dialog";
 import { TravelInProgressSection } from "./travel-in-progress-section";
+import { TravelOfflineQueueBanner } from "./travel-offline-queue-banner";
 import { TravelPhaseBadge } from "./travel-phase-badge";
 import { TravelPlacesToVisitList } from "./travel-places-to-visit-list";
 import { TravelPrepareSection } from "./travel-prepare-section";
+import { TravelThingsToGrabList } from "./travel-things-to-grab-list";
+import { TravelTicketsList } from "./travel-tickets-list";
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
 
 export function TravelPage({ travelId }: { readonly travelId: string }) {
   const t = useTranslations("travels");
   const formatSchedule = useTravelScheduleLabel();
   const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
+  const putTravel = useTravelCacheStore((state) => state.putTravel);
+  const getTravel = useTravelCacheStore((state) => state.getTravel);
+  const cachedTravel = useTravelCacheStore((state) => state.byId[travelId]);
+  const hasPendingForTravel = useTravelOfflineQueueStore(
+    (state) => state.hasPendingForTravel,
+  );
   const [travel, setTravel] = useState<TravelDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fromCache, setFromCache] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
   const refresh = useCallback(async () => {
-    const result = await fetchTravel(travelId);
-    setTravel(result.travel);
-    await refreshActiveTravel();
-  }, [refreshActiveTravel, travelId]);
+    const pending = hasPendingForTravel(travelId);
+    if (pending || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      const cached = getTravel(travelId);
+      if (cached) {
+        setTravel(cached);
+        setFromCache(true);
+      }
+      return;
+    }
+    try {
+      const result = await fetchTravel(travelId);
+      putTravel(result.travel);
+      setTravel(result.travel);
+      setFromCache(false);
+      await refreshActiveTravel();
+    } catch (error) {
+      const cached = getTravel(travelId);
+      if (cached) {
+        setTravel(cached);
+        setFromCache(true);
+        return;
+      }
+      if (!isNetworkError(error)) {
+        toast.error(error instanceof Error ? error.message : t("loadFailed"));
+      }
+    }
+  }, [
+    getTravel,
+    hasPendingForTravel,
+    putTravel,
+    refreshActiveTravel,
+    t,
+    travelId,
+  ]);
+
+  useEffect(() => {
+    if (cachedTravel) {
+      setTravel(cachedTravel);
+    }
+  }, [cachedTravel]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const result = await fetchTravel(travelId);
-        if (!cancelled) {
-          setTravel(result.travel);
+        if (cancelled) {
+          return;
         }
+        putTravel(result.travel);
+        setTravel(result.travel);
+        setFromCache(false);
         await refreshActiveTravel();
       } catch (error) {
-        if (!cancelled) {
+        if (cancelled) {
+          return;
+        }
+        const cached = getTravel(travelId);
+        if (cached) {
+          setTravel(cached);
+          setFromCache(true);
+        } else if (!isNetworkError(error)) {
           toast.error(error instanceof Error ? error.message : t("loadFailed"));
+        } else {
+          toast.error(t("offlineNoCache"));
         }
       } finally {
         if (!cancelled) {
@@ -71,24 +132,40 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshActiveTravel, t, travelId]);
+  }, [getTravel, putTravel, refreshActiveTravel, t, travelId]);
 
-  async function setPhase(next: string) {
+  useEffect(() => {
+    function onSynced(event: Event) {
+      const detail = (event as CustomEvent<{ travelId?: string }>).detail;
+      if (detail?.travelId && detail.travelId !== travelId) {
+        return;
+      }
+      void refresh();
+    }
+    window.addEventListener("paytracker:travel-offline-synced", onSynced);
+    return () => {
+      window.removeEventListener("paytracker:travel-offline-synced", onSynced);
+    };
+  }, [refresh, travelId]);
+
+  function setPhase(next: string) {
     if (!travel) {
       return;
     }
-    try {
-      if (next === "auto") {
-        await updateTravel(travel.id, { clearPhaseOverride: true });
-      } else {
-        await updateTravel(travel.id, {
-          phaseOverride: next as TravelPhase,
-        });
-      }
-      await refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("updateFailed"));
-    }
+    const body =
+      next === "auto"
+        ? { clearPhaseOverride: true as const }
+        : { phaseOverride: next as TravelPhase };
+    useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
+      ...current,
+      phaseOverride: next === "auto" ? null : (next as TravelPhase),
+      phase: next === "auto" ? current.phase : (next as TravelPhase),
+    }));
+    enqueueTravelOp({
+      travelId: travel.id,
+      op: { kind: "updateTravel", body },
+    });
+    void refresh();
   }
 
   async function submitEdit(values: TravelFormValues) {
@@ -97,19 +174,38 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
     }
     setEditSaving(true);
     try {
-      await updateTravel(travel.id, {
+      const imageUrl = values.imageUrl.trim();
+      const body = {
         title: values.title.trim(),
         startsAt: values.startsAt,
         endsAt: values.endsAt,
-        imageUrl: values.imageUrl.trim() || null,
+        imageUrl:
+          imageUrl.startsWith("blob:") || imageUrl.startsWith("offline-file:")
+            ? undefined
+            : imageUrl || null,
         placeCountry: values.placeCountry || null,
         placeCity: values.placeCity || null,
         placeLabel: values.placeLabel || null,
+      };
+      useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
+        ...current,
+        title: body.title,
+        startsAt: body.startsAt,
+        endsAt: body.endsAt,
+        imageUrl:
+          body.imageUrl === undefined
+            ? current.imageUrl
+            : body.imageUrl,
+        placeCountry: body.placeCountry,
+        placeCity: body.placeCity,
+        placeLabel: body.placeLabel,
+      }));
+      enqueueTravelOp({
+        travelId: travel.id,
+        op: { kind: "updateTravel", body },
       });
       await refresh();
       setEditOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("updateFailed"));
     } finally {
       setEditSaving(false);
     }
@@ -146,6 +242,13 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-10">
+      <TravelOfflineQueueBanner travelId={travel.id} />
+      {fromCache ? (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+          {t("offlineCachedNotice")}
+        </p>
+      ) : null}
+
       <header className="space-y-4">
         <PageTitleWithBack fallbackHref="/travels">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -200,7 +303,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             ]}
             onValueChange={(value) => {
               if (typeof value === "string") {
-                void setPhase(value);
+                setPhase(value);
               }
             }}
           >
@@ -226,9 +329,21 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         </div>
       </header>
 
+      <TravelTicketsList
+        travelId={travel.id}
+        items={travel.tickets}
+        onChanged={refresh}
+      />
+
       <TravelPlacesToVisitList
         travelId={travel.id}
         items={travel.placesToVisit}
+        onChanged={refresh}
+      />
+
+      <TravelThingsToGrabList
+        travelId={travel.id}
+        items={travel.thingsToGrab}
         onChanged={refresh}
       />
 
@@ -246,6 +361,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       <TravelFormDialog
         open={editOpen}
         mode="edit"
+        travelId={travel.id}
         initialValues={editValues}
         saving={editSaving}
         onOpenChange={setEditOpen}

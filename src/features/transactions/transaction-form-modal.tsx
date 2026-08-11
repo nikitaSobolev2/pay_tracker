@@ -55,7 +55,12 @@ import {
   updateTransaction,
 } from "@/lib/api/transactions";
 import { matchCategoriesByTitle } from "@/lib/category-title-match";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
+import {
+  makeLocalEntityId,
+  useTravelCacheStore,
+} from "@/stores/travel-cache.store";
 import { useUiStore } from "@/stores/ui.store";
 import {
   TransactionFormMode,
@@ -451,6 +456,18 @@ export function TransactionFormModal() {
           transactionType === TransactionType.Spending ? form.travelId : null,
       };
 
+      if (payload.travelId) {
+        saveTravelLinkedTransaction(payload);
+        toast.success(t("saved"));
+        if (editingTransaction) {
+          closeTransactionModal();
+        } else {
+          resetKeepOpen();
+        }
+        window.dispatchEvent(new CustomEvent("paytracker:transactions-changed"));
+        return;
+      }
+
       if (editingTransaction) {
         await updateTransaction(editingTransaction.id, payload);
         toast.success(t("saved"));
@@ -469,6 +486,82 @@ export function TransactionFormModal() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function saveTravelLinkedTransaction(payload: {
+    type: TransactionType;
+    originalAmount: string;
+    inputCurrency: string;
+    title: string | null;
+    occurredAt: string;
+    kind: TransactionKind;
+    counterpartyName: string | null;
+    categoryIds: string[];
+    travelId: string | null;
+  }) {
+    const travelId = payload.travelId;
+    if (!travelId) {
+      return;
+    }
+    const now = new Date().toISOString();
+    if (editingTransaction) {
+      const optimistic: TransactionDto = {
+        ...editingTransaction,
+        type: payload.type,
+        originalAmount: payload.originalAmount,
+        inputCurrency: payload.inputCurrency,
+        amount: payload.originalAmount,
+        displayAmount: payload.originalAmount,
+        displayCurrency: payload.inputCurrency,
+        title: payload.title,
+        occurredAt: payload.occurredAt,
+        kind: payload.kind,
+        counterpartyName: payload.counterpartyName,
+        travelId,
+        updatedAt: now,
+      };
+      useTravelCacheStore.getState().upsertTransaction(travelId, optimistic);
+      enqueueTravelOp({
+        travelId,
+        op: {
+          kind: "updateTransaction",
+          entityId: editingTransaction.id,
+          body: payload,
+        },
+      });
+      return;
+    }
+    const entityLocalId = makeLocalEntityId();
+    const idempotencyKey = uuidv4();
+    const optimistic: TransactionDto = {
+      id: entityLocalId,
+      type: payload.type,
+      amount: payload.originalAmount,
+      inputCurrency: payload.inputCurrency,
+      originalAmount: payload.originalAmount,
+      rateToRub: "1",
+      fxRateDate: now.slice(0, 10),
+      displayAmount: payload.originalAmount,
+      displayCurrency: payload.inputCurrency,
+      title: payload.title,
+      occurredAt: payload.occurredAt,
+      kind: payload.kind,
+      counterpartyId: null,
+      counterpartyName: payload.counterpartyName,
+      travelId,
+      categories: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    useTravelCacheStore.getState().upsertTransaction(travelId, optimistic);
+    enqueueTravelOp({
+      travelId,
+      op: {
+        kind: "createTransaction",
+        entityLocalId,
+        body: { ...payload, idempotencyKey },
+      },
+    });
   }
 
   function kindLabel(kind: TransactionKind): string {

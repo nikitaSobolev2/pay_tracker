@@ -11,12 +11,24 @@ export type UploadInput = {
 };
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_TICKET_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "image/gif": "gif",
+};
+
+const TICKET_EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+  ...EXTENSION_BY_CONTENT_TYPE,
+  "application/pdf": "pdf",
+  "text/plain": "txt",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "docx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
 };
 
 const EVENT_IMAGE_PREFIX = "events";
@@ -27,6 +39,10 @@ let bucketReady: Promise<void> | null = null;
 
 export function isSupportedImageType(contentType: string): boolean {
   return contentType in EXTENSION_BY_CONTENT_TYPE;
+}
+
+export function isSupportedTicketType(contentType: string): boolean {
+  return contentType in TICKET_EXTENSION_BY_CONTENT_TYPE;
 }
 
 /** True when the URL points at an object we store under the events/ prefix. */
@@ -53,6 +69,11 @@ export async function uploadEventAttachment(
 
 /** True when the URL points at an object we store under the travels/ prefix. */
 export function isOwnedTravelImageUrl(url: string): boolean {
+  return isOwnedTravelObjectUrl(url);
+}
+
+/** True when the URL points at any object under the travels/ public prefix. */
+export function isOwnedTravelObjectUrl(url: string): boolean {
   try {
     const base = `${readPublicBaseUrl()}/${TRAVEL_IMAGE_PREFIX}/`;
     return url.startsWith(base);
@@ -77,6 +98,34 @@ export async function uploadTravelCover(input: UploadInput): Promise<string> {
     "Content-Type": input.contentType,
   });
   return `${readPublicBaseUrl()}/${key}`;
+}
+
+export type TravelTicketUploadResult = {
+  readonly url: string;
+  readonly contentType: string;
+};
+
+/** Stores a travel ticket file and returns the public URL. */
+export async function uploadTravelTicket(
+  input: UploadInput,
+): Promise<TravelTicketUploadResult> {
+  const extension = TICKET_EXTENSION_BY_CONTENT_TYPE[input.contentType];
+  if (!extension) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Unsupported ticket file format",
+    );
+  }
+
+  const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${randomUUID()}.${extension}`;
+  await ensureBucket();
+  await getClient().putObject(readBucket(), key, input.body, input.body.length, {
+    "Content-Type": input.contentType,
+  });
+  return {
+    url: `${readPublicBaseUrl()}/${key}`,
+    contentType: input.contentType,
+  };
 }
 
 async function uploadEventImage(

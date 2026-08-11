@@ -37,7 +37,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { authClient } from "@/lib/auth-client";
+import { useActiveTravelStore } from "@/stores/active-travel.store";
 import { AppTheme } from "@/types/enums";
 
 const NAV_ITEMS = [
@@ -91,10 +93,16 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
   const [loggingOut, setLoggingOut] = useState(false);
   const [themeReady, setThemeReady] = useState(false);
+  const activeTravel = useActiveTravelStore((state) => state.travel);
+  const refreshActiveTravel = useActiveTravelStore((state) => state.refresh);
 
   useEffect(() => {
     setThemeReady(true);
   }, []);
+
+  useEffect(() => {
+    void refreshActiveTravel();
+  }, [refreshActiveTravel]);
 
   function handleNavigate() {
     if (isMobile) {
@@ -169,6 +177,24 @@ export function AppSidebar() {
         </Button>
       </SidebarHeader>
       <SidebarContent className="flex-1">
+        {activeTravel ? (
+          <SidebarGroup className="px-2 pt-2 md:hidden">
+            <SidebarGroupContent>
+              <Link
+                href={`/travels/${activeTravel.id}`}
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2.5"
+                title={`${tHeader("activeTravel")}: ${activeTravel.title}`}
+              >
+                <Plane className="size-4 shrink-0 text-sky-600" />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {activeTravel.title}
+                </span>
+                <TravelPhaseBadge phase={activeTravel.phase} />
+              </Link>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
         <SidebarGroup className="mt-auto px-2 py-1 md:mt-0">
           <SidebarGroupContent className="text-base">
             <SidebarMenu className="gap-1">

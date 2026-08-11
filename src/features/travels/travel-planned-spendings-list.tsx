@@ -41,18 +41,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  createPlannedSpending,
-  deletePlannedSpending,
-  updatePlannedSpending,
-  upsertCategoryBudget,
-} from "@/lib/api/travels";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { formatChartMoney, toIntegerAmountString } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type {
   TravelCategoryBudgetDto,
   TravelPlannedSpendingDto,
 } from "@/server/services/travel-service.types";
+import {
+  makeLocalEntityId,
+  removePlannedFromCache,
+  upsertCategoryBudgetInCache,
+  upsertPlannedInCache,
+} from "@/stores/travel-cache.store";
 import { TravelPlannedCategory } from "@/types/enums";
 
 import {
@@ -118,30 +119,55 @@ export function TravelPlannedSpendingsList({
     if (!draft.title.trim() || !draft.amount.trim()) {
       return;
     }
-    try {
-      await createPlannedSpending(travelId, {
-        title: draft.title.trim(),
-        category: draft.category,
-        amount: draft.amount,
-      });
-      setDrafts((prev) => prev.filter((row) => row.key !== draft.key));
-      await onChanged();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("spendingSaveFailed"),
-      );
-    }
+    const body = {
+      title: draft.title.trim(),
+      category: draft.category,
+      amount: draft.amount,
+    };
+    const entityLocalId = makeLocalEntityId();
+    const now = new Date().toISOString();
+    upsertPlannedInCache(travelId, {
+      id: entityLocalId,
+      travelId,
+      title: body.title,
+      category: body.category,
+      amount: body.amount,
+      note: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    enqueueTravelOp({
+      travelId,
+      op: { kind: "createPlanned", entityLocalId, body },
+    });
+    setDrafts((prev) => prev.filter((row) => row.key !== draft.key));
+    await onChanged();
   }
 
   async function removeSpending(spendingId: string) {
-    try {
-      await deletePlannedSpending(travelId, spendingId);
-      await onChanged();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("spendingDeleteFailed"),
-      );
-    }
+    removePlannedFromCache(travelId, spendingId);
+    enqueueTravelOp({
+      travelId,
+      op: { kind: "deletePlanned", entityId: spendingId },
+    });
+    await onChanged();
+  }
+
+  async function commitAmount(item: TravelPlannedSpendingDto, amount: string) {
+    upsertPlannedInCache(travelId, {
+      ...item,
+      amount,
+      updatedAt: new Date().toISOString(),
+    });
+    enqueueTravelOp({
+      travelId,
+      op: {
+        kind: "updatePlanned",
+        entityId: item.id,
+        body: { amount },
+      },
+    });
+    await onChanged();
   }
 
   return (
@@ -199,26 +225,27 @@ export function TravelPlannedSpendingsList({
                   displayTotal={group.total}
                   locked={group.locked}
                   onSave={async (amount) => {
-                    try {
-                      await upsertCategoryBudget(travelId, {
+                    upsertCategoryBudgetInCache(
+                      travelId,
+                      group.category,
+                      amount,
+                    );
+                    enqueueTravelOp({
+                      travelId,
+                      op: {
+                        kind: "upsertCategoryBudget",
                         category: group.category,
                         amount,
-                      });
-                      if (amount != null && amount !== "") {
-                        setDrafts((prev) =>
-                          prev.filter(
-                            (draft) => draft.category !== group.category,
-                          ),
-                        );
-                      }
-                      await onChanged();
-                    } catch (error) {
-                      toast.error(
-                        error instanceof Error
-                          ? error.message
-                          : t("categoryTotalSaveFailed"),
+                      },
+                    });
+                    if (amount != null && amount !== "") {
+                      setDrafts((prev) =>
+                        prev.filter(
+                          (draft) => draft.category !== group.category,
+                        ),
                       );
                     }
+                    await onChanged();
                   }}
                 />
               </div>
@@ -238,10 +265,7 @@ export function TravelPlannedSpendingsList({
                           onEdit={() => setEditing(item)}
                           onDelete={() => void removeSpending(item.id)}
                           onAmountCommit={async (amount) => {
-                            await updatePlannedSpending(travelId, item.id, {
-                              amount,
-                            });
-                            await onChanged();
+                            await commitAmount(item, amount);
                           }}
                         />
                       ))}
@@ -263,10 +287,7 @@ export function TravelPlannedSpendingsList({
                             onEdit={() => setEditing(item)}
                             onDelete={() => void removeSpending(item.id)}
                             onAmountCommit={async (amount) => {
-                              await updatePlannedSpending(travelId, item.id, {
-                                amount,
-                              });
-                              await onChanged();
+                              await commitAmount(item, amount);
                             }}
                           />
                         ))}
@@ -337,7 +358,20 @@ export function TravelPlannedSpendingsList({
             if (!editing) {
               return;
             }
-            await updatePlannedSpending(travelId, editing.id, values);
+            upsertPlannedInCache(travelId, {
+              ...editing,
+              ...values,
+              note: values.note ?? null,
+              updatedAt: new Date().toISOString(),
+            });
+            enqueueTravelOp({
+              travelId,
+              op: {
+                kind: "updatePlanned",
+                entityId: editing.id,
+                body: values,
+              },
+            });
             setEditing(null);
             await onChanged();
           }}
