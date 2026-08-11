@@ -255,7 +255,7 @@ function TicketCard({
   const kind = ticketPreviewKind(ticket.contentType);
 
   return (
-    <div className="relative flex aspect-[6/1] min-h-28 w-full overflow-visible rounded-2xl shadow-[0_6px_20px_oklch(0_0_0/0.07)]">
+    <div className="relative flex min-h-20 w-full overflow-visible rounded-2xl shadow-[0_6px_20px_oklch(0_0_0/0.07)] sm:aspect-6/1 sm:min-h-28">
       <div
         role="button"
         tabIndex={0}
@@ -267,12 +267,12 @@ function TicketCard({
           }
         }}
         className={cn(
-          "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-l-2xl border border-r-0 border-border/70 bg-card py-3 pl-3 pr-2 text-left",
+          "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-l-2xl border border-r-0 border-border/70 bg-card py-2.5 pl-2.5 pr-1.5 text-left sm:gap-3 sm:py-3 sm:pl-3 sm:pr-2",
           "transition hover:bg-muted/30",
           "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
         )}
       >
-        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground">
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground sm:size-12">
           <TicketThumbnail fileUrl={ticket.fileUrl} kind={kind} />
         </div>
         <div className="min-w-0 flex-1">
@@ -320,26 +320,29 @@ function TicketCard({
       <button
         type="button"
         onClick={onOpen}
+        aria-label={t("ticketOpen")}
         className={cn(
-          "relative flex w-48 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch rounded-r-2xl bg-sky-600 text-white sm:w-60",
+          "relative flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch rounded-r-2xl bg-sky-600 px-1 text-white sm:w-28 sm:gap-1.5 md:w-40",
           "transition hover:bg-sky-500",
           "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50",
         )}
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute left-0 top-0 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card"
+          className="pointer-events-none absolute left-0 top-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card sm:size-3.5"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 size-3.5 -translate-x-1/2 translate-y-1/2 rounded-full bg-card"
+          className="pointer-events-none absolute bottom-0 left-0 size-2.5 -translate-x-1/2 translate-y-1/2 rounded-full bg-card sm:size-3.5"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-2 left-0 top-2 w-0 -translate-x-1/2 border-l-2 border-dashed border-card"
+          className="pointer-events-none absolute bottom-1.5 left-0 top-1.5 w-0 -translate-x-1/2 border-l-2 border-dashed border-card sm:bottom-2 sm:top-2"
         />
-        <Ticket className="size-5" />
-        <span className="text-sm font-semibold">{t("ticketOpen")}</span>
+        <Ticket className="size-3.5 sm:size-5" />
+        <span className="text-[10px] font-semibold leading-none sm:text-sm">
+          {t("ticketOpen")}
+        </span>
       </button>
     </div>
   );
