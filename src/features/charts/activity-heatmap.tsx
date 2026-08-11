@@ -28,6 +28,7 @@ import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type {
   ActivityHeatmap,
+  ActivityHeatmapDay,
   ListPageStats,
 } from "@/server/services/stats-service.types";
 
