@@ -97,6 +97,9 @@ export type TravelListItemDto = {
 export type TravelDetailDto = TravelListItemDto & {
   readonly placeCountry: string | null;
   readonly placeCity: string | null;
+  readonly housingAddress: string | null;
+  readonly housingLatitude: number | null;
+  readonly housingLongitude: number | null;
   readonly plannedSpendings: TravelPlannedSpendingDto[];
   readonly categoryBudgets: TravelCategoryBudgetDto[];
   readonly placesToVisit: TravelPlaceToVisitDto[];
@@ -126,6 +129,9 @@ export type CreateTravelInput = {
   readonly placeCountry?: string | null;
   readonly placeCity?: string | null;
   readonly placeLabel?: string | null;
+  readonly housingAddress?: string | null;
+  readonly housingLatitude?: number | null;
+  readonly housingLongitude?: number | null;
   readonly currency: string;
   readonly maxSpendingGoal?: string | null;
 };
@@ -140,6 +146,9 @@ export type UpdateTravelInput = {
   readonly placeCountry?: string | null;
   readonly placeCity?: string | null;
   readonly placeLabel?: string | null;
+  readonly housingAddress?: string | null;
+  readonly housingLatitude?: number | null;
+  readonly housingLongitude?: number | null;
   readonly maxSpendingGoal?: string | null;
   readonly phaseOverride?: TravelPhase | null;
   readonly clearPhaseOverride?: boolean;

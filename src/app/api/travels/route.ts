@@ -13,6 +13,9 @@ const createBodySchema = z.object({
   placeCountry: z.string().max(120).nullish(),
   placeCity: z.string().max(120).nullish(),
   placeLabel: z.string().max(240).nullish(),
+  housingAddress: z.string().max(500).nullish(),
+  housingLatitude: z.number().min(-90).max(90).nullish(),
+  housingLongitude: z.number().min(-180).max(180).nullish(),
   maxSpendingGoal: z.string().max(40).nullish(),
 });
 
@@ -39,6 +42,9 @@ export async function POST(request: Request) {
       placeCountry: body.placeCountry,
       placeCity: body.placeCity,
       placeLabel: body.placeLabel,
+      housingAddress: body.housingAddress,
+      housingLatitude: body.housingLatitude,
+      housingLongitude: body.housingLongitude,
       currency: user.defaultCurrency,
       maxSpendingGoal: body.maxSpendingGoal,
     });

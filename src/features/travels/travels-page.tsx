@@ -97,6 +97,9 @@ export function TravelsPage() {
         placeCountry: values.placeCountry || null,
         placeCity: values.placeCity || null,
         placeLabel: values.placeLabel || null,
+        housingAddress: values.housingAddress || null,
+        housingLatitude: values.housingLatitude,
+        housingLongitude: values.housingLongitude,
       });
       setCreateOpen(false);
       router.push(`/travels/${result.travelId}`);
@@ -120,6 +123,9 @@ export function TravelsPage() {
         placeCountry: detail.travel.placeCountry ?? "",
         placeCity: detail.travel.placeCity ?? "",
         placeLabel: detail.travel.placeLabel ?? "",
+        housingAddress: detail.travel.housingAddress ?? "",
+        housingLatitude: detail.travel.housingLatitude,
+        housingLongitude: detail.travel.housingLongitude,
       });
       setEditOpen(true);
     } catch (error) {
@@ -143,6 +149,9 @@ export function TravelsPage() {
         placeCountry: values.placeCountry || null,
         placeCity: values.placeCity || null,
         placeLabel: values.placeLabel || null,
+        housingAddress: values.housingAddress || null,
+        housingLatitude: values.housingLatitude,
+        housingLongitude: values.housingLongitude,
       });
       await refreshList();
       setEditOpen(false);

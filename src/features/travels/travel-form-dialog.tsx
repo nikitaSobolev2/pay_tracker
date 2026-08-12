@@ -22,6 +22,10 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogHeaderInner,
 } from "@/components/ui/responsive-dialog";
+import {
+  EventAddressPicker,
+  type EventLocationValue,
+} from "@/features/events/event-address-picker";
 import { uploadTravelCover } from "@/lib/api/travels";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { storeFileForOffline } from "@/lib/offline/travel-offline-files";
@@ -38,6 +42,9 @@ export type TravelFormValues = {
   readonly placeCountry: string;
   readonly placeCity: string;
   readonly placeLabel: string;
+  readonly housingAddress: string;
+  readonly housingLatitude: number | null;
+  readonly housingLongitude: number | null;
 };
 
 export type TravelFormDialogProps = {
@@ -61,6 +68,9 @@ export function emptyTravelFormValues(): TravelFormValues {
     placeCountry: "",
     placeCity: "",
     placeLabel: "",
+    housingAddress: "",
+    housingLatitude: null,
+    housingLongitude: null,
   };
 }
 
@@ -127,6 +137,9 @@ export function TravelFormDialog({
       ...values,
       title: values.title.trim(),
       imageUrl: values.imageUrl.trim(),
+      housingAddress: values.housingAddress ?? "",
+      housingLatitude: values.housingLatitude ?? null,
+      housingLongitude: values.housingLongitude ?? null,
     });
   }
 
@@ -140,7 +153,7 @@ export function TravelFormDialog({
         onOpenChange(next);
       }}
     >
-      <ResponsiveDialogContent className="sm:max-w-lg">
+      <ResponsiveDialogContent size="xl" showCloseButton>
         <ResponsiveDialogHeader>
           <ResponsiveDialogHeaderInner>
             <DialogTitle>
@@ -202,6 +215,24 @@ export function TravelFormDialog({
                 placeCountry: place?.placeCountry ?? "",
                 placeCity: place?.placeCity ?? "",
                 placeLabel: place?.placeLabel ?? "",
+              }))
+            }
+          />
+
+          <EventAddressPicker
+            label={t("housingAddress")}
+            mapActive={open}
+            value={{
+              address: values.housingAddress ?? "",
+              latitude: values.housingLatitude ?? null,
+              longitude: values.housingLongitude ?? null,
+            }}
+            onChange={(location: EventLocationValue) =>
+              setValues((prev) => ({
+                ...prev,
+                housingAddress: location.address,
+                housingLatitude: location.latitude,
+                housingLongitude: location.longitude,
               }))
             }
           />

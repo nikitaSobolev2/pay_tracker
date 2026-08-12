@@ -243,7 +243,7 @@ function SearchSelect({
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="bottom"
-            className="z-[80] h-[85dvh] gap-0 rounded-t-2xl p-0"
+            className="h-[85dvh] gap-0 rounded-t-2xl p-0"
           >
             <SheetHeader className="border-b border-border/50 px-4 py-3">
               <SheetTitle>{sheetTitle}</SheetTitle>
@@ -272,7 +272,7 @@ function SearchSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="z-[80] w-[var(--radix-popover-trigger-width)] min-w-[18rem] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[18rem] p-0"
       >
         {list}
       </PopoverContent>

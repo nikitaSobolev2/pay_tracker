@@ -29,6 +29,8 @@ export type EventAddressPickerProps = {
   readonly mapActive?: boolean;
   /** Extra classes for the map pane (e.g. taller map in a large dialog). */
   readonly mapClassName?: string;
+  /** Override the field label (defaults to events.address). */
+  readonly label?: string;
 };
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -42,6 +44,7 @@ export function EventAddressPicker({
   onChange,
   mapActive = true,
   mapClassName,
+  label,
 }: EventAddressPickerProps) {
   const t = useTranslations("events");
   const locale = useLocale();
@@ -152,7 +155,7 @@ export function EventAddressPicker({
 
   return (
     <div className="space-y-3">
-      <Label>{t("address")}</Label>
+      <Label>{label ?? t("address")}</Label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input

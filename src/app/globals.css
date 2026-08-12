@@ -320,7 +320,7 @@
 
 /*
  * Stacking — named CSS only (Tailwind z-[…] often does not emit here).
- * Island (40) < sheet (50) < dialog (1200)
+ * Island (40) < dialog (1200) < sheet/select/popover portals (1300)
  */
 .event-page-stack,
 .event-bento-grid {

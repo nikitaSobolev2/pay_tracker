@@ -32,6 +32,7 @@ import {
   TravelFormDialog,
   type TravelFormValues,
 } from "./travel-form-dialog";
+import { TravelHousingMapCard } from "./travel-housing-map-card";
 import { TravelInProgressSection } from "./travel-in-progress-section";
 import { TravelActivityHeatmap } from "./travel-activity-heatmap";
 import { TravelPhaseBadge } from "./travel-phase-badge";
@@ -267,6 +268,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         placeCountry: values.placeCountry || null,
         placeCity: values.placeCity || null,
         placeLabel: values.placeLabel || null,
+        housingAddress: values.housingAddress || null,
+        housingLatitude: values.housingLatitude,
+        housingLongitude: values.housingLongitude,
       };
       useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
         ...current,
@@ -280,6 +284,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         placeCountry: body.placeCountry,
         placeCity: body.placeCity,
         placeLabel: body.placeLabel,
+        housingAddress: body.housingAddress,
+        housingLatitude: body.housingLatitude,
+        housingLongitude: body.housingLongitude,
       }));
       enqueueTravelOp({
         travelId: travel.id,
@@ -319,7 +326,15 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
     placeCountry: travel.placeCountry ?? "",
     placeCity: travel.placeCity ?? "",
     placeLabel: travel.placeLabel ?? "",
+    housingAddress: travel.housingAddress ?? "",
+    housingLatitude: travel.housingLatitude ?? null,
+    housingLongitude: travel.housingLongitude ?? null,
   };
+
+  const showHousingMap = Boolean(
+    travel.housingAddress ||
+      (travel.housingLatitude != null && travel.housingLongitude != null),
+  );
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 pb-10">
@@ -361,6 +376,15 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             src={travel.imageUrl}
             alt=""
             className="h-44 w-full rounded-2xl object-cover ring-1 ring-border/50 sm:h-56"
+          />
+        ) : null}
+
+        {showHousingMap ? (
+          <TravelHousingMapCard
+            address={travel.housingAddress}
+            latitude={travel.housingLatitude}
+            longitude={travel.housingLongitude}
+            mapEnabled={!editOpen}
           />
         ) : null}
 

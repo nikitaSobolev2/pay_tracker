@@ -103,7 +103,7 @@ export function DateRangeSchedulePicker({
           <SheetContent
             side="bottom"
             showCloseButton={false}
-            className="z-[80] h-dvh max-h-dvh gap-0 rounded-none border-0 p-0"
+            className="h-dvh max-h-dvh gap-0 rounded-none border-0 p-0"
           >
             <SheetHeader className="border-b border-border/50 px-4 py-3">
               <SheetTitle className="text-lg">{title}</SheetTitle>
@@ -145,7 +145,7 @@ export function DateRangeSchedulePicker({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="z-[80] w-[min(100vw-2rem,22rem)] gap-0 rounded-2xl p-3"
+        className="w-[min(100vw-2rem,22rem)] gap-0 rounded-2xl p-3"
       >
         {panel}
         <Button

@@ -20,6 +20,9 @@ export type CreateTravelBody = {
   placeCountry?: string | null;
   placeCity?: string | null;
   placeLabel?: string | null;
+  housingAddress?: string | null;
+  housingLatitude?: number | null;
+  housingLongitude?: number | null;
   maxSpendingGoal?: string | null;
 };
 

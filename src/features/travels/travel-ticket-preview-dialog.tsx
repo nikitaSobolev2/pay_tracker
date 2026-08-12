@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -17,6 +18,12 @@ import {
   type TicketPreviewKind,
 } from "./travel-ticket-preview-kind";
 
+const TravelTicketPdfViewer = dynamic(
+  () =>
+    import("./travel-ticket-pdf-viewer").then((module) => module.TravelTicketPdfViewer),
+  { ssr: false },
+);
+
 type TravelTicketPreviewDialogProps = {
   readonly ticket: TravelTicketDto | null;
   readonly open: boolean;
@@ -30,9 +37,7 @@ export function TravelTicketPreviewDialog({
 }: TravelTicketPreviewDialogProps) {
   const t = useTranslations("travels");
   const kind = ticket ? ticketPreviewKind(ticket.contentType) : "other";
-  const pdfSrc = useTicketPdfObjectUrl(
-    open && kind === "pdf" ? ticket : null,
-  );
+  const pdfFile = useTicketPdfBlob(open && kind === "pdf" ? ticket : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,9 +62,15 @@ export function TravelTicketPreviewDialog({
           </Button>
         </div>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6">
+        <div
+          className={
+            kind === "pdf"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6"
+          }
+        >
           {ticket ? (
-            <TicketPreviewBody ticket={ticket} kind={kind} pdf={pdfSrc} />
+            <TicketPreviewBody ticket={ticket} kind={kind} pdf={pdfFile} />
           ) : null}
         </div>
       </DialogContent>
@@ -67,32 +78,29 @@ export function TravelTicketPreviewDialog({
   );
 }
 
-type PdfObjectUrlState = {
-  readonly src: string | null;
+type PdfBlobState = {
+  readonly data: Blob | null;
   readonly failed: boolean;
   readonly loading: boolean;
 };
 
-function useTicketPdfObjectUrl(
-  ticket: TravelTicketDto | null,
-): PdfObjectUrlState {
-  const [src, setSrc] = useState<string | null>(null);
+function useTicketPdfBlob(ticket: TravelTicketDto | null): PdfBlobState {
+  const [data, setData] = useState<Blob | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!ticket) {
-      setSrc(null);
+      setData(null);
       setFailed(false);
       setLoading(false);
       return;
     }
 
     let cancelled = false;
-    let objectUrl: string | null = null;
     setLoading(true);
     setFailed(false);
-    setSrc(null);
+    setData(null);
 
     void (async () => {
       try {
@@ -103,17 +111,13 @@ function useTicketPdfObjectUrl(
           throw new Error(`HTTP ${response.status}`);
         }
         const blob = await response.blob();
-        const nextUrl = URL.createObjectURL(blob);
-        if (cancelled) {
-          URL.revokeObjectURL(nextUrl);
-          return;
+        if (!cancelled) {
+          setData(blob);
+          setFailed(false);
         }
-        objectUrl = nextUrl;
-        setSrc(nextUrl);
-        setFailed(false);
       } catch {
         if (!cancelled) {
-          setSrc(null);
+          setData(null);
           setFailed(true);
         }
       } finally {
@@ -125,13 +129,10 @@ function useTicketPdfObjectUrl(
 
     return () => {
       cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
   }, [ticket]);
 
-  return { src, failed, loading };
+  return { data, failed, loading };
 }
 
 function TicketPreviewBody({
@@ -141,9 +142,14 @@ function TicketPreviewBody({
 }: {
   readonly ticket: TravelTicketDto;
   readonly kind: TicketPreviewKind;
-  readonly pdf: PdfObjectUrlState;
+  readonly pdf: PdfBlobState;
 }) {
   const t = useTranslations("travels");
+  const [renderFailed, setRenderFailed] = useState(false);
+
+  useEffect(() => {
+    setRenderFailed(false);
+  }, [ticket.id, pdf.data]);
 
   if (kind === "image") {
     return (
@@ -157,31 +163,39 @@ function TicketPreviewBody({
   }
 
   if (kind === "pdf") {
-    if (pdf.failed) {
+    const showFallback = pdf.failed || renderFailed;
+    if (showFallback) {
       const offline =
         typeof navigator !== "undefined" && navigator.onLine === false;
       return (
-        <TicketFallback
-          fileName={ticket.fileName}
-          fileUrl={ticket.fileUrl}
-          message={
-            offline ? t("ticketPreviewOffline") : t("ticketPreviewUnavailable")
-          }
-          openLabel={t("ticketOpenFile")}
-        />
+        <div className="flex flex-1 items-center justify-center p-3 sm:p-6">
+          <TicketFallback
+            fileName={ticket.fileName}
+            fileUrl={ticket.fileUrl}
+            message={
+              offline ? t("ticketPreviewOffline") : t("ticketPreviewUnavailable")
+            }
+            openLabel={t("ticketOpenFile")}
+          />
+        </div>
       );
     }
-    if (pdf.src) {
+    if (pdf.data) {
       return (
-        <iframe
+        <TravelTicketPdfViewer
+          key={ticket.id}
+          file={pdf.data}
           title={ticket.title}
-          src={pdf.src}
-          className="h-full w-full rounded-lg bg-white"
+          onLoadError={() => setRenderFailed(true)}
         />
       );
     }
     if (pdf.loading) {
-      return <p className="text-sm text-white/60">{t("ticketPreviewLoading")}</p>;
+      return (
+        <p className="flex flex-1 items-center justify-center text-sm text-white/60">
+          {t("ticketPreviewLoading")}
+        </p>
+      );
     }
     return null;
   }

@@ -137,6 +137,9 @@ export async function getTravelDetail(
     ...toListItem(travel, summary.plannedTotal, summary.actualTotal),
     placeCountry: travel.placeCountry,
     placeCity: travel.placeCity,
+    housingAddress: travel.housingAddress,
+    housingLatitude: toNumberOrNull(travel.housingLatitude),
+    housingLongitude: toNumberOrNull(travel.housingLongitude),
     plannedSpendings,
     categoryBudgets,
     placesToVisit,
@@ -160,6 +163,9 @@ export async function createTravel(input: CreateTravelInput): Promise<string> {
         placeCountry: emptyToNull(input.placeCountry),
         placeCity: emptyToNull(input.placeCity),
         placeLabel: emptyToNull(input.placeLabel),
+        housingAddress: emptyToNull(input.housingAddress),
+        housingLatitude: input.housingLatitude ?? null,
+        housingLongitude: input.housingLongitude ?? null,
         currency: input.currency.toUpperCase(),
         maxSpendingGoal: parseOptionalMoney(input.maxSpendingGoal),
       },
@@ -210,6 +216,18 @@ export async function updateTravel(input: UpdateTravelInput): Promise<void> {
           input.placeLabel === undefined
             ? undefined
             : emptyToNull(input.placeLabel),
+        housingAddress:
+          input.housingAddress === undefined
+            ? undefined
+            : emptyToNull(input.housingAddress),
+        housingLatitude:
+          input.housingLatitude === undefined
+            ? undefined
+            : input.housingLatitude,
+        housingLongitude:
+          input.housingLongitude === undefined
+            ? undefined
+            : input.housingLongitude,
         maxSpendingGoal:
           input.maxSpendingGoal === undefined
             ? undefined
@@ -969,4 +987,8 @@ function emptyToNull(value: string | null | undefined): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function toNumberOrNull(value: { toString(): string } | null): number | null {
+  return value === null ? null : Number(value.toString());
 }

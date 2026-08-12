@@ -8,7 +8,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Increment after prisma schema/client regenerations that add queryable fields. */
-const PRISMA_CLIENT_EPOCH = 6;
+const PRISMA_CLIENT_EPOCH = 8;
 
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
