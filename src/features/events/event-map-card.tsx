@@ -14,7 +14,7 @@ import { useSurfaceMapAllowed } from "./use-surface-map-allowed";
 
 export type EventMapCardProps = {
   readonly className?: string;
-  /** When false, Leaflet is unmounted so it cannot cover dialogs. */
+  /** When false, the map is unmounted so it cannot cover dialogs. */
   readonly mapEnabled?: boolean;
 };
 

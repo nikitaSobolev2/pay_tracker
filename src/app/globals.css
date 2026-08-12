@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -508,16 +508,16 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
 }
 
 /*
- * Leaflet panes use z-index up to 1000. Keep the whole map in a low stacking
- * context so panes cannot paint above dialogs / sheets.
+ * Keep the map surface in a low stacking context so it cannot paint above
+ * dialogs / sheets.
  */
-.leaflet-container {
-  z-index: 0 !important;
+[data-event-surface-map],
+[data-travel-surface-map],
+.event-map-surface {
   isolation: isolate;
-  overflow: hidden;
 }
 
-/* Fixed centre pin for the address picker (HTML overlay, not a Leaflet marker). */
+/* Fixed centre pin for the address picker (HTML overlay, not a map marker). */
 .event-map-center-pin {
   filter: drop-shadow(0 6px 10px rgb(225 29 72 / 0.45))
     drop-shadow(0 2px 4px rgb(15 23 42 / 0.35));
@@ -549,23 +549,6 @@ body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
   border-radius: 9999px;
   background: #9f1239;
   box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7);
-}
-
-.event-map-leaflet-marker {
-  background: transparent !important;
-  border: none !important;
-}
-
-.event-map-leaflet-marker__dot {
-  display: block;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 9999px;
-  border: 3px solid white;
-  background: linear-gradient(145deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
-  box-shadow:
-    0 4px 12px rgb(225 29 72 / 0.45),
-    0 0 0 4px rgb(244 63 94 / 0.2);
 }
 
 /* Custom markdown block: ```payment … ``` */

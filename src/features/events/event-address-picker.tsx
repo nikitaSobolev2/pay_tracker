@@ -23,7 +23,7 @@ export type EventAddressPickerProps = {
   readonly value: EventLocationValue;
   readonly onChange: (value: EventLocationValue) => void;
   /**
-   * When false, Leaflet stays unmounted. Use the dialog `open` flag so the map
+   * When false, the map stays unmounted. Use the dialog `open` flag so the map
    * is created only after the modal is shown (avoids zero-size / transform bugs).
    */
   readonly mapActive?: boolean;
@@ -36,7 +36,7 @@ export type EventAddressPickerProps = {
 const SEARCH_DEBOUNCE_MS = 500;
 const REVERSE_DEBOUNCE_MS = 400;
 const MIN_QUERY_LENGTH = 3;
-/** Wait for dialog layout + fade before creating Leaflet. */
+/** Wait for dialog layout + fade before creating the map. */
 const MAP_MOUNT_DELAY_MS = 160;
 
 export function EventAddressPicker({

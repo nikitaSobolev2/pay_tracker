@@ -32,6 +32,7 @@ import {
 } from "@/lib/api/settings";
 import { authClient } from "@/lib/auth-client";
 import { getClientCurrencies } from "@/lib/currencies";
+import { persistPreferredLocale } from "@/lib/locale-preference";
 import { cn } from "@/lib/utils";
 import { AppLocale, AppTheme } from "@/types/enums";
 
@@ -87,6 +88,7 @@ export function SettingsPage() {
       setTheme(updated.user.theme);
       await refresh();
       toast.success(tCommon("save"));
+      persistPreferredLocale(updated.user.locale);
       if (updated.user.locale !== locale) {
         router.replace("/settings", { locale: updated.user.locale });
       }

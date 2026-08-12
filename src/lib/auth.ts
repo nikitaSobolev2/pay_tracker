@@ -8,12 +8,28 @@ import { getDefaultCurrency } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { AppLocale, AppTheme } from "@/types/enums";
 
+function resolveTrustedOrigins(): string[] {
+  const origins = new Set<string>();
+  const baseUrl = process.env.BETTER_AUTH_URL?.replace(/\/$/, "");
+  if (baseUrl) {
+    origins.add(baseUrl);
+  }
+  if (process.env.NODE_ENV !== "production") {
+    for (const port of ["3000", "3001"]) {
+      origins.add(`http://localhost:${port}`);
+      origins.add(`http://127.0.0.1:${port}`);
+    }
+  }
+  return [...origins];
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+  trustedOrigins: resolveTrustedOrigins(),
   emailAndPassword: {
     enabled: true,
   },

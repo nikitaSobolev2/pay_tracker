@@ -271,6 +271,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         housingAddress: values.housingAddress || null,
         housingLatitude: values.housingLatitude,
         housingLongitude: values.housingLongitude,
+        housingFloor: values.housingFloor || null,
+        housingEntrance: values.housingEntrance || null,
+        housingApartment: values.housingApartment || null,
       };
       useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
         ...current,
@@ -287,6 +290,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         housingAddress: body.housingAddress,
         housingLatitude: body.housingLatitude,
         housingLongitude: body.housingLongitude,
+        housingFloor: body.housingFloor,
+        housingEntrance: body.housingEntrance,
+        housingApartment: body.housingApartment,
       }));
       enqueueTravelOp({
         travelId: travel.id,
@@ -329,11 +335,17 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
     housingAddress: travel.housingAddress ?? "",
     housingLatitude: travel.housingLatitude ?? null,
     housingLongitude: travel.housingLongitude ?? null,
+    housingFloor: travel.housingFloor ?? "",
+    housingEntrance: travel.housingEntrance ?? "",
+    housingApartment: travel.housingApartment ?? "",
   };
 
   const showHousingMap = Boolean(
     travel.housingAddress ||
-      (travel.housingLatitude != null && travel.housingLongitude != null),
+      (travel.housingLatitude != null && travel.housingLongitude != null) ||
+      travel.housingFloor ||
+      travel.housingEntrance ||
+      travel.housingApartment,
   );
 
   return (
@@ -384,6 +396,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             address={travel.housingAddress}
             latitude={travel.housingLatitude}
             longitude={travel.housingLongitude}
+            floor={travel.housingFloor}
+            entrance={travel.housingEntrance}
+            apartment={travel.housingApartment}
             mapEnabled={!editOpen}
           />
         ) : null}

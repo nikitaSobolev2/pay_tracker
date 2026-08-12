@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { PageBackButton } from "@/components/layout/page-back-button";
 import { LocaleSelect } from "@/components/locale-select";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { persistPreferredLocale } from "@/lib/locale-preference";
 
 import { useEventContext } from "./event-context";
 
@@ -55,7 +56,10 @@ export function EventTopBar() {
           value={locale}
           ariaLabel={tSettings("locale")}
           triggerClassName="ml-auto w-[9.5rem]"
-          onValueChange={(next) => router.replace(pathname, { locale: next })}
+          onValueChange={(next) => {
+            persistPreferredLocale(next);
+            router.replace(pathname, { locale: next });
+          }}
         />
       )}
     </div>

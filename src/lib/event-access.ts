@@ -7,6 +7,7 @@ import {
   readGuestRequestInfo,
   writeGuestIdCookie,
 } from "@/lib/guest-session";
+import { LOCALE_COOKIE_NAME } from "@/lib/locale-preference";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { ensureGuestUser } from "@/server/services/guest-user-service";
@@ -202,5 +203,5 @@ async function loadEventAccessRow(eventId: string): Promise<EventAccessRow> {
 
 async function readLocale(): Promise<string> {
   const cookieStore = await cookies();
-  return cookieStore.get("NEXT_LOCALE")?.value ?? AppLocale.En;
+  return cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? AppLocale.En;
 }

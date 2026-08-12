@@ -2,100 +2,101 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  parsePhotonResponse,
-  toPhotonLanguage,
-  toPhotonSearchLanguage,
+  parseGeocoderResponse,
+  parseSuggestResponse,
+  toYandexLanguage,
 } from "../../src/server/services/geocode-service";
 
-/** Captured from photon.komoot.io for "Ижевск, 9-ая подлесная 11 к3". */
-const buildingResponse = {
-  type: "FeatureCollection",
-  features: [
+const suggestResponse = {
+  results: [
     {
-      type: "Feature",
-      properties: {
-        osm_type: "W",
-        housenumber: "11 к3",
-        street: "9-я Подлесная улица",
-        locality: "4-й мкр.",
-        district: "городок Металлургов",
-        city: "Ижевск",
-        state: "Удмуртия",
-        country: "Россия",
-        postcode: "426001",
+      title: { text: "9-я Подлесная улица, 11к3" },
+      subtitle: { text: "Ижевск" },
+      address: {
+        formatted_address: "Россия, Ижевск, 9-я Подлесная улица, 11к3",
       },
-      geometry: { type: "Point", coordinates: [53.1977784, 56.8734868] },
+      uri: "ymapsbm1://geo?data=test",
     },
   ],
 };
 
-describe("parsePhotonResponse", () => {
-  it("builds a street-first display name from the address parts", () => {
-    const places = parsePhotonResponse(buildingResponse);
+const geocoderResponse = {
+  response: {
+    GeoObjectCollection: {
+      featureMember: [
+        {
+          GeoObject: {
+            name: "11к3",
+            description: "9-я Подлесная улица, Ижевск",
+            Point: { pos: "53.1977784 56.8734868" },
+            metaDataProperty: {
+              GeocoderMetaData: {
+                text: "Россия, Ижевск, 9-я Подлесная улица, 11к3",
+                Address: {
+                  formatted: "Россия, Ижевск, 9-я Подлесная улица, 11к3",
+                },
+              },
+            },
+          },
+        },
+      ],
+    },
+  },
+};
+
+describe("parseSuggestResponse", () => {
+  it("prefers formatted address and keeps uri for geocoder resolve", () => {
+    const items = parseSuggestResponse(suggestResponse);
+
+    assert.equal(items.length, 1);
+    assert.equal(
+      items[0]!.displayName,
+      "Россия, Ижевск, 9-я Подлесная улица, 11к3",
+    );
+    assert.equal(items[0]!.uri, "ymapsbm1://geo?data=test");
+  });
+
+  it("falls back to title when address is missing", () => {
+    const items = parseSuggestResponse({
+      results: [{ title: { text: "Красная площадь" } }],
+    });
+    assert.equal(items[0]!.displayName, "Красная площадь");
+    assert.equal(items[0]!.uri, null);
+  });
+
+  it("returns nothing for an empty result set", () => {
+    assert.deepEqual(parseSuggestResponse({ results: [] }), []);
+  });
+});
+
+describe("parseGeocoderResponse", () => {
+  it("reads lon lat from Point.pos and formatted address", () => {
+    const places = parseGeocoderResponse(geocoderResponse);
 
     assert.equal(places.length, 1);
     assert.equal(
       places[0]!.displayName,
-      "9-я Подлесная улица, 11 к3, городок Металлургов, Ижевск, Удмуртия, Россия",
+      "Россия, Ижевск, 9-я Подлесная улица, 11к3",
     );
+    assert.equal(places[0]!.latitude, 56.8734868);
+    assert.equal(places[0]!.longitude, 53.1977784);
   });
 
-  it("reads GeoJSON coordinates as longitude then latitude", () => {
-    const [place] = parsePhotonResponse(buildingResponse);
-
-    assert.equal(place!.latitude, 56.8734868);
-    assert.equal(place!.longitude, 53.1977784);
-  });
-
-  it("falls back to the place name when there is no street", () => {
-    const places = parsePhotonResponse({
-      features: [
-        {
-          properties: { name: "Красная площадь", city: "Москва" },
-          geometry: { coordinates: [37.6208, 55.7539] },
+  it("skips members without usable coordinates", () => {
+    const places = parseGeocoderResponse({
+      response: {
+        GeoObjectCollection: {
+          featureMember: [{ GeoObject: { name: "Broken", Point: {} } }],
         },
-      ],
+      },
     });
-
-    assert.equal(places[0]!.displayName, "Красная площадь, Москва");
-  });
-
-  it("skips features without usable coordinates", () => {
-    const places = parsePhotonResponse({
-      features: [
-        { properties: { name: "Nowhere" }, geometry: { coordinates: [] } },
-        { properties: { name: "Broken" } },
-      ],
-    });
-
     assert.deepEqual(places, []);
   });
-
-  it("returns nothing for an empty result set", () => {
-    assert.deepEqual(parsePhotonResponse({ features: [] }), []);
-  });
 });
 
-describe("toPhotonLanguage", () => {
-  it("asks for English names in the English UI", () => {
-    assert.equal(toPhotonLanguage("en"), "en");
-  });
-
-  it("keeps local spelling for locales Photon cannot translate", () => {
-    assert.equal(toPhotonLanguage("ru"), "default");
-  });
-});
-
-describe("toPhotonSearchLanguage", () => {
-  it("keeps local spelling when the query itself is Cyrillic", () => {
-    assert.equal(
-      toPhotonSearchLanguage("Ижевск, 9-ая подлесная", "en"),
-      "default",
-    );
-  });
-
-  it("follows the UI locale for Latin queries", () => {
-    assert.equal(toPhotonSearchLanguage("Moscow Red Square", "en"), "en");
-    assert.equal(toPhotonSearchLanguage("Moscow Red Square", "ru"), "default");
+describe("toYandexLanguage", () => {
+  it("maps UI locale to Yandex lang codes", () => {
+    assert.equal(toYandexLanguage("en"), "en_US");
+    assert.equal(toYandexLanguage("ru"), "ru_RU");
   });
 });

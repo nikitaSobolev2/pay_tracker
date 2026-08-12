@@ -1,5 +1,5 @@
 /* PayTracker service worker — network-first shell + travel/transactions GET. */
-const CACHE = "paytracker-v7";
+const CACHE = "paytracker-v8";
 const FILE_CACHE = "paytracker-files-v1";
 const OFFLINE_URL = "/offline.html";
 const PDF_WORKER_URL = "/pdf.worker.min.mjs";

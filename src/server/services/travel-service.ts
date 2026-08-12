@@ -140,6 +140,9 @@ export async function getTravelDetail(
     housingAddress: travel.housingAddress,
     housingLatitude: toNumberOrNull(travel.housingLatitude),
     housingLongitude: toNumberOrNull(travel.housingLongitude),
+    housingFloor: travel.housingFloor,
+    housingEntrance: travel.housingEntrance,
+    housingApartment: travel.housingApartment,
     plannedSpendings,
     categoryBudgets,
     placesToVisit,
@@ -166,6 +169,9 @@ export async function createTravel(input: CreateTravelInput): Promise<string> {
         housingAddress: emptyToNull(input.housingAddress),
         housingLatitude: input.housingLatitude ?? null,
         housingLongitude: input.housingLongitude ?? null,
+        housingFloor: emptyToNull(input.housingFloor),
+        housingEntrance: emptyToNull(input.housingEntrance),
+        housingApartment: emptyToNull(input.housingApartment),
         currency: input.currency.toUpperCase(),
         maxSpendingGoal: parseOptionalMoney(input.maxSpendingGoal),
       },
@@ -228,6 +234,18 @@ export async function updateTravel(input: UpdateTravelInput): Promise<void> {
           input.housingLongitude === undefined
             ? undefined
             : input.housingLongitude,
+        housingFloor:
+          input.housingFloor === undefined
+            ? undefined
+            : emptyToNull(input.housingFloor),
+        housingEntrance:
+          input.housingEntrance === undefined
+            ? undefined
+            : emptyToNull(input.housingEntrance),
+        housingApartment:
+          input.housingApartment === undefined
+            ? undefined
+            : emptyToNull(input.housingApartment),
         maxSpendingGoal:
           input.maxSpendingGoal === undefined
             ? undefined

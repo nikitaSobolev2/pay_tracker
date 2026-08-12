@@ -1,8 +1,6 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
-
-import L from "leaflet";
+import { useLocale } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
@@ -26,14 +24,54 @@ export type EventMapProps = {
 
 const FALLBACK_CENTER: MapPoint = { latitude: 55.751244, longitude: 37.618423 };
 const DEFAULT_ZOOM = 15;
-const TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const MIN_MAP_EDGE_PX = 2;
 
-guardLeafletDomUtil();
+type YMapsMap = {
+  destroy: () => void;
+  getCenter: () => [number, number];
+  setCenter: (
+    center: [number, number],
+    zoom?: number,
+    options?: { duration?: number },
+  ) => void;
+  getZoom: () => number;
+  geoObjects: {
+    add: (object: unknown) => void;
+    removeAll: () => void;
+  };
+  events: {
+    add: (type: string, handler: () => void) => void;
+  };
+  container: {
+    fitToViewport: () => void;
+  };
+};
 
-/** Leaflet is DOM-only, so this component must never be server rendered. */
+type YMapsApi = {
+  ready: (callback: () => void) => void;
+  Map: new (
+    element: HTMLElement | string,
+    state: {
+      center: [number, number];
+      zoom: number;
+      controls?: string[];
+    },
+    options?: { suppressMapOpenBlock?: boolean },
+  ) => YMapsMap;
+  Placemark: new (
+    coords: [number, number],
+    properties?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ) => unknown;
+};
+
+declare global {
+  interface Window {
+    ymaps?: YMapsApi;
+  }
+}
+
+/** Yandex Maps is DOM-only, so this component must never be server rendered. */
 export function EventMap({
   point,
   pickable = false,
@@ -41,13 +79,13 @@ export function EventMap({
   className,
   onCenterChange,
 }: EventMapProps) {
+  const locale = useLocale();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<YMapsMap | null>(null);
+  const placemarkRef = useRef<unknown>(null);
   const onCenterChangeRef = useRef(onCenterChange);
   const pointRef = useRef(point);
   const pickableRef = useRef(pickable);
-  /** Last centre we either emitted or applied from props — skips echo setView. */
   const syncedCenterRef = useRef<MapPoint | null>(point);
 
   useEffect(() => {
@@ -67,13 +105,15 @@ export function EventMap({
     if (!root) {
       return;
     }
-    // Definite binding — nested closures must not see RefObject's `| null`.
     const container: HTMLDivElement = root;
+    const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY?.trim();
+    if (!apiKey) {
+      return;
+    }
 
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
-    const invalidateTimers: number[] = [];
-    let createRetryTimer: number | null = null;
+    const fitTimers: number[] = [];
 
     function hasLaidOutSize(): boolean {
       if (cancelled || !container.isConnected) {
@@ -83,54 +123,13 @@ export function EventMap({
       return rect.width >= MIN_MAP_EDGE_PX && rect.height >= MIN_MAP_EDGE_PX;
     }
 
-    function isMapAlive(map: L.Map): boolean {
-      if (cancelled || mapRef.current !== map) {
-        return false;
-      }
-      try {
-        const mapContainer = map.getContainer();
-        return (
-          Boolean(map.getPane("mapPane")) &&
-          mapContainer.isConnected &&
-          mapContainer === container
-        );
-      } catch {
-        return false;
-      }
-    }
-
-    function safeInvalidate(map: L.Map) {
-      if (!isMapAlive(map) || !hasLaidOutSize()) {
+    function emitCenter(map: YMapsMap) {
+      if (!pickableRef.current || cancelled || mapRef.current !== map) {
         return;
       }
       try {
-        map.invalidateSize({ animate: false, pan: false });
-      } catch {
-        // Leaflet throws "_leaflet_pos" when the map was torn down mid-frame.
-      }
-    }
-
-    function scheduleInvalidate(map: L.Map) {
-      safeInvalidate(map);
-      for (const delay of [50, 150, 300]) {
-        invalidateTimers.push(
-          window.setTimeout(() => {
-            safeInvalidate(map);
-          }, delay),
-        );
-      }
-    }
-
-    function emitCenter(map: L.Map) {
-      if (!pickableRef.current || !isMapAlive(map)) {
-        return;
-      }
-      try {
-        const center = map.getCenter();
-        const emitted: MapPoint = {
-          latitude: center.lat,
-          longitude: center.lng,
-        };
+        const [latitude, longitude] = map.getCenter();
+        const emitted: MapPoint = { latitude, longitude };
         const synced = syncedCenterRef.current;
         if (
           synced &&
@@ -142,121 +141,122 @@ export function EventMap({
         syncedCenterRef.current = emitted;
         onCenterChangeRef.current?.(emitted);
       } catch {
-        // Map may already be removed.
+        // Map may already be destroyed.
       }
     }
 
-    function createMap() {
-      if (cancelled || mapRef.current || !hasLaidOutSize()) {
-        return false;
+    function scheduleFit(map: YMapsMap) {
+      const run = () => {
+        if (cancelled || mapRef.current !== map || !hasLaidOutSize()) {
+          return;
+        }
+        try {
+          map.container.fitToViewport();
+        } catch {
+          // Ignore fit races during teardown.
+        }
+      };
+      run();
+      for (const delay of [50, 150, 300]) {
+        fitTimers.push(window.setTimeout(run, delay));
       }
+    }
 
+    async function createMap(ymaps: YMapsApi) {
+      if (cancelled || mapRef.current || !hasLaidOutSize()) {
+        return;
+      }
       const center = pointRef.current ?? FALLBACK_CENTER;
       syncedCenterRef.current = center;
-      let map: L.Map;
-      try {
-        map = L.map(container, {
-          attributionControl: true,
-          zoomControl: true,
-          dragging: true,
-          scrollWheelZoom: true,
-          doubleClickZoom: true,
-          boxZoom: false,
-          keyboard: true,
-          fadeAnimation: false,
-          zoomAnimation: false,
-          markerZoomAnimation: false,
-        }).setView([center.latitude, center.longitude], zoom, {
-          animate: false,
-        });
-      } catch {
-        return false;
-      }
-
+      const map = new ymaps.Map(
+        container,
+        {
+          center: [center.latitude, center.longitude],
+          zoom,
+          controls: ["zoomControl"],
+        },
+        { suppressMapOpenBlock: true },
+      );
       if (cancelled) {
         try {
-          map.remove();
+          map.destroy();
         } catch {
           // Ignore create/cancel race.
         }
-        return false;
+        return;
       }
-
-      L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION }).addTo(map);
-      // Keep touch pans on the map instead of the scrollable dialog body.
-      L.DomEvent.disableScrollPropagation(container);
-      L.DomEvent.disableClickPropagation(container);
       mapRef.current = map;
 
       if (pickableRef.current) {
-        map.on("dragend", () => emitCenter(map));
-        map.on("zoomend", () => emitCenter(map));
-        // Seed coords/address when the picker opens with no selected point yet.
+        map.events.add("actionend", () => emitCenter(map));
         if (!pointRef.current) {
           emitCenter(map);
         }
       } else {
-        markerRef.current = L.marker([center.latitude, center.longitude], {
-          icon: buildMarkerIcon(),
-          interactive: false,
-          keyboard: false,
-        }).addTo(map);
+        const placemark = new ymaps.Placemark(
+          [center.latitude, center.longitude],
+          {},
+          {
+            preset: "islands#redCircleDotIcon",
+            interactiveZIndex: false,
+          },
+        );
+        placemarkRef.current = placemark;
+        map.geoObjects.add(placemark);
       }
 
-      scheduleInvalidate(map);
-      return true;
+      scheduleFit(map);
     }
 
-    resizeObserver = new ResizeObserver(() => {
-      if (cancelled) {
-        return;
-      }
-      if (!mapRef.current) {
-        createMap();
-        return;
-      }
-      safeInvalidate(mapRef.current);
-    });
-    resizeObserver.observe(container);
-
-    if (!createMap()) {
-      createRetryTimer = window.setTimeout(() => {
-        createRetryTimer = null;
-        createMap();
-      }, 0);
-    }
+    void loadYmaps(apiKey, toYmapsLang(locale))
+      .then((ymaps) => {
+        if (cancelled) {
+          return;
+        }
+        resizeObserver = new ResizeObserver(() => {
+          if (cancelled) {
+            return;
+          }
+          if (!mapRef.current) {
+            void createMap(ymaps);
+            return;
+          }
+          if (hasLaidOutSize()) {
+            try {
+              mapRef.current.container.fitToViewport();
+            } catch {
+              // Ignore resize races.
+            }
+          }
+        });
+        resizeObserver.observe(container);
+        void createMap(ymaps);
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
-      if (createRetryTimer !== null) {
-        window.clearTimeout(createRetryTimer);
-      }
-      for (const timer of invalidateTimers) {
+      for (const timer of fitTimers) {
         window.clearTimeout(timer);
       }
       resizeObserver?.disconnect();
-      resizeObserver = null;
       const map = mapRef.current;
-      const marker = markerRef.current;
       mapRef.current = null;
-      markerRef.current = null;
+      placemarkRef.current = null;
       if (map) {
-        destroyLeafletMap(map, marker);
+        try {
+          map.destroy();
+        } catch {
+          // Ignore destroy races.
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locale, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!point || !map) {
-      return;
-    }
-    try {
-      if (!map.getPane("mapPane")) {
-        return;
-      }
-    } catch {
       return;
     }
     const synced = syncedCenterRef.current;
@@ -267,46 +267,53 @@ export function EventMap({
     ) {
       return;
     }
-    // External change (search selection) — recentre so the fixed pin sits on it.
     syncedCenterRef.current = point;
     try {
-      map.setView([point.latitude, point.longitude], map.getZoom(), {
-        animate: false,
+      map.setCenter([point.latitude, point.longitude], map.getZoom(), {
+        duration: 0,
       });
-      if (!pickableRef.current) {
-        markerRef.current?.setLatLng([point.latitude, point.longitude]);
+      if (!pickableRef.current && placemarkRef.current) {
+        map.geoObjects.removeAll();
+        const ymaps = window.ymaps;
+        if (ymaps) {
+          const placemark = new ymaps.Placemark(
+            [point.latitude, point.longitude],
+            {},
+            { preset: "islands#redCircleDotIcon" },
+          );
+          placemarkRef.current = placemark;
+          map.geoObjects.add(placemark);
+        }
       }
     } catch {
-      // Map may already be removed.
+      // Map may already be destroyed.
     }
   }, [point]);
 
+  const apiKeyMissing = !process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY?.trim();
+
   return (
     <div className={cn("relative isolate min-h-0 overflow-hidden", className)}>
-      {/*
-        Height/width come from className on this wrapper so the centre pin
-        overlay shares the same box as the Leaflet root (not a collapsed parent).
-      */}
       <div
         ref={containerRef}
-        className="absolute inset-0 z-0 touch-none [&_.leaflet-control-container]:z-[5]"
+        className="absolute inset-0 z-0 touch-none bg-muted/20"
       />
-      {pickable ? <CenterPin /> : null}
+      {apiKeyMissing ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/40 p-4 text-center text-sm text-muted-foreground">
+          Map is not configured
+        </div>
+      ) : null}
+      {pickable && !apiKeyMissing ? <CenterPin /> : null}
     </div>
   );
 }
 
-/**
- * Fixed to the viewport — the tip sits on the map centre. Not a Leaflet marker,
- * so panning moves the map underneath and the pin never leaves the middle.
- */
 function CenterPin() {
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
     >
-      {/* Tip of the pin is at the flex centre = map.getCenter() */}
       <span className="event-map-center-pin relative flex -translate-y-[calc(100%-4px)] flex-col items-center">
         <span className="event-map-center-pin__head" />
         <span className="event-map-center-pin__stem" />
@@ -316,75 +323,44 @@ function CenterPin() {
   );
 }
 
-/** Leaflet's default icon resolves image URLs relative to the CSS, which breaks under Next. */
-function buildMarkerIcon(): L.DivIcon {
-  return L.divIcon({
-    className: "event-map-leaflet-marker",
-    html: `<span class="event-map-leaflet-marker__dot"></span>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
-}
-
 function isSameCoordinate(left: number, right: number): boolean {
   return Math.abs(left - right) < 1e-6;
 }
 
-/**
- * Leaflet reads `_leaflet_pos` during async pan/zoom/invalidate. After unmount
- * (tab switch, dialog) those callbacks can still fire on detached nodes.
- */
-function guardLeafletDomUtil() {
-  const domUtil = L.DomUtil as typeof L.DomUtil & {
-    __payTrackerGuarded?: boolean;
-  };
-  if (domUtil.__payTrackerGuarded) {
-    return;
-  }
-  domUtil.__payTrackerGuarded = true;
-  const originalGetPosition = domUtil.getPosition.bind(domUtil);
-  domUtil.getPosition = (element: HTMLElement) => {
-    if (!element?.isConnected) {
-      return L.point(0, 0);
-    }
-    try {
-      return originalGetPosition(element);
-    } catch {
-      return L.point(0, 0);
-    }
-  };
+function toYmapsLang(locale: string): string {
+  return locale.startsWith("en") ? "en_US" : "ru_RU";
 }
 
-function destroyLeafletMap(map: L.Map, marker: L.Marker | null) {
-  try {
-    map.stop();
-  } catch {
-    // Already tearing down.
+let ymapsLoadPromise: Promise<YMapsApi> | null = null;
+
+function loadYmaps(apiKey: string, lang: string): Promise<YMapsApi> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Yandex Maps requires a browser"));
   }
-  try {
-    map.off();
-  } catch {
-    // Already tearing down.
-  }
-  try {
-    marker?.remove();
-  } catch {
-    // Marker may already be gone.
-  }
-  try {
-    map.eachLayer((layer) => {
-      try {
-        map.removeLayer(layer);
-      } catch {
-        // Ignore per-layer races.
-      }
+  if (window.ymaps) {
+    return new Promise((resolve) => {
+      window.ymaps!.ready(() => resolve(window.ymaps!));
     });
-  } catch {
-    // Ignore layer sweep races.
   }
-  try {
-    map.remove();
-  } catch {
-    // Ignore final remove races.
+  if (ymapsLoadPromise) {
+    return ymapsLoadPromise;
   }
+  ymapsLoadPromise = new Promise<YMapsApi>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=${encodeURIComponent(lang)}`;
+    script.async = true;
+    script.onload = () => {
+      if (!window.ymaps) {
+        reject(new Error("Yandex Maps failed to load"));
+        return;
+      }
+      window.ymaps.ready(() => resolve(window.ymaps!));
+    };
+    script.onerror = () => {
+      ymapsLoadPromise = null;
+      reject(new Error("Yandex Maps script failed to load"));
+    };
+    document.head.appendChild(script);
+  });
+  return ymapsLoadPromise;
 }

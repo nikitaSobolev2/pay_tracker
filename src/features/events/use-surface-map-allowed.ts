@@ -12,6 +12,7 @@ const OVERLAY_OPEN_SELECTOR = [
 /**
  * Leaflet crashes with `_leaflet_pos` if its container is `display:none` while
  * still mounted. Unmount surface maps whenever any dialog/sheet is open.
+ * (Same guard kept for Yandex Maps — avoid hidden map layout bugs.)
  */
 export function useSurfaceMapAllowed(mapEnabled: boolean): boolean {
   const [overlayOpen, setOverlayOpen] = useState(false);

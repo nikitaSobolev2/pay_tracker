@@ -3,9 +3,26 @@ import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { routing } from "@/i18n/routing";
+import { isAppLocale } from "@/lib/locales";
+import { LOCALE_COOKIE_NAME } from "@/lib/locale-preference";
 import { AppLocale } from "@/types/enums";
 
 const intlMiddleware = createMiddleware(routing);
+
+function resolveLocale(request: NextRequest, pathname: string): AppLocale {
+  const fromPath = routing.locales.find(
+    (locale) =>
+      pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
+  );
+  if (fromPath) {
+    return fromPath;
+  }
+  const fromCookie = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
+  if (fromCookie && isAppLocale(fromCookie)) {
+    return fromCookie;
+  }
+  return AppLocale.En;
+}
 
 function stripLocale(pathname: string): string {
   for (const locale of routing.locales) {
@@ -51,11 +68,7 @@ export default async function proxy(request: NextRequest) {
 
   const sessionCookie = getSessionCookie(request);
   const pathWithoutLocale = stripLocale(pathname);
-  const localeMatch = routing.locales.find(
-    (locale) =>
-      pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
-  );
-  const locale = localeMatch ?? AppLocale.En;
+  const locale = resolveLocale(request, pathname);
 
   if (
     !sessionCookie &&

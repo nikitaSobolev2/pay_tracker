@@ -45,6 +45,9 @@ export type TravelFormValues = {
   readonly housingAddress: string;
   readonly housingLatitude: number | null;
   readonly housingLongitude: number | null;
+  readonly housingFloor: string;
+  readonly housingEntrance: string;
+  readonly housingApartment: string;
 };
 
 export type TravelFormDialogProps = {
@@ -71,6 +74,9 @@ export function emptyTravelFormValues(): TravelFormValues {
     housingAddress: "",
     housingLatitude: null,
     housingLongitude: null,
+    housingFloor: "",
+    housingEntrance: "",
+    housingApartment: "",
   };
 }
 
@@ -140,6 +146,9 @@ export function TravelFormDialog({
       housingAddress: values.housingAddress ?? "",
       housingLatitude: values.housingLatitude ?? null,
       housingLongitude: values.housingLongitude ?? null,
+      housingFloor: values.housingFloor ?? "",
+      housingEntrance: values.housingEntrance ?? "",
+      housingApartment: values.housingApartment ?? "",
     });
   }
 
@@ -236,6 +245,58 @@ export function TravelFormDialog({
               }))
             }
           />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="travel-housing-entrance">
+                {t("housingEntrance")}
+              </Label>
+              <Input
+                id="travel-housing-entrance"
+                value={values.housingEntrance}
+                placeholder={t("housingEntrancePlaceholder")}
+                className="h-12 rounded-xl text-base md:h-11"
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    housingEntrance: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="travel-housing-floor">{t("housingFloor")}</Label>
+              <Input
+                id="travel-housing-floor"
+                value={values.housingFloor}
+                placeholder={t("housingFloorPlaceholder")}
+                className="h-12 rounded-xl text-base md:h-11"
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    housingFloor: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="travel-housing-apartment">
+                {t("housingApartment")}
+              </Label>
+              <Input
+                id="travel-housing-apartment"
+                value={values.housingApartment}
+                placeholder={t("housingApartmentPlaceholder")}
+                className="h-12 rounded-xl text-base md:h-11"
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    housingApartment: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button

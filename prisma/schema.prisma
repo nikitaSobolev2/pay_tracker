@@ -591,6 +591,9 @@ model Travel {
   housingAddress   String?
   housingLatitude  Decimal?     @db.Decimal(10, 7)
   housingLongitude Decimal?     @db.Decimal(10, 7)
+  housingFloor     String?
+  housingEntrance  String?
+  housingApartment String?
   currency         String
   maxSpendingGoal  Decimal?     @db.Decimal(18, 4)
   phaseOverride    TravelPhase?

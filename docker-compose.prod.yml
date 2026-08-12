@@ -46,6 +46,7 @@ services:
       args:
         NEXT_PUBLIC_DEFAULT_CURRENCIES: ${NEXT_PUBLIC_DEFAULT_CURRENCIES:-RUB,USD,EUR}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
+        NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY:-}
     restart: unless-stopped
     ports:
       # Loopback by default: nginx terminates TLS and proxies to 127.0.0.1.
@@ -62,6 +63,8 @@ services:
       FX_PROVIDER: ${FX_PROVIDER:-frankfurter}
       FX_API_BASE_URL: ${FX_API_BASE_URL:-https://api.frankfurter.dev}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
+      NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY:-}
+      YANDEX_GEOCODER_API_KEY: ${YANDEX_GEOCODER_API_KEY:-}
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}

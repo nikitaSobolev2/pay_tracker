@@ -17,8 +17,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* must be present at build time to be inlined into the client bundle.
 ARG NEXT_PUBLIC_DEFAULT_CURRENCIES=RUB,USD,EUR
 ARG NEXT_PUBLIC_APP_NAME=PayTracker
+ARG NEXT_PUBLIC_YANDEX_MAPS_API_KEY=
 ENV NEXT_PUBLIC_DEFAULT_CURRENCIES=${NEXT_PUBLIC_DEFAULT_CURRENCIES}
 ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+ENV NEXT_PUBLIC_YANDEX_MAPS_API_KEY=${NEXT_PUBLIC_YANDEX_MAPS_API_KEY}
 # Placeholder URL: prisma.config.ts requires DATABASE_URL, but `generate`
 # never connects. The real URL is injected at runtime.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder

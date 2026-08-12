@@ -100,6 +100,9 @@ export function TravelsPage() {
         housingAddress: values.housingAddress || null,
         housingLatitude: values.housingLatitude,
         housingLongitude: values.housingLongitude,
+        housingFloor: values.housingFloor || null,
+        housingEntrance: values.housingEntrance || null,
+        housingApartment: values.housingApartment || null,
       });
       setCreateOpen(false);
       router.push(`/travels/${result.travelId}`);
@@ -126,6 +129,9 @@ export function TravelsPage() {
         housingAddress: detail.travel.housingAddress ?? "",
         housingLatitude: detail.travel.housingLatitude,
         housingLongitude: detail.travel.housingLongitude,
+        housingFloor: detail.travel.housingFloor ?? "",
+        housingEntrance: detail.travel.housingEntrance ?? "",
+        housingApartment: detail.travel.housingApartment ?? "",
       });
       setEditOpen(true);
     } catch (error) {
@@ -152,6 +158,9 @@ export function TravelsPage() {
         housingAddress: values.housingAddress || null,
         housingLatitude: values.housingLatitude,
         housingLongitude: values.housingLongitude,
+        housingFloor: values.housingFloor || null,
+        housingEntrance: values.housingEntrance || null,
+        housingApartment: values.housingApartment || null,
       });
       await refreshList();
       setEditOpen(false);
