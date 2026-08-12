@@ -38,7 +38,7 @@ export function AppShell({ children }: AppShellProps) {
         {hydrated ? <AppHeader /> : null}
         <div
           className={cn(
-            "flex min-w-0 flex-1 flex-col gap-4 p-3 md:p-6 md:pb-6",
+            "flex min-w-0 flex-1 flex-col gap-3 p-3 md:p-5 md:pb-5",
             !isHome && "pt-6 md:pt-6",
             "transition-[padding-bottom] duration-300 ease-out",
             hasPageChrome

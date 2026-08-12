@@ -10,8 +10,15 @@ import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ObjectCard,
+  ObjectCardBody,
+  OBJECT_STACK_CLASS,
+  PassAvatar,
+  PassStripeRail,
+} from "@/components/ui/object-card";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -213,13 +220,13 @@ export function CounterpartiesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 pb-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {t("title")}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -243,13 +250,13 @@ export function CounterpartiesPage() {
         className="w-full max-md:hidden"
       >
         <TabsList className="h-12 w-full rounded-xl p-1 md:w-full md:h-12">
-          <TabsTrigger value="all" className="rounded-lg px-3 text-sm">
+          <TabsTrigger value="all" className="rounded-xl px-3 text-sm">
             {t("filterAll")}
           </TabsTrigger>
-          <TabsTrigger value="owed" className="rounded-lg px-3 text-sm">
+          <TabsTrigger value="owed" className="rounded-xl px-3 text-sm">
             {t("filterOwesMe")}
           </TabsTrigger>
-          <TabsTrigger value="owe" className="rounded-lg px-3 text-sm">
+          <TabsTrigger value="owe" className="rounded-xl px-3 text-sm">
             {t("filterIOwe")}
           </TabsTrigger>
         </TabsList>
@@ -271,7 +278,7 @@ export function CounterpartiesPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
+      <section>
         <CounterpartiesListContent
           loading={loading}
           counterparties={visibleCounterparties}
@@ -306,13 +313,12 @@ export function CounterpartiesPage() {
             <div className="pb-3" />
           </ResponsiveDialogHeader>
 
-          <ResponsiveDialogBody className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t("nameField")}</Label>
+          <ResponsiveDialogBody>
+            <FormField label={t("nameField")} required>
               <Input
-                className="h-12 rounded-xl text-base md:h-11"
                 value={draftName}
                 autoFocus
+                required
                 onChange={(event) => setDraftName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -321,14 +327,14 @@ export function CounterpartiesPage() {
                   }
                 }}
               />
-            </div>
+            </FormField>
           </ResponsiveDialogBody>
 
           <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+              className="h-11 w-full rounded-xl text-base sm:w-auto"
               disabled={saving}
               onClick={closeDialog}
             >
@@ -336,7 +342,7 @@ export function CounterpartiesPage() {
             </Button>
             <Button
               type="button"
-              className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+              className="h-11 w-full rounded-xl text-base sm:w-auto"
               disabled={saving || !draftName.trim()}
               onClick={() => void saveDialog()}
             >
@@ -404,18 +410,9 @@ function CounterpartiesListContent({
 
   if (loading) {
     return (
-      <div className="space-y-0 divide-y divide-border/50">
+      <div className={OBJECT_STACK_CLASS}>
         {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-56" />
-            </div>
-            <Skeleton className="h-11 w-full sm:h-9 sm:w-24" />
-          </div>
+          <Skeleton key={index} className="h-24 w-full rounded-2xl" />
         ))}
       </div>
     );
@@ -443,14 +440,16 @@ function CounterpartiesListContent({
   }
 
   return (
-    <ul className="divide-y divide-border/50">
+    <ul className={OBJECT_STACK_CLASS}>
       {counterparties.map((counterparty) => {
         const debt = debtById.get(counterparty.id) ?? null;
         return (
-          <li
-            key={counterparty.id}
-            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          >
+          <li key={counterparty.id}>
+            <ObjectCard>
+              <PassStripeRail seed={counterparty.id} />
+              <ObjectCardBody className="flex-col items-stretch sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <PassAvatar name={counterparty.name} />
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Link
@@ -521,6 +520,7 @@ function CounterpartiesListContent({
                 </div>
               ) : null}
             </div>
+            </div>
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button
@@ -544,6 +544,8 @@ function CounterpartiesListContent({
                 {tCommon("delete")}
               </Button>
             </div>
+              </ObjectCardBody>
+            </ObjectCard>
           </li>
         );
       })}

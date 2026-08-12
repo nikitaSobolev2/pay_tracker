@@ -104,11 +104,11 @@ export function DevicesPage() {
   const showTimeSkeleton = loading || failed || !transfer;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-10 pb-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       <header>
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -116,7 +116,7 @@ export function DevicesPage() {
 
       <IncomingApprovals />
 
-      <section className="space-y-5 rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6">
+      <section className="space-y-5 rounded-xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">

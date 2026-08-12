@@ -11,10 +11,10 @@ export type TrendDirection = "up" | "down" | "flat";
 export type TrendSense = "higherIsBetter" | "lowerIsBetter";
 
 export const AMOUNT_CLASS =
-  "whitespace-nowrap text-5xl font-semibold tracking-tight tabular-nums md:text-6xl";
+  "whitespace-nowrap text-3xl font-semibold tracking-tight tabular-nums md:text-4xl";
 
 /** Shared vertical rhythm for amount → badge → hint → footer blocks. */
-export const MONEY_CARD_CONTENT_CLASS = "gap-5";
+export const MONEY_CARD_CONTENT_CLASS = "gap-3";
 
 export function signedAmountClassName(amount: string): string | undefined {
   const value = Number(amount);
@@ -90,7 +90,7 @@ export function MoneyCardSkeleton({
         detailRows > 0 && "min-h-40",
       )}
     >
-      <Skeleton className="h-12 w-44 max-w-full md:h-14 md:w-52" />
+      <Skeleton className="h-8 w-36 max-w-full md:h-9 md:w-44" />
       {showBadge ? (
         <div className="flex items-center gap-2">
           <Skeleton className="size-7 rounded-full" />

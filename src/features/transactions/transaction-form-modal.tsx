@@ -9,8 +9,8 @@ import { v4 as uuidv4 } from "uuid";
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -38,6 +38,7 @@ import { DateTimePicker } from "@/features/transactions/date-time-picker";
 import { TitleTransactionSuggestions } from "@/features/transactions/title-transaction-suggestions";
 import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { useAppUser } from "@/hooks/use-app-user";
+import { FIELD_SELECT_CLASS } from "@/lib/bento";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import {
@@ -703,8 +704,7 @@ export function TransactionFormModal() {
             />
           ) : (
             <>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("amount")}</Label>
+              <FormField label={t("amount")} required>
                 <div className="flex items-stretch gap-2">
                   <AmountInput
                     className="h-12 flex-1 rounded-xl text-base md:h-11"
@@ -730,12 +730,10 @@ export function TransactionFormModal() {
                     }}
                   />
                 </div>
-              </div>
+              </FormField>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("title")}</Label>
+              <FormField label={t("title")} optional>
                 <Input
-                  className="h-12 rounded-xl text-base md:h-11"
                   value={form.title}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -750,10 +748,17 @@ export function TransactionFormModal() {
                   enabled={transactionModalOpen && !isEditing}
                   onApply={applySuggestion}
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("filterKind")}</Label>
+              <FormField
+                label={t("filterKind")}
+                required
+                hint={
+                  form.kind === TransactionKind.Transfer
+                    ? t("kindTransferHint")
+                    : undefined
+                }
+              >
                 <Select
                   value={form.kind}
                   onValueChange={(value) => {
@@ -774,7 +779,7 @@ export function TransactionFormModal() {
                     }));
                   }}
                 >
-                  <SelectTrigger className="h-12 w-full rounded-xl text-base md:h-11 md:rounded-xl md:text-base md:data-[size=default]:h-11">
+                  <SelectTrigger className={FIELD_SELECT_CLASS}>
                     <SelectValue>{kindLabel(form.kind)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -789,12 +794,7 @@ export function TransactionFormModal() {
                     ))}
                   </SelectContent>
                 </Select>
-                {form.kind === TransactionKind.Transfer ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("kindTransferHint")}
-                  </p>
-                ) : null}
-              </div>
+              </FormField>
 
               <div
                 className={cn(
@@ -805,12 +805,15 @@ export function TransactionFormModal() {
                 )}
               >
                 <div className="min-h-0 overflow-hidden">
-                  <div className="space-y-2 pb-1">
-                    <Label className="text-sm font-medium">
-                      {form.kind === TransactionKind.Loan
+                  <FormField
+                    className="pb-1"
+                    label={
+                      form.kind === TransactionKind.Loan
                         ? t("borrower")
-                        : t("lender")}
-                    </Label>
+                        : t("lender")
+                    }
+                    required
+                  >
                     <CounterpartyAutocomplete
                       kind={form.kind}
                       value={form.counterpartyName}
@@ -834,12 +837,11 @@ export function TransactionFormModal() {
                       }
                       className="w-full"
                     />
-                  </div>
+                  </FormField>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">{t("date")}</Label>
+              <FormField label={t("date")} required>
                 <DateTimePicker
                   value={form.occurredAt}
                   coverLabel={
@@ -862,10 +864,9 @@ export function TransactionFormModal() {
                     }));
                   }}
                 />
-              </div>
+              </FormField>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("categories")}</Label>
+              <FormField label={t("categories")} optional>
                 <CategoryChipPicker
                   type={transactionType}
                   selectedIds={form.categoryIds}
@@ -885,7 +886,7 @@ export function TransactionFormModal() {
                     setForm((prev) => ({ ...prev, categoryIds }));
                   }}
                 />
-              </div>
+              </FormField>
 
               {transactionType === TransactionType.Spending ? (
                 <TravelSuggestPicker
@@ -903,14 +904,14 @@ export function TransactionFormModal() {
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             onClick={closeTransactionModal}
           >
             {tCommon("cancel")}
           </Button>
           <Button
             type="button"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={!formReady || !canSave || saving}
             onClick={() => void handleSave()}
           >

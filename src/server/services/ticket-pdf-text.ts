@@ -1,3 +1,4 @@
+import "@/lib/math-sum-precise-polyfill";
 import { extractText } from "unpdf";
 
 import { AppServiceError } from "@/lib/errors";

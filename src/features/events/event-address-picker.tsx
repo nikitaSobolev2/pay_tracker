@@ -5,8 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { reverseAddress, searchAddress } from "@/lib/api/geocode";
 import { cn } from "@/lib/utils";
 import type { GeocodeResultDto } from "@/server/services/geocode-service";
@@ -33,6 +33,8 @@ export type EventAddressPickerProps = {
   readonly label?: string;
   /** Map zoom (e.g. country overview vs city). */
   readonly zoom?: number;
+  readonly optional?: boolean;
+  readonly showLabel?: boolean;
 };
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -48,6 +50,8 @@ export function EventAddressPicker({
   mapClassName,
   label,
   zoom,
+  optional = true,
+  showLabel = true,
 }: EventAddressPickerProps) {
   const t = useTranslations("events");
   const locale = useLocale();
@@ -156,9 +160,8 @@ export function EventAddressPicker({
       ? { latitude: value.latitude, longitude: value.longitude }
       : null;
 
-  return (
+  const body = (
     <div className="space-y-3">
-      <Label>{label ?? t("address")}</Label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -230,5 +233,15 @@ export function EventAddressPicker({
       )}
       <p className="text-xs text-muted-foreground">{t("addressMapHint")}</p>
     </div>
+  );
+
+  if (!showLabel) {
+    return body;
+  }
+
+  return (
+    <FormField label={label ?? t("address")} optional={optional}>
+      {body}
+    </FormField>
   );
 }

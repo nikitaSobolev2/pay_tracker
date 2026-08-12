@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShareChartButton } from "@/features/share/share-chart-button";
 import type { SharedChartPayload } from "@/features/share/shared-chart-payload";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 
 type StatCardProps = {
@@ -56,14 +57,12 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "flex flex-col overflow-hidden rounded-2xl border-border/60 bg-card/90 shadow-none",
+        "flex w-full min-w-0 flex-col overflow-hidden rounded-xl bg-card shadow-none",
         className,
       )}
     >
       <CardHeader className={cn("gap-1", bleed ? "pb-3" : "pb-2")}>
-        <CardTitle className="text-base font-semibold tracking-tight md:text-lg">
-          {title}
-        </CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{title}</CardTitle>
         {description ? (
           <CardDescription className="text-xs sm:text-sm">
             {description}
@@ -73,7 +72,8 @@ export function StatCard({
       </CardHeader>
       <CardContent
         className={cn(
-          "flex min-h-0 flex-1 flex-col",
+          "flex flex-col",
+          className?.includes("h-full") && "min-h-0 flex-1",
           bleed && "px-0 pb-0",
           contentClassName,
         )}

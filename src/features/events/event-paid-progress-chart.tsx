@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 import { useEventContext } from "./event-context";
 
@@ -19,11 +21,11 @@ export function EventPaidProgressCard({
   const collectedPercent = moneyPercent(progress.collected, progress.expected);
 
   return (
-    <Card className={className}>
+    <Card className={cn(BENTO_CARD_CLASS, className)}>
       <CardHeader>
-        <CardTitle className="text-base">{t("paidProgressTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("paidProgressTitle")}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-3xl font-semibold tabular-nums">
           {t("paidProgressCount", {
             paid: progress.paidCount,
@@ -42,7 +44,7 @@ export function EventPaidProgressCard({
             uncertain: progress.uncertainPaidCount,
           })}
         </p>
-        <div className="space-y-1">
+        <div className="mt-auto space-y-1">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("collected")}</span>
             <span className="font-medium tabular-nums">

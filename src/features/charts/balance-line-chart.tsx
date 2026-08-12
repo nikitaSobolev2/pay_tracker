@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/charts/stat-card";
+import { BENTO_CHART_CLASS } from "@/lib/bento";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 type BalanceLineChartProps = {
   readonly title: string;
@@ -21,7 +23,7 @@ type BalanceLineChartProps = {
 };
 
 const config = {
-  value: { label: "Balance", color: "oklch(0.7 0 0)" },
+  value: { label: "Balance", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 export function BalanceLineChart({
@@ -39,13 +41,14 @@ export function BalanceLineChart({
     <StatCard
       title={title}
       loading={loading}
-      skeleton={<Skeleton className="h-52 w-full" />}
+      skeleton={<Skeleton className={BENTO_CHART_CLASS} />}
+      className="h-full"
       bleed
     >
       {data.length === 0 ? (
         <p className="px-6 pb-6 text-sm text-muted-foreground">—</p>
       ) : (
-        <ChartContainer config={config} className="h-56 w-full px-2">
+        <ChartContainer config={config} className={cn(BENTO_CHART_CLASS, "px-2")}>
           <AreaChart data={data}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="date" tickLine={false} axisLine={false} />

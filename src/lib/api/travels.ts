@@ -62,6 +62,7 @@ export type TravelTicketSegmentBody = {
   ticketNumber?: string | null;
   flightNumber?: string | null;
   bookingCode?: string | null;
+  seat?: string | null;
 };
 
 export type TravelTicketBody = TravelTicketSegmentBody & {
@@ -240,6 +241,7 @@ export type AnalyzedTicketSegment = {
   ticketNumber: string | null;
   flightNumber: string | null;
   bookingCode: string | null;
+  seat: string | null;
 };
 
 export function analyzeTravel(

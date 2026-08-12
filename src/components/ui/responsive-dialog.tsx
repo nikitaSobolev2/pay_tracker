@@ -56,7 +56,7 @@ export function ResponsiveDialogHeaderInner({
 }: ComponentProps<typeof DialogHeader>) {
   return (
     <DialogHeader
-      className={cn("gap-3 px-4 pt-4 pr-12 sm:px-5", className)}
+      className={cn("gap-3 px-4 pt-4 pb-4 pr-12 sm:px-5", className)}
       {...props}
     />
   );
@@ -69,7 +69,7 @@ export function ResponsiveDialogBody({
   return (
     <div
       className={cn(
-        "min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-5",
+        "min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-5",
         className,
       )}
       {...props}

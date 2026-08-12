@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   buildFallbackTitle,
+  normalizeTicketSeat,
   parseTicketAnalysisResponse,
 } from "@/server/services/ticket-analysis-schema";
 
@@ -17,6 +18,7 @@ const SMARTAVIA_BOOKING = {
       ticket_number: "3162445299002",
       flight_number: "5N 590",
       booking_code: "G1VP3R",
+      seat: "14A",
     },
     {
       title: "LED → IJK · 5N 589",
@@ -27,6 +29,7 @@ const SMARTAVIA_BOOKING = {
       ticket_number: "3162445299002",
       flight_number: "5N 589",
       booking_code: "G1VP3R",
+      seat: "Место 12F",
     },
   ],
 };
@@ -43,10 +46,12 @@ describe("parseTicketAnalysisResponse", () => {
     assert.equal(tickets[0]?.destination, "LED");
     assert.equal(tickets[0]?.ticketNumber, "3162445299002");
     assert.equal(tickets[0]?.bookingCode, "G1VP3R");
+    assert.equal(tickets[0]?.seat, "14A");
     assert.equal(tickets[1]?.flightNumber, "5N 589");
     assert.equal(tickets[1]?.origin, "LED");
     assert.equal(tickets[1]?.destination, "IJK");
     assert.equal(tickets[1]?.bookingCode, "G1VP3R");
+    assert.equal(tickets[1]?.seat, "12F");
   });
 
   it("builds a fallback title when the model omits title", () => {
@@ -68,6 +73,23 @@ describe("parseTicketAnalysisResponse", () => {
     );
 
     assert.equal(tickets[0]?.title, "IJK → LED · 5N 590");
+    assert.equal(tickets[0]?.seat, null);
     assert.equal(buildFallbackTitle("IJK", "LED", "5N 590"), "IJK → LED · 5N 590");
+  });
+});
+
+describe("normalizeTicketSeat", () => {
+  it("keeps a printed seat token", () => {
+    assert.equal(normalizeTicketSeat("14A"), "14A");
+    assert.equal(normalizeTicketSeat("14a"), "14A");
+  });
+
+  it("strips a Russian место prefix", () => {
+    assert.equal(normalizeTicketSeat("Место 12F"), "12F");
+  });
+
+  it("returns null for blank input", () => {
+    assert.equal(normalizeTicketSeat(null), null);
+    assert.equal(normalizeTicketSeat("Seat:"), null);
   });
 });

@@ -210,7 +210,7 @@ export function CategoryDetailPage({ id }: { readonly id: string }) {
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-3xl font-semibold tracking-tight">
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                   {category.title}
                 </h1>
                 <Badge
@@ -354,7 +354,7 @@ export function CategoryDetailPage({ id }: { readonly id: string }) {
         />
       </div>
 
-      <Card className="rounded-2xl border-border/60 shadow-none">
+      <Card className="rounded-xl border-border/60 shadow-none">
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle className="text-xl">{t("transactions")}</CardTitle>
           <Link

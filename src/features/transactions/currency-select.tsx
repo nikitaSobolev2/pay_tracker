@@ -33,12 +33,7 @@ export function CurrencySelect({
       }}
     >
       <SelectTrigger
-        className={cn(
-          "min-w-28 w-auto rounded-xl text-base",
-          // SelectTrigger defaults to data-[size=default]:h-8 — override both.
-          "h-12 data-[size=default]:h-12 md:h-11 md:data-[size=default]:h-11",
-          className,
-        )}
+        className={cn("min-w-28 w-auto", className)}
       >
         <SelectValue />
       </SelectTrigger>

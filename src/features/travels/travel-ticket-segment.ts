@@ -16,6 +16,7 @@ export function emptyTicketMeta(): Pick<
   | "ticketNumber"
   | "flightNumber"
   | "bookingCode"
+  | "seat"
 > {
   return {
     origin: null,
@@ -25,6 +26,7 @@ export function emptyTicketMeta(): Pick<
     ticketNumber: null,
     flightNumber: null,
     bookingCode: null,
+    seat: null,
   };
 }
 
@@ -39,6 +41,7 @@ export function segmentToTicketBody(
     ticketNumber: segment.ticketNumber,
     flightNumber: segment.flightNumber,
     bookingCode: segment.bookingCode,
+    seat: segment.seat,
   };
 }
 

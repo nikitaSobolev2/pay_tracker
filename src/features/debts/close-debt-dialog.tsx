@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import {
   DateQuickChips,
   type DateQuickChipId,
@@ -127,10 +127,7 @@ export function CloseDebtDialog({
               })}
             </p>
 
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">
-                {tTransaction("date")}
-              </Label>
+            <FormField label={tTransaction("date")} required>
               <DateTimePicker
                 value={occurredAt}
                 coverLabel={
@@ -148,7 +145,7 @@ export function CloseDebtDialog({
                   setOccurredAt(date);
                 }}
               />
-            </div>
+            </FormField>
           </div>
         ) : null}
 

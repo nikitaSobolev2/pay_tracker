@@ -1,9 +1,9 @@
 "use client";
 
-import { MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 import { EventLinkType } from "@/types/enums";
 
@@ -36,10 +36,7 @@ export function EventMapCard({
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <MapPin className="size-4" />
-          {t("location")}
-        </CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("location")}</CardTitle>
       </CardHeader>
       <CardContent className="flex h-full flex-col gap-3">
         <p className="text-sm text-muted-foreground">

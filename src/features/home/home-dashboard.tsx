@@ -22,8 +22,10 @@ import { DebtSummaryCards } from "@/features/charts/debt-summary-cards";
 import {
   IncomeVsSpendingsCard,
   MoneyValueCard,
+  TopCategoriesCard,
   VsPreviousPeriodCard,
 } from "@/features/charts/money-summary-cards";
+import { NetCashflowChart } from "@/features/charts/net-cashflow-chart";
 import { RecentTransactionsList } from "@/features/charts/recent-transactions-list";
 import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import { FastTransactionInput } from "@/features/home/fast-transaction-input";
@@ -31,7 +33,6 @@ import { FastTransactionQueueTable } from "@/features/home/fast-transaction-queu
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchOverviewStats } from "@/lib/api/stats";
 import { formatChartMoney } from "@/lib/money";
-import { cn } from "@/lib/utils";
 import type { OverviewStats } from "@/server/services/stats-service.types";
 import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 import { DateRangeType } from "@/types/enums";
@@ -211,7 +212,7 @@ export function HomeDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="space-y-3">
         <FastTransactionInput />
         <FastTransactionQueueTable />
@@ -236,7 +237,7 @@ export function HomeDashboard() {
 
       <div
         ref={dateRangeSentinelRef}
-        className="-mx-3 border-b border-border/40 bg-background/90 px-3 py-2 backdrop-blur md:sticky md:top-14 md:z-20 md:-mx-6 md:px-6"
+        className="-mx-3 border-b border-border/40 bg-background/90 px-3 py-2 backdrop-blur md:sticky md:top-14 md:z-20 md:-mx-5 md:px-5"
       >
         <DateRangeTypeSwitcher
           value={dateRangeType}
@@ -244,45 +245,36 @@ export function HomeDashboard() {
         />
       </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
-        <div className="min-w-0 flex-1 transition-[flex-grow,flex-basis,max-width,opacity] duration-500 ease-out">
-          <IncomeVsSpendingsCard
-            title={t("incomeVsSpendings")}
-            loading={loading && !stats}
-            income={
-              stats?.incomeVsSpending.income ?? {
-                amount: "0",
-                currency: "RUB",
-              }
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <IncomeVsSpendingsCard
+          title={t("incomeVsSpendings")}
+          loading={loading && !stats}
+          income={
+            stats?.incomeVsSpending.income ?? {
+              amount: "0",
+              currency: "RUB",
             }
-            spending={
-              stats?.incomeVsSpending.spending ?? {
-                amount: "0",
-                currency: "RUB",
-              }
+          }
+          spending={
+            stats?.incomeVsSpending.spending ?? {
+              amount: "0",
+              currency: "RUB",
             }
-            net={
-              stats?.incomeVsSpending.net ?? { amount: "0", currency: "RUB" }
+          }
+          net={
+            stats?.incomeVsSpending.net ?? { amount: "0", currency: "RUB" }
+          }
+          comparison={
+            stats?.vsPreviousPeriod ?? {
+              current: { amount: "0", currency: "RUB" },
+              previous: null,
+              deltaAmount: null,
+              deltaPercent: null,
             }
-            comparison={
-              stats?.vsPreviousPeriod ?? {
-                current: { amount: "0", currency: "RUB" },
-                previous: null,
-                deltaAmount: null,
-                deltaPercent: null,
-              }
-            }
-            hideComparison={dateRangeType === DateRangeType.AllTime}
-          />
-        </div>
-        <div
-          className={cn(
-            "min-w-0 transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
-            dateRangeType === DateRangeType.Day
-              ? "pointer-events-none max-h-0 flex-[0_0_0%] overflow-hidden opacity-0 md:max-h-none"
-              : "flex-1 opacity-100",
-          )}
-        >
+          }
+          hideComparison={dateRangeType === DateRangeType.AllTime}
+        />
+        {dateRangeType !== DateRangeType.Day ? (
           <MoneyValueCard
             title={t("avgDailySpend")}
             loading={loading && !stats}
@@ -324,15 +316,8 @@ export function HomeDashboard() {
               },
             ]}
           />
-        </div>
-        <div
-          className={cn(
-            "min-w-0 transition-[flex-grow,flex-basis,max-width,opacity,margin] duration-500 ease-out",
-            dateRangeType === DateRangeType.AllTime
-              ? "pointer-events-none max-h-0 flex-[0_0_0%] overflow-hidden opacity-0 md:max-h-none"
-              : "flex-1 opacity-100",
-          )}
-        >
+        ) : null}
+        {dateRangeType !== DateRangeType.AllTime ? (
           <VsPreviousPeriodCard
             title={t("vsPrevious")}
             loading={loading && !stats}
@@ -349,22 +334,7 @@ export function HomeDashboard() {
               canApplyPreviousPeriod ? applyPreviousPeriod : undefined
             }
           />
-        </div>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <CategoryPieChart
-          title={t("spendingByCategory")}
-          loading={loading && !stats}
-          slices={stats?.spendingByCategory ?? []}
-          currency={stats?.displayCurrency ?? "RUB"}
-        />
-        <CategoryPieChart
-          title={t("earningByCategory")}
-          loading={loading && !stats}
-          slices={stats?.earningByCategory ?? []}
-          currency={stats?.displayCurrency ?? "RUB"}
-        />
+        ) : null}
       </div>
 
       <TimelineWithDrilldown
@@ -373,12 +343,37 @@ export function HomeDashboard() {
         points={stats?.timeline ?? []}
         currency={stats?.displayCurrency ?? "RUB"}
         mode="dual"
+        drilldownLayout="below"
       />
 
       <ActivityHeatmapCard
         title={tCharts("activity")}
         currency={stats?.displayCurrency ?? "RUB"}
+        drilldownLayout="below"
       />
+
+      <TopCategoriesCard
+        title={t("spendingByCategory")}
+        loading={loading && !stats}
+        items={stats?.spendingByCategory ?? []}
+        currency={stats?.displayCurrency ?? "RUB"}
+      />
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <CategoryPieChart
+          title={t("earningByCategory")}
+          loading={loading && !stats}
+          slices={stats?.earningByCategory ?? []}
+          currency={stats?.displayCurrency ?? "RUB"}
+          layout="stack"
+        />
+        <NetCashflowChart
+          title={t("netCashflow")}
+          loading={loading && !stats}
+          currency={stats?.displayCurrency ?? "RUB"}
+          points={stats?.timeline ?? []}
+        />
+      </div>
 
       <RecentTransactionsList
         dateRangeType={dateRangeType}

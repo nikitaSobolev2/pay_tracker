@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { claimEventAttendee } from "@/lib/api/events";
 import { cn } from "@/lib/utils";
 import { EventAuthorRole } from "@/types/enums";
@@ -88,14 +88,14 @@ export function EventGuestClaimDialog() {
           <p className="text-sm text-muted-foreground">
             {t("guestClaimHint")}
           </p>
-          <div className="space-y-2">
-            <Label>{t("guestClaimName")}</Label>
+          <FormField label={t("guestClaimName")} required>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
               autoFocus
+              required
             />
-          </div>
+          </FormField>
           <div className="flex flex-wrap gap-2">
             {attendees.map((attendee) => (
               <button

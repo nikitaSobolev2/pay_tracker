@@ -686,6 +686,7 @@ model TravelTicket {
   ticketNumber String?
   flightNumber String?
   bookingCode  String?
+  seat         String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

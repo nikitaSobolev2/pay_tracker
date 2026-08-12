@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { PersonAvatar } from "@/components/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import {
   Dialog,
   DialogContent,
@@ -69,7 +70,7 @@ export function EventLocationPollCard({
     return (
       <Card className={cn("flex min-h-96 w-full flex-col", className)}>
         <CardHeader>
-          <CardTitle className="text-base">{t("locationPollTitle")}</CardTitle>
+          <CardTitle className={BENTO_LABEL_CLASS}>{t("locationPollTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col items-center justify-center space-y-3 text-center">
           <p className="text-sm text-muted-foreground">

@@ -109,7 +109,6 @@ export function TravelRealSpendingsList({
   return (
     <Card className="border-border/60 bg-card/90 shadow-none">
       <TravelSectionHeader
-        icon={Wallet}
         title={t("realSpendings")}
         count={items.length > 0 ? String(items.length) : undefined}
         action={
@@ -117,7 +116,6 @@ export function TravelRealSpendingsList({
             <Button
               type="button"
               variant="outline"
-              className="h-9 gap-1.5 rounded-lg"
               onClick={() =>
                 openTransactionModal(TransactionFormMode.Spending, {
                   travelId,

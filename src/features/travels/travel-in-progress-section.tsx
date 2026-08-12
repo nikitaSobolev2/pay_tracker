@@ -10,8 +10,10 @@ import { TravelRealSpendingsList } from "./travel-real-spendings-list";
 
 export function TravelInProgressSection({
   travel,
+  onRefresh,
 }: {
   readonly travel: TravelDetailDto;
+  readonly onRefresh: () => Promise<void>;
 }) {
   const t = useTranslations("travels");
 
@@ -50,11 +52,13 @@ export function TravelInProgressSection({
           }
         />
         <TravelGoalProgressCard
+          travelId={travel.id}
           plannedTotal={travel.summary.plannedTotal}
           actualTotal={travel.summary.actualTotal}
           goal={travel.summary.maxSpendingGoal}
           currency={travel.currency}
           useActual
+          onRefresh={onRefresh}
         />
       </div>
 

@@ -15,8 +15,10 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
+import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
 import { updateEvent } from "@/lib/api/events";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import { EventAuthorRole, EventSpendingCategory } from "@/types/enums";
 
 import { useEventContext } from "./event-context";
@@ -51,16 +53,16 @@ export function EventTotalCard({ className }: { readonly className?: string }) {
   });
 
   return (
-    <Card className={className}>
+    <Card className={cn(BENTO_CARD_CLASS, className)}>
       <CardHeader>
-        <CardTitle className="text-base">{t("totalTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("totalTitle")}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-3xl font-semibold tabular-nums">
           {formatChartMoney(event.summary.total, event.currency)}
         </p>
         {data.length > 0 ? (
-          <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,7.5rem)_1fr]">
+          <div className="mt-auto grid flex-1 items-center gap-3 sm:grid-cols-[minmax(0,7.5rem)_1fr]">
             <ChartContainer
               config={chartConfig}
               className="mx-auto aspect-square h-28 w-28"
@@ -186,9 +188,9 @@ export function EventPerPersonCard({
   }
 
   return (
-    <Card className={className}>
+    <Card className={cn(BENTO_CARD_CLASS, className)}>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle className="text-base">{t("perPersonTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("perPersonTitle")}</CardTitle>
         {isOwner && !editing ? (
           <div className="flex items-center gap-1">
             {isManual ? (
@@ -217,7 +219,7 @@ export function EventPerPersonCard({
           </div>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="flex flex-1 flex-col gap-2">
         {editing ? (
           <div className="flex items-center gap-2">
             <Input
@@ -263,11 +265,11 @@ export function EventPerPersonCard({
           </p>
         )}
         {isManual ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-auto text-sm text-muted-foreground">
             {t("perPersonManualHint")}
           </p>
         ) : share.hasUncertain ? (
-          <div className="space-y-1.5">
+          <div className="mt-auto space-y-1.5">
             <p className="text-sm text-muted-foreground">
               {t("perPersonRange", {
                 low: formatChartMoney(share.lowerBound, event.currency),
@@ -285,7 +287,7 @@ export function EventPerPersonCard({
             </p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-auto text-sm text-muted-foreground">
             {t("perPersonAllCertain")}
           </p>
         )}

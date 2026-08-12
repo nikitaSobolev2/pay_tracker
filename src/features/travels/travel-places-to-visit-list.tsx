@@ -19,8 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ObjectCard,
+  ObjectCardBody,
+  ObjectCardCopy,
+  OBJECT_STACK_CLASS,
+  PlaceStampRail,
+} from "@/components/ui/object-card";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -119,7 +126,6 @@ export function TravelPlacesToVisitList({
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
         <TravelSectionHeader
-          icon={MapPin}
           title={t("placesToVisit")}
           count={
             items.length > 0
@@ -127,12 +133,7 @@ export function TravelPlacesToVisitList({
               : undefined
           }
           action={
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 gap-1.5 rounded-lg"
-              onClick={openCreate}
-            >
+            <Button type="button" variant="outline" onClick={openCreate}>
               <Plus className="size-4" />
               {t("placeAdd")}
             </Button>
@@ -142,7 +143,7 @@ export function TravelPlacesToVisitList({
           {items.length === 0 ? (
             <TravelSectionEmpty icon={MapPin} text={t("placesEmpty")} />
           ) : (
-            <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
+            <ul className={OBJECT_STACK_CLASS}>
               {items.map((item) => (
                 <PlaceRow
                   key={item.id}
@@ -223,64 +224,68 @@ function PlaceRow({
   const tCommon = useTranslations("common");
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 px-3 py-2 sm:gap-x-3">
-      <Checkbox
-        className="size-5"
-        checked={item.isChecked}
-        disabled={toggling}
-        onCheckedChange={onToggle}
-        aria-label={t("placeToggleChecked")}
-      />
-      <div className="min-w-0">
-        <p
-          className={cn(
-            "truncate text-[15px] font-medium leading-snug",
-            item.isChecked && "text-muted-foreground line-through",
-          )}
-        >
-          {item.title}
-        </p>
-        {item.address ? (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="size-3 shrink-0 opacity-70" />
-            <span className="truncate">{item.address}</span>
-          </p>
-        ) : null}
-        {item.link ? (
-          <a
-            href={item.link}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-0.5 flex max-w-full items-center gap-1 text-xs text-sky-600 hover:underline dark:text-sky-400"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <ExternalLink className="size-3 shrink-0" />
-            <span className="truncate">{displayLink(item.link)}</span>
-          </a>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-0.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-lg"
-          aria-label={tCommon("edit")}
-          onClick={onEdit}
-        >
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-lg text-destructive"
-          aria-label={t("placeDelete")}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
+    <li>
+      <ObjectCard faded={item.isChecked}>
+        <PlaceStampRail>
+          <Checkbox
+            className="size-5"
+            checked={item.isChecked}
+            disabled={toggling}
+            onCheckedChange={onToggle}
+            aria-label={t("placeToggleChecked")}
+          />
+        </PlaceStampRail>
+        <ObjectCardBody>
+          <ObjectCardCopy
+            title={item.title}
+            struck={item.isChecked}
+            meta={
+              <>
+                {item.address ? (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="size-3 shrink-0 opacity-70" />
+                    <span className="truncate">{item.address}</span>
+                  </span>
+                ) : null}
+                {item.link ? (
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-0.5 flex max-w-full items-center gap-1 text-sky-600 hover:underline dark:text-sky-400"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <ExternalLink className="size-3 shrink-0" />
+                    <span className="truncate">{displayLink(item.link)}</span>
+                  </a>
+                ) : null}
+              </>
+            }
+          />
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl"
+              aria-label={tCommon("edit")}
+              onClick={onEdit}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl text-destructive"
+              aria-label={t("placeDelete")}
+              onClick={onDelete}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </ObjectCardBody>
+      </ObjectCard>
     </li>
   );
 }
@@ -394,44 +399,51 @@ function PlaceFormDialog({
             </DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="travel-place-title">{t("placeTitle")}</Label>
+        <ResponsiveDialogBody>
+          <FormField
+            label={t("placeTitle")}
+            htmlFor="travel-place-title"
+            required
+          >
             <Input
               id="travel-place-title"
               value={values.title}
-              className="h-12 rounded-xl text-base md:h-11"
               placeholder={t("placeTitlePlaceholder")}
+              required
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, title: event.target.value }))
               }
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="travel-place-link">{t("placeLink")}</Label>
+          </FormField>
+          <FormField
+            label={t("placeLink")}
+            htmlFor="travel-place-link"
+            optional
+          >
             <Input
               id="travel-place-link"
               value={values.link}
-              className="h-12 rounded-xl text-base md:h-11"
               placeholder={t("placeLinkPlaceholder")}
               inputMode="url"
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, link: event.target.value }))
               }
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="travel-place-address">{t("placeAddress")}</Label>
+          </FormField>
+          <FormField
+            label={t("placeAddress")}
+            htmlFor="travel-place-address"
+            optional
+          >
             <Input
               id="travel-place-address"
               value={values.address}
-              className="h-12 rounded-xl text-base md:h-11"
               placeholder={t("placeAddressPlaceholder")}
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, address: event.target.value }))
               }
             />
-          </div>
+          </FormField>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button

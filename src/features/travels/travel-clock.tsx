@@ -36,13 +36,13 @@ export function TravelClock({
   return (
     <div
       className={cn(
-        "travel-clock flex h-full flex-col items-center gap-4 rounded-2xl px-4 py-5",
+        "travel-clock flex h-full flex-col items-center gap-4 rounded-xl px-4 py-6",
         tone === "destination" ? "travel-clock--destination" : "travel-clock--you",
         className,
       )}
     >
       <div className="space-y-0.5 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {title}
         </p>
         {placeLabel ? (
@@ -57,7 +57,7 @@ export function TravelClock({
           width={FACE_SIZE}
           height={FACE_SIZE}
           viewBox={`0 0 ${FACE_SIZE} ${FACE_SIZE}`}
-          className="shrink-0"
+          className="size-32 shrink-0 sm:size-36"
           aria-hidden
         >
           <circle
@@ -150,7 +150,7 @@ export function TravelClock({
       </div>
 
       <div className="space-y-1.5 text-center">
-        <p className="font-mono text-[1.65rem] font-semibold leading-none tracking-tight tabular-nums text-foreground">
+        <p className="text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-foreground sm:text-3xl">
           {parts.digital}
         </p>
         <p className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground">

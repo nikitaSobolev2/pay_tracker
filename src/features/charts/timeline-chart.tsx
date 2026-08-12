@@ -18,6 +18,7 @@ import {
   useStripChartFocus,
 } from "@/features/charts/use-contained-horizontal-scroll";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
+import { BENTO_CHART_CLASS } from "@/lib/bento";
 import { formatBucketLabel } from "@/lib/chart-format";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -154,6 +155,7 @@ export function TimelineChart({
         <div
           ref={scrollRef}
           className={cn(
+            BENTO_CHART_CLASS,
             "-mb-2 touch-none select-none overflow-x-auto overscroll-contain scrollbar-none",
             isDragging ? "cursor-grabbing" : "cursor-grab",
           )}
@@ -167,7 +169,7 @@ export function TimelineChart({
         >
           <ChartContainer
             config={config}
-            className="aspect-auto h-56 w-full outline-none [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg]:outline-none"
+            className="aspect-auto h-full min-h-full w-full outline-none [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none [&_svg]:outline-none"
             style={
               data.length > 12
                 ? { minWidth: `${Math.max(data.length * 40, 320)}px` }
@@ -345,7 +347,7 @@ function computeTrendPercent(values: number[]): number | null {
 function TimelineChartSkeleton() {
   const heights = [42, 58, 36, 70, 48, 64, 40, 72, 52, 60, 44, 68];
   return (
-    <div className="flex h-56 w-full items-end gap-1.5 px-3 pb-3 pt-4 md:gap-2 md:px-4">
+    <div className="flex min-h-52 w-full flex-1 items-end gap-1.5 px-3 pb-3 pt-4 md:gap-2 md:px-4">
       {heights.map((height, index) => (
         <Skeleton
           key={`timeline-bar-${index}`}
@@ -359,7 +361,7 @@ function TimelineChartSkeleton() {
 
 function EmptyChartState({ label }: { label: string }) {
   return (
-    <div className="flex h-40 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
+    <div className="flex min-h-52 flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
       <svg
         viewBox="0 0 220 64"
         className="h-16 w-full max-w-[220px] text-muted-foreground/40"

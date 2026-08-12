@@ -1,11 +1,12 @@
 "use client";
 
-import { Home, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EventMapLazy } from "@/features/events/event-map-lazy";
 import { useSurfaceMapAllowed } from "@/features/events/use-surface-map-allowed";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 
 export type TravelHousingMapCardProps = {
@@ -45,10 +46,7 @@ export function TravelHousingMapCard({
   return (
     <Card className={cn("w-full overflow-hidden", className)}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Home className="size-4" />
-          {t("housingAddress")}
-        </CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("housingAddress")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {address ? (

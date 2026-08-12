@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -158,13 +158,13 @@ export function EventFormDialog({
           <div className="pb-3" />
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody className="space-y-5">
-          <div className="space-y-2">
-            <Label>{t("title")}</Label>
+        <ResponsiveDialogBody>
+          <FormField label={t("title")} required>
             <Input
               className={EVENT_CONTROL_CLASS}
               value={values.title}
               autoFocus
+              required
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
@@ -172,10 +172,9 @@ export function EventFormDialog({
                 }))
               }
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t("description")}</Label>
+          <FormField label={t("description")} optional>
             <EventMarkdownEditor
               value={values.description}
               placeholder={t("descriptionPlaceholder")}
@@ -183,18 +182,17 @@ export function EventFormDialog({
                 setValues((current) => ({ ...current, description }))
               }
             />
-          </div>
+          </FormField>
 
           {canManageScheduleAndLocation ? (
-            <div className="space-y-2">
-              <Label>{t("date")}</Label>
+            <FormField label={t("date")} required>
               <EventDateRangePicker
                 value={{ occursAt: values.occursAt, endsAt: values.endsAt }}
                 onChange={(schedule) =>
                   setValues((current) => ({ ...current, ...schedule }))
                 }
               />
-            </div>
+            </FormField>
           ) : null}
 
           <EventCoverField
@@ -220,8 +218,7 @@ export function EventFormDialog({
               !canManageSharing && "hidden",
             )}
           >
-            <div className="space-y-2">
-              <Label>{t("publicity")}</Label>
+            <FormField label={t("publicity")} required>
               <Select
                 value={values.publicity}
                 items={publicityItems}
@@ -243,10 +240,9 @@ export function EventFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label>{t("guestPermission")}</Label>
+            <FormField label={t("guestPermission")} required>
               <Select
                 value={values.guestPermission}
                 items={permissionItems}
@@ -268,7 +264,7 @@ export function EventFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           </div>
 
           {canManageScheduleAndLocation ? (
@@ -286,7 +282,7 @@ export function EventFormDialog({
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={saving}
             onClick={() => onOpenChange(false)}
           >
@@ -294,7 +290,7 @@ export function EventFormDialog({
           </Button>
           <Button
             type="button"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={saving || !values.title.trim()}
             onClick={() => void submit()}
           >

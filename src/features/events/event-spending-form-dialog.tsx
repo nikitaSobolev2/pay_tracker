@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -114,13 +114,13 @@ export function EventSpendingFormDialog({
           <div className="pb-3" />
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <Label>{t("spendingTitleField")}</Label>
+        <ResponsiveDialogBody>
+          <FormField label={t("spendingTitleField")} required>
             <Input
               className={EVENT_CONTROL_CLASS}
               value={values.title}
               autoFocus
+              required
               onChange={(changeEvent) =>
                 setValues((current) => ({
                   ...current,
@@ -128,10 +128,9 @@ export function EventSpendingFormDialog({
                 }))
               }
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t("spendingCategory")}</Label>
+          <FormField label={t("spendingCategory")} required>
             <Select
               value={values.category}
               items={categoryItems}
@@ -154,15 +153,15 @@ export function EventSpendingFormDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label>{t("spendingAmount")}</Label>
+            <FormField label={t("spendingAmount")} required>
               <Input
                 inputMode="decimal"
                 className={EVENT_CONTROL_CLASS}
                 value={values.amount}
+                required
                 onChange={(changeEvent) =>
                   setValues((current) => ({
                     ...current,
@@ -170,9 +169,8 @@ export function EventSpendingFormDialog({
                   }))
                 }
               />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("spendingUnit")}</Label>
+            </FormField>
+            <FormField label={t("spendingUnit")} required>
               <Select
                 value={values.amountUnit}
                 items={unitItems}
@@ -194,13 +192,13 @@ export function EventSpendingFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("spendingPrice")}</Label>
+            </FormField>
+            <FormField label={t("spendingPrice")} required>
               <Input
                 inputMode="decimal"
                 className={EVENT_CONTROL_CLASS}
                 value={values.price}
+                required
                 onChange={(changeEvent) =>
                   setValues((current) => ({
                     ...current,
@@ -208,11 +206,10 @@ export function EventSpendingFormDialog({
                   }))
                 }
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("spendingNote")}</Label>
+          <FormField label={t("spendingNote")} optional>
             <Textarea
               className="min-h-20 rounded-xl text-base md:text-sm"
               value={values.note}
@@ -223,14 +220,14 @@ export function EventSpendingFormDialog({
                 }))
               }
             />
-          </div>
+          </FormField>
         </ResponsiveDialogBody>
 
         <ResponsiveDialogFooter>
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={saving}
             onClick={() => onOpenChange(false)}
           >
@@ -238,7 +235,7 @@ export function EventSpendingFormDialog({
           </Button>
           <Button
             type="button"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={saving || !isValid}
             onClick={() => void onSubmit(values)}
           >

@@ -47,7 +47,7 @@ export function LocaleSelect({
     >
       <SelectTrigger
         aria-label={ariaLabel}
-        className={cn("h-9 rounded-xl", triggerClassName)}
+        className={cn("w-auto rounded-xl", triggerClassName)}
       >
         <SelectValue>
           <span className="inline-flex items-center gap-2">

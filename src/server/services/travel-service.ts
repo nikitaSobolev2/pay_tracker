@@ -21,6 +21,7 @@ import {
 } from "@/types/enums";
 
 import { convertRubToDisplay } from "./exchange-rate-service";
+import { normalizeTicketSeat } from "./ticket-analysis-schema";
 import type {
   CreatePlaceToVisitInput,
   CreatePlannedSpendingInput,
@@ -559,6 +560,7 @@ export async function createTravelTicket(
       ticketNumber: normalizeSegmentText(input.ticketNumber),
       flightNumber: normalizeSegmentText(input.flightNumber),
       bookingCode: normalizeSegmentText(input.bookingCode),
+      seat: normalizeTicketSeat(normalizeSegmentText(input.seat)),
     },
   });
   return mapTicket(created);
@@ -857,6 +859,7 @@ function mapTicket(row: {
   readonly ticketNumber: string | null;
   readonly flightNumber: string | null;
   readonly bookingCode: string | null;
+  readonly seat: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }): TravelTicketDto {
@@ -874,6 +877,7 @@ function mapTicket(row: {
     ticketNumber: row.ticketNumber,
     flightNumber: row.flightNumber,
     bookingCode: row.bookingCode,
+    seat: row.seat,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

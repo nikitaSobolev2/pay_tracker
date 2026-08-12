@@ -1,14 +1,25 @@
 "use client";
 
-import { Plane, X } from "lucide-react";
+import { ChevronsUpDown, Plane, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { FormField } from "@/components/ui/form-field";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ICON_BUTTON_CLASS } from "@/lib/bento";
 import { listTravels } from "@/lib/api/travels";
 import { cn } from "@/lib/utils";
 import type {
@@ -46,19 +57,10 @@ export function TravelSuggestPicker({
 }: TravelSuggestPickerProps) {
   const t = useTranslations("travels");
   const formatSchedule = useTravelScheduleLabel();
-  const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query, 200);
+  const [open, setOpen] = useState(false);
   const cachedTravels = useTransactionFormLookupStore((state) => state.travels);
-  const filterTravels = useTransactionFormLookupStore(
-    (state) => state.filterTravels,
-  );
   const setTravels = useTransactionFormLookupStore((state) => state.setTravels);
-  const items = useMemo(
-    () => filterTravels(debounced),
-    [debounced, filterTravels, cachedTravels],
-  );
   const [selected, setSelected] = useState<TravelSuggestItemDto | null>(null);
-  const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
   useEffect(() => {
     if (!value) {
@@ -98,148 +100,117 @@ export function TravelSuggestPicker({
   function apply(travel: TravelSuggestItemDto | null) {
     setSelected(travel);
     onChange(travel?.id ?? null);
-    setFullscreenOpen(false);
+    setOpen(false);
   }
 
-  const preview = items.slice(0, 2);
-
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <Label>{t("travelChooser")}</Label>
-        {value ? (
+    <FormField label={t("travelChooser")} optional className={className}>
+      <div className="flex min-w-0 items-start gap-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="h-auto min-h-11 w-full min-w-0 justify-between gap-2 whitespace-normal px-3 py-2 text-left font-normal"
+              />
+            }
+          >
+            {selected ? (
+              <TravelChooserRow
+                travel={selected}
+                schedule={formatSchedule(selected.startsAt, selected.endsAt)}
+              />
+            ) : (
+              <span className="text-muted-foreground">
+                {t("travelChooserNone")}
+              </span>
+            )}
+            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-(--anchor-width) min-w-(--anchor-width) rounded-xl p-0"
+          >
+            <Command
+              className={cn(
+                "rounded-xl",
+                "[&_[data-slot=command-item]>svg:last-of-type]:hidden",
+              )}
+            >
+              <CommandInput
+                placeholder={t("travelChooserSearch")}
+                wrapperClassName="p-2 pb-1 sm:p-1.5 sm:pb-0"
+                inputGroupClassName="h-12! rounded-xl! *:data-[slot=input-group-addon]:pl-3! sm:h-10! [&_svg]:size-5 sm:[&_svg]:size-4"
+                className="text-base sm:text-sm"
+              />
+              <CommandList className="max-h-[min(50dvh,20rem)]">
+                <CommandEmpty className="py-8 text-base sm:py-6 sm:text-sm">
+                  {t("travelChooserEmpty")}
+                </CommandEmpty>
+                <CommandGroup className="p-1.5 sm:p-1">
+                  {cachedTravels.map((travel) => (
+                    <CommandItem
+                      key={travel.id}
+                      value={`${travel.title} ${travel.placeLabel ?? ""}`}
+                      data-checked={travel.id === value ? true : undefined}
+                      className="min-h-12 items-start gap-2 rounded-lg px-2 py-2 sm:min-h-0"
+                      onSelect={() => apply(travel)}
+                    >
+                      <TravelChooserRow
+                        travel={travel}
+                        schedule={formatSchedule(
+                          travel.startsAt,
+                          travel.endsAt,
+                        )}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {selected ? (
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="h-8 rounded-lg"
+            size="icon"
+            className={ICON_BUTTON_CLASS}
+            aria-label={t("travelChooserClear")}
             onClick={() => apply(null)}
           >
-            <X className="size-3.5" />
-            {t("travelChooserClear")}
+            <X className="size-4" />
           </Button>
         ) : null}
       </div>
+    </FormField>
+  );
+}
 
-      {selected ? (
-        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
-          <Plane className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{selected.title}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {formatSchedule(selected.startsAt, selected.endsAt)}
-              {selected.placeLabel ? ` · ${selected.placeLabel}` : ""}
-            </p>
-          </div>
-          <TravelPhaseBadge phase={selected.phase} />
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">{t("travelChooserNone")}</p>
-      )}
+function TravelChooserRow({
+  travel,
+  schedule,
+}: {
+  readonly travel: TravelSuggestItemDto;
+  readonly schedule: string;
+}) {
+  const meta = [schedule, travel.placeLabel].filter(Boolean).join(" · ");
 
-      <div className="space-y-2 sm:hidden">
-        {preview.map((travel) => (
-          <button
-            key={travel.id}
-            type="button"
-            className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-border/50 px-3 py-2 text-left"
-            onClick={() => apply(travel)}
-          >
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {travel.title}
-            </span>
-            <TravelPhaseBadge phase={travel.phase} />
-          </button>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 w-full rounded-xl"
-          onClick={() => setFullscreenOpen(true)}
-        >
-          {t("travelChooserSearch")}
-        </Button>
-      </div>
-
-      <div className="hidden space-y-2 sm:block">
-        <Input
-          value={query}
-          placeholder={t("travelChooserSearch")}
-          className="h-11 rounded-xl"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border/50 p-1">
-          {items.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-muted-foreground">
-              {t("travelChooserEmpty")}
-            </p>
-          ) : (
-            items.map((travel) => (
-              <button
-                key={travel.id}
-                type="button"
-                className={cn(
-                  "flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-muted/60",
-                  value === travel.id && "bg-muted",
-                )}
-                onClick={() => apply(travel)}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{travel.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {formatSchedule(travel.startsAt, travel.endsAt)}
-                    {travel.placeLabel ? ` · ${travel.placeLabel}` : ""}
-                  </p>
-                </div>
-                <TravelPhaseBadge phase={travel.phase} />
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {typeof document !== "undefined" && fullscreenOpen
-        ? createPortal(
-            <div className="fixed inset-0 z-[100] flex flex-col bg-background sm:hidden">
-              <div className="flex items-center gap-2 border-b px-3 py-3">
-                <Input
-                  autoFocus
-                  value={query}
-                  placeholder={t("travelChooserSearch")}
-                  className="h-12 flex-1 rounded-xl text-base"
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-12 rounded-xl"
-                  onClick={() => setFullscreenOpen(false)}
-                >
-                  {t("travelChooserClear")}
-                </Button>
-              </div>
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
-                {items.map((travel) => (
-                  <button
-                    key={travel.id}
-                    type="button"
-                    className="flex min-h-14 w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-muted/60"
-                    onClick={() => apply(travel)}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{travel.title}</p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {formatSchedule(travel.startsAt, travel.endsAt)}
-                      </p>
-                    </div>
-                    <TravelPhaseBadge phase={travel.phase} />
-                  </button>
-                ))}
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
-    </div>
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-2">
+      <Plane className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{travel.title}</span>
+        {meta ? (
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            {meta}
+          </span>
+        ) : null}
+      </span>
+      <TravelPhaseBadge phase={travel.phase} />
+    </span>
   );
 }

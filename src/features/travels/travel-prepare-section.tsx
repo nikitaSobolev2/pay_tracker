@@ -1,17 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
-import { AmountInput } from "@/components/ui/amount-input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CategoryPieChart } from "@/features/charts/category-pie-chart";
-import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
-import { toDecimal, toIntegerAmountString } from "@/lib/money";
+import { TopCategoriesCard } from "@/features/charts/money-summary-cards";
+import { toDecimal } from "@/lib/money";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import type { CategorySlice } from "@/server/services/stats-service.types";
-import { useTravelCacheStore } from "@/stores/travel-cache.store";
 import { TransactionType } from "@/types/enums";
 
 import { TravelAiControls } from "./travel-ai-controls";
@@ -31,12 +26,6 @@ export function TravelPrepareSection({
   readonly onRefresh: () => Promise<void>;
 }) {
   const t = useTranslations("travels");
-  const [goalDraft, setGoalDraft] = useState(
-    travel.summary.maxSpendingGoal
-      ? toIntegerAmountString(travel.summary.maxSpendingGoal)
-      : "",
-  );
-  const [savingGoal, setSavingGoal] = useState(false);
 
   const slices = useMemo(() => {
     const total = toDecimal(travel.summary.plannedTotal);
@@ -53,25 +42,6 @@ export function TravelPrepareSection({
       };
     }).filter((slice) => toDecimal(slice.amount).gt(0));
   }, [t, travel.summary.plannedByCategory, travel.summary.plannedTotal]);
-
-  async function saveGoal(next: string | null) {
-    setSavingGoal(true);
-    useTravelCacheStore.getState().patchTravel(travel.id, (current) => ({
-      ...current,
-      maxSpendingGoal: next,
-      summary: {
-        ...current.summary,
-        maxSpendingGoal: next,
-      },
-    }));
-    enqueueTravelOp({
-      travelId: travel.id,
-      op: { kind: "updateTravel", body: { maxSpendingGoal: next } },
-      baseline: { maxSpendingGoal: travel.summary.maxSpendingGoal },
-    });
-    await onRefresh();
-    setSavingGoal(false);
-  }
 
   return (
     <div className="space-y-4">
@@ -94,58 +64,20 @@ export function TravelPrepareSection({
           currency={travel.currency}
         />
         <TravelGoalProgressCard
+          travelId={travel.id}
           plannedTotal={travel.summary.plannedTotal}
           actualTotal={travel.summary.actualTotal}
           goal={travel.summary.maxSpendingGoal}
           currency={travel.currency}
+          onRefresh={onRefresh}
         />
       </div>
 
-      <Card className="border-border/60 shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {t("goal")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 sm:flex-row">
-          <AmountInput
-            integerOnly
-            value={goalDraft}
-            placeholder={t("goalOptional")}
-            className="h-11 flex-1 rounded-xl"
-            onValueChange={setGoalDraft}
-          />
-          <Button
-            type="button"
-            className="h-11 rounded-xl"
-            disabled={savingGoal || !goalDraft.trim()}
-            onClick={() => void saveGoal(goalDraft.trim())}
-          >
-            {t("goalSet")}
-          </Button>
-          {travel.summary.maxSpendingGoal ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 rounded-xl"
-              disabled={savingGoal}
-              onClick={() => {
-                setGoalDraft("");
-                void saveGoal(null);
-              }}
-            >
-              {t("goalClear")}
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
-
       {slices.length > 0 ? (
-        <CategoryPieChart
+        <TopCategoriesCard
           title={t("categoryPie")}
-          slices={slices}
+          items={slices}
           currency={travel.currency}
-          layout="stack"
         />
       ) : null}
 

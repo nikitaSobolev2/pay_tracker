@@ -1,11 +1,10 @@
 "use client";
 
+import "@/lib/math-sum-precise-polyfill";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
 
 import { Button } from "@/components/ui/button";
 
@@ -58,8 +57,8 @@ export function TravelTicketPdfViewer({
             <Page
               pageNumber={pageNumber}
               width={pageWidth}
-              renderTextLayer
-              renderAnnotationLayer
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
               className="bg-white shadow-lg"
               aria-label={title}
             />

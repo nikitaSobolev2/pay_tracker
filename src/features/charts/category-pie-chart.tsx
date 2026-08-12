@@ -311,27 +311,24 @@ export function CategoryPieChart({
             }
       }
       loading={loading}
-      className={cn("h-full", className)}
+      className={cn(className)}
       skeleton={<CategoryPieSkeleton stacked={stacked} />}
     >
       {baseData.length === 0 ? (
-        <div className="flex h-48 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+        <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           <div className="size-28 rounded-full border-10 border-muted/50" />
           <span>{tCharts("noCategories")}</span>
         </div>
       ) : (
         <div
           className={cn(
-            "grid items-center gap-4",
+            "grid flex-1 items-center gap-4",
             stacked ? "grid-cols-1" : "sm:grid-cols-[1fr_1.1fr]",
           )}
         >
           <ChartContainer
             config={config}
-            className={cn(
-              "mx-auto aspect-square w-full",
-              stacked ? "max-w-40" : "max-w-50",
-            )}
+            className="mx-auto aspect-square h-40 w-40 shrink-0"
           >
             <PieChart>
               <ChartTooltip
@@ -395,8 +392,8 @@ export function CategoryPieChart({
                 data={visibleData}
                 dataKey="amount"
                 nameKey="chartKey"
-                innerRadius={stacked ? 48 : 58}
-                outerRadius={stacked ? 68 : 78}
+                innerRadius={48}
+                outerRadius={68}
                 paddingAngle={2}
                 stroke="transparent"
                 onClick={(_, index) => {
@@ -417,7 +414,7 @@ export function CategoryPieChart({
             </PieChart>
           </ChartContainer>
 
-          <div className="relative min-h-40">
+          <div className="relative min-h-0">
             <ul className="space-y-2.5">
               {legendData.slice(0, 5).map((slice) => {
                 const expanded = openChildrenKey === slice.chartKey;
@@ -617,12 +614,7 @@ function CategoryPieSkeleton({
           : "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]",
       )}
     >
-      <Skeleton
-        className={cn(
-          "mx-auto rounded-full",
-          stacked ? "size-32 sm:size-36" : "size-36 sm:size-40",
-        )}
-      />
+      <Skeleton className="mx-auto size-40 rounded-full" />
       <ul className="w-full space-y-2.5">
         {Array.from({ length: stacked ? 4 : 5 }, (_, index) => (
           <li

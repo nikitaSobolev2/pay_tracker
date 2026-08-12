@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { ObjectCard, ObjectCardBody, ReceiptRail } from "@/components/ui/object-card";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { normalizeAmountRaw } from "@/lib/amount-input";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import {
   Table,
   TableBody,
@@ -270,7 +272,7 @@ export function EventSpendingsList({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="text-base">{t("spendingsTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("spendingsTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {spendingsBody}
@@ -455,49 +457,46 @@ function MobileSpendingGroup({
       />
 
       {expanded ? (
-        <ul className="divide-y divide-border/40">
+        <div className="space-y-2 p-2">
           {canEdit ? (
-            <li className="px-3 py-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-full justify-center gap-1.5 border-border/70 bg-background/60 text-xs hover:bg-background/80"
-                onClick={onAdd}
-              >
-                <Plus className="size-3.5" />
-                {t("spendingAddUnderCategory")}
-              </Button>
-            </li>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 w-full justify-center gap-1.5 border-border/70 bg-background/60 text-xs hover:bg-background/80"
+              onClick={onAdd}
+            >
+              <Plus className="size-3.5" />
+              {t("spendingAddUnderCategory")}
+            </Button>
           ) : null}
           {drafts.map((draft) => (
-            <li key={draft.key}>
-              <MobileDraftSpendingRow
-                draft={draft}
-                onChange={(patch) => onDraftChange(draft.key, patch)}
-                onCommit={() => onDraftCommit(draft)}
-                onDiscard={() => onDraftDiscard(draft.key)}
-              />
-            </li>
+            <ObjectCard key={draft.key} dashed>
+              <ReceiptRail />
+              <ObjectCardBody className="flex-col items-stretch p-0">
+                <MobileDraftSpendingRow
+                  draft={draft}
+                  onChange={(patch) => onDraftChange(draft.key, patch)}
+                  onCommit={() => onDraftCommit(draft)}
+                  onDiscard={() => onDraftDiscard(draft.key)}
+                />
+              </ObjectCardBody>
+            </ObjectCard>
           ))}
-          {group.spendings.map((spending, index) => (
-            <li
-              key={spending.id}
-              className={
-                index % 2 === 1
-                  ? CATEGORY_ALT_SURFACE_CLASS[group.category]
-                  : undefined
-              }
-            >
-              <MobileSpendingRow
-                spending={spending}
-                canEdit={canEdit}
-                onEdit={() => onEdit(spending)}
-                onDelete={() => onDelete(spending.id)}
-              />
-            </li>
+          {group.spendings.map((spending) => (
+            <ObjectCard key={spending.id} dashed>
+              <ReceiptRail />
+              <ObjectCardBody className="flex-col items-stretch p-0">
+                <MobileSpendingRow
+                  spending={spending}
+                  canEdit={canEdit}
+                  onEdit={() => onEdit(spending)}
+                  onDelete={() => onDelete(spending.id)}
+                />
+              </ObjectCardBody>
+            </ObjectCard>
           ))}
-        </ul>
+        </div>
       ) : null}
     </section>
   );

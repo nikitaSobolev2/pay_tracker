@@ -6,8 +6,15 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  BookmarkRail,
+  ObjectCard,
+  ObjectCardBody,
+  ObjectCardCopy,
+  OBJECT_STACK_CLASS,
+} from "@/components/ui/object-card";
 import {
   Select,
   SelectContent,
@@ -137,7 +144,7 @@ function EventLinkList({
   }
 
   return (
-    <ul className="divide-y divide-border/50 rounded-xl border border-border/60">
+    <ul className={OBJECT_STACK_CLASS}>
       {links.map((link) => {
         const typeLabel =
           link.type === EventLinkType.Location
@@ -145,37 +152,43 @@ function EventLinkList({
             : t("linkTypeOther");
 
         return (
-          <li
-            key={link.id}
-            className="flex items-start gap-3 px-3 py-3 first:rounded-t-xl last:rounded-b-xl"
-          >
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="truncate text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  {link.title}
-                </a>
-                <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-              </div>
-              <p className="truncate text-xs text-muted-foreground">{link.url}</p>
-              <p className="text-[11px] text-muted-foreground/80">{typeLabel}</p>
-            </div>
-            {canEdit ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8 shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                aria-label={t("linkDelete")}
-                onClick={() => void remove(link.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            ) : null}
+          <li key={link.id}>
+            <ObjectCard>
+              <BookmarkRail />
+              <ObjectCardBody>
+                <ObjectCardCopy
+                  title={
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex max-w-full items-center gap-1.5 underline-offset-4 hover:underline"
+                    >
+                      <span className="truncate">{link.title}</span>
+                      <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                    </a>
+                  }
+                  meta={
+                    <>
+                      <p className="truncate">{link.url}</p>
+                      <p>{typeLabel}</p>
+                    </>
+                  }
+                />
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-destructive"
+                    aria-label={t("linkDelete")}
+                    onClick={() => void remove(link.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                ) : null}
+              </ObjectCardBody>
+            </ObjectCard>
           </li>
         );
       })}
@@ -249,26 +262,25 @@ function EventLinkComposer({
 
   return (
     <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-      <div className="space-y-2">
-        <Label>{t("linkTitle")}</Label>
+      <FormField label={t("linkTitle")} required>
         <Input
           className="h-11 rounded-xl"
           value={title}
           autoFocus
+          required
           onChange={(changeEvent) => setTitle(changeEvent.target.value)}
         />
-      </div>
-      <div className="space-y-2">
-        <Label>{t("linkUrl")}</Label>
+      </FormField>
+      <FormField label={t("linkUrl")} required>
         <Input
           className="h-11 rounded-xl"
           placeholder="https://"
           value={url}
+          required
           onChange={(changeEvent) => setUrl(changeEvent.target.value)}
         />
-      </div>
-      <div className="space-y-2">
-        <Label>{t("linkType")}</Label>
+      </FormField>
+      <FormField label={t("linkType")} required>
         <Select
           value={type}
           items={typeItems}
@@ -289,7 +301,7 @@ function EventLinkComposer({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
       <div className="flex gap-2">
         <Button
           type="button"

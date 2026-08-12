@@ -440,7 +440,7 @@ export function TransactionFilters({
             >
               <SelectTrigger
                 className={cn(
-                  "h-10 w-auto min-w-36 rounded-full border-border/70 bg-card/60 px-3.5 text-sm sm:h-9",
+                  "h-11 w-auto min-w-36 rounded-xl border-border/70 bg-card/60 px-3.5 text-sm",
                   value.kinds.length > 0 && "border-foreground/40",
                 )}
                 aria-label={t("filterKind")}

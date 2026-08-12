@@ -135,25 +135,16 @@ export function FastTransactionInput() {
   return (
     <section
       className={cn(
-        "relative -mx-3 flex h-[calc(100svh-4rem)] w-[calc(100%+1.5rem)] items-center justify-center overflow-hidden",
-        "border-y border-border/40",
-        "md:mx-0 md:h-[60vh] md:w-full md:rounded-3xl md:border",
+        "relative flex items-center justify-center overflow-hidden",
+        "-mx-3 -mt-3 h-[calc(100svh-6.25rem-env(safe-area-inset-bottom))] w-[calc(100%+1.5rem)] rounded-none",
+        "md:mx-0 md:mt-0 md:h-auto md:min-h-[40vh] md:w-full md:rounded-xl md:ring-1 md:ring-foreground/10",
       )}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklch,var(--primary)_26%,transparent),transparent_72%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(160deg,color-mix(in_oklch,var(--accent)_42%,transparent),transparent_52%,color-mix(in_oklch,var(--primary)_16%,transparent))]"
-      />
-
-      <div className="absolute inset-x-0 top-6 z-10 px-6 text-center md:top-8">
-        <h2 className="text-lg font-semibold tracking-tight md:text-xl">
+      <div className="absolute inset-x-0 top-6 z-10 px-4 text-center md:top-5">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t("fastTitle")}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("fastSubtitle")}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("fastSubtitle")}</p>
       </div>
 
       <div className="relative z-10 flex w-full items-center justify-center px-4">
@@ -161,7 +152,7 @@ export function FastTransactionInput() {
           className="relative leading-none"
           style={{
             width: `calc(${digitSlots}ch + 0.15em)`,
-            fontSize: "clamp(2.8rem, 9vw, 5.75rem)",
+            fontSize: "clamp(2.75rem, 9vw, 5rem)",
           }}
         >
           <div
@@ -255,7 +246,7 @@ export function FastTransactionInput() {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-8 z-10 flex justify-center px-6 md:hidden">
+      <div className="absolute inset-x-0 bottom-5 z-10 flex justify-center px-4 md:hidden">
         <Button
           type="button"
           size="lg"
@@ -290,7 +281,7 @@ function CurrencyIconSelect({
     >
       <SelectTrigger
         className={cn(
-          "h-auto gap-1 border-0 bg-transparent p-0 shadow-none dark:bg-transparent",
+          "h-auto w-auto gap-1 border-0 bg-transparent p-0 shadow-none dark:bg-transparent",
           "text-[0.72em] leading-none font-medium text-foreground/80",
           "hover:bg-transparent hover:text-foreground dark:hover:bg-transparent",
           "focus-visible:border-transparent focus-visible:ring-0",

@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -35,7 +35,7 @@ import {
 } from "./event-location-poll-option-form";
 
 const FOOTER_BUTTON_CLASS =
-  "h-12 w-full rounded-xl text-base sm:w-auto md:h-10";
+  "h-11 w-full rounded-xl text-base sm:w-auto";
 
 const TOUCH_BUTTON_CLASS =
   "h-12 flex-1 rounded-xl text-base md:h-10 md:flex-none";
@@ -146,19 +146,18 @@ export function EventLocationPollCreateDialog({
           <div className="pb-3" />
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody className="space-y-5">
-          <div className="space-y-2">
-            <Label>{t("pollTitleField")}</Label>
+        <ResponsiveDialogBody>
+          <FormField label={t("pollTitleField")} required>
             <Input
               className={EVENT_CONTROL_CLASS}
               value={title}
               autoFocus
+              required
               onChange={(event) => setTitle(event.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t("pollSelectionMode")}</Label>
+          <FormField label={t("pollSelectionMode")} required>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -187,10 +186,9 @@ export function EventLocationPollCreateDialog({
                 {t("pollMultiple")}
               </Button>
             </div>
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t("pollTimeLimit")}</Label>
+          <FormField label={t("pollTimeLimit")} optional>
             {endsAt ? (
               <div className="flex items-center gap-2">
                 <DateTimePicker
@@ -220,15 +218,14 @@ export function EventLocationPollCreateDialog({
                 {t("pollSetTimeLimit")}
               </Button>
             )}
-          </div>
+          </FormField>
 
-          <div className="min-w-0 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <Label>{t("pollOptions")}</Label>
+          <FormField label={t("pollOptions")} required>
+            <div className="min-w-0 space-y-3">
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 shrink-0 gap-1.5 rounded-xl text-base md:h-9 md:text-sm"
+                className="h-11 w-full gap-1.5 rounded-xl text-base md:h-9 md:text-sm"
                 onClick={() =>
                   setOptions((current) => [...current, emptyPollOptionDraft()])
                 }
@@ -236,7 +233,6 @@ export function EventLocationPollCreateDialog({
                 <Plus className="size-4" />
                 {t("pollAddOption")}
               </Button>
-            </div>
             {options.map((option, index) => (
               <div
                 key={option.key}
@@ -274,7 +270,8 @@ export function EventLocationPollCreateDialog({
                 />
               </div>
             ))}
-          </div>
+            </div>
+          </FormField>
         </ResponsiveDialogBody>
 
         <ResponsiveDialogFooter>

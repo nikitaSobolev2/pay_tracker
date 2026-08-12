@@ -97,10 +97,10 @@ export function TransactionDetailPage({
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6 pb-10">
         <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-xl" />
         <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
         </div>
       </div>
     );
@@ -120,11 +120,11 @@ export function TransactionDetailPage({
   const isSpending = transaction.type === TransactionType.Spending;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 pb-10">
+    <div className="mx-auto w-full max-w-5xl space-y-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <PageTitleWithBack fallbackHref="/transactions">
           <p className="text-sm text-muted-foreground">{t("title")}</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
             {transaction.title || "—"}
           </h1>
         </PageTitleWithBack>
@@ -148,7 +148,7 @@ export function TransactionDetailPage({
         </div>
       </header>
 
-      <Card className="rounded-2xl border-border/60 bg-card/50 shadow-none">
+      <Card className="rounded-xl border-border/60 bg-card/50 shadow-none">
         <CardContent className="grid gap-6 p-6 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="text-sm text-muted-foreground">{t("amount")}</p>
@@ -293,7 +293,7 @@ export function TransactionDetailPage({
         <p className="text-muted-foreground">{t("noCharts")}</p>
       )}
 
-      <Card className="rounded-2xl border-border/60 shadow-none">
+      <Card className="rounded-xl border-border/60 shadow-none">
         <CardHeader>
           <CardTitle className="text-xl">{t("related")}</CardTitle>
         </CardHeader>
@@ -350,7 +350,7 @@ function MetricCard({
   readonly value: string;
 }) {
   return (
-    <Card className="rounded-2xl border-border/60 shadow-none">
+    <Card className="rounded-xl border-border/60 shadow-none">
       <CardContent className="p-5">
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">

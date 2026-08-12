@@ -88,7 +88,7 @@ export function CounterpartyDetailPage({ id }: { readonly id: string }) {
               onChange={(event) => setDraftName(event.target.value)}
             />
           ) : (
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
               {counterparty.name}
             </h1>
           )}

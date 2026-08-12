@@ -63,7 +63,6 @@ import { fetchTransactionStats } from "@/lib/api/stats";
 import { listTransactions } from "@/lib/api/transactions";
 import { mergePendingOfflineTransactions } from "@/lib/offline/transaction-offline-pending";
 import { formatChartMoney } from "@/lib/money";
-import { cn } from "@/lib/utils";
 import type {
   ListPageStats,
   PeriodComparison,
@@ -76,8 +75,7 @@ import type { TransactionDto } from "@/types/transaction";
 const PAGE_SIZE = 20;
 
 /** Preferred ~336px card width; can grow, wraps before crushing big amounts. */
-const SUMMARY_CARD_SHELL =
-  "w-full min-w-0 flex-1 basis-full transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out md:min-w-[21rem] md:basis-[21rem]";
+const SUMMARY_CARD_SHELL = "min-w-0";
 
 const EMPTY_COMPARISON: PeriodComparison = {
   current: { amount: "0", currency: "RUB" },
@@ -360,10 +358,10 @@ export function TransactionsPage() {
   }, [queryBase, initialLoading, hasMore]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header>
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {tNav("transactions")}
           </h1>
         </PageTitleWithBack>
@@ -371,7 +369,7 @@ export function TransactionsPage() {
 
       <div
         ref={filtersBlockRef}
-        className="-mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur max-md:hidden md:sticky md:top-14 md:z-20 md:-mx-6 md:px-6"
+        className="-mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur max-md:hidden md:sticky md:top-14 md:z-20 md:-mx-5 md:px-5"
       >
         <TransactionFilters
           pageType={pageType}
@@ -396,42 +394,37 @@ export function TransactionsPage() {
         }}
       />
 
-      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-stretch">
-        <div
-          className={cn(
-            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
-            showPeriodTotals
-              ? SUMMARY_CARD_SHELL
-              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
-          )}
-        >
-          <PeriodTotalsCard
-            loading={loadingStats}
-            stats={
-              stats?.periodTotals ?? {
-                count: 0,
-                spending: { amount: "0", currency: "RUB" },
-                earning: { amount: "0", currency: "RUB" },
-                net: { amount: "0", currency: "RUB" },
-                total: { amount: "0", currency: "RUB" },
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {showPeriodTotals ? (
+          <div className={SUMMARY_CARD_SHELL}>
+            <PeriodTotalsCard
+              loading={loadingStats}
+              stats={
+                stats?.periodTotals ?? {
+                  count: 0,
+                  spending: { amount: "0", currency: "RUB" },
+                  earning: { amount: "0", currency: "RUB" },
+                  net: { amount: "0", currency: "RUB" },
+                  total: { amount: "0", currency: "RUB" },
+                }
               }
-            }
-            comparison={
-              stats?.vsPreviousPeriod ?? {
-                current: { amount: "0", currency: "RUB" },
-                previous: null,
-                deltaAmount: null,
-                deltaPercent: null,
+              comparison={
+                stats?.vsPreviousPeriod ?? {
+                  current: { amount: "0", currency: "RUB" },
+                  previous: null,
+                  deltaAmount: null,
+                  deltaPercent: null,
+                }
               }
-            }
-            hideComparison={!showVsPrevious}
-            comparisonSense={totalsSense}
-            footerMode={scopedType ? "vsPrevious" : "incomeSpending"}
-            onPreviousPeriodClick={
-              previousDateRange ? applyPreviousPeriod : undefined
-            }
-          />
-        </div>
+              hideComparison={!showVsPrevious}
+              comparisonSense={totalsSense}
+              footerMode={scopedType ? "vsPrevious" : "incomeSpending"}
+              onPreviousPeriodClick={
+                previousDateRange ? applyPreviousPeriod : undefined
+              }
+            />
+          </div>
+        ) : null}
         <div className={SUMMARY_CARD_SHELL}>
           <MoneyValueCard
             title={t("avgPerTx")}
@@ -457,94 +450,84 @@ export function TransactionsPage() {
             }
           />
         </div>
-        <div
-          className={cn(
-            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
-            showAvgPerDay
-              ? SUMMARY_CARD_SHELL
-              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
-          )}
-        >
-          <MoneyValueCard
-            title={t("avgPerDay")}
-            loading={loadingStats}
-            amount={stats?.avgPerDay ?? { amount: "0", currency: "RUB" }}
-            comparison={stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON}
-            comparisonSense={avgSense}
-            hideComparison={!showVsPrevious}
-            details={
-              showVsPrevious
-                ? avgComparisonDetails(
-                    stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON,
-                    tHome("previousPeriod"),
-                    tHome("change"),
-                    avgSense,
-                    previousDateRange ? applyPreviousPeriod : undefined,
-                  )
-                : undefined
-            }
-          />
-        </div>
-        <div
-          className={cn(
-            "transition-[flex-grow,flex-basis,max-width,opacity,min-width] duration-500 ease-out",
-            showVsPrevious && !scopedType
-              ? SUMMARY_CARD_SHELL
-              : "pointer-events-none max-h-0 min-w-0 flex-[0_0_0%] basis-0 overflow-hidden opacity-0 md:max-h-none",
-          )}
-        >
-          <VsPreviousPeriodCard
-            title={tHome("vsPrevious")}
-            loading={loadingStats}
-            comparison={
-              stats?.vsPreviousPeriod ?? {
-                current: { amount: "0", currency: "RUB" },
-                previous: null,
-                deltaAmount: null,
-                deltaPercent: null,
+        {showAvgPerDay ? (
+          <div className={SUMMARY_CARD_SHELL}>
+            <MoneyValueCard
+              title={t("avgPerDay")}
+              loading={loadingStats}
+              amount={stats?.avgPerDay ?? { amount: "0", currency: "RUB" }}
+              comparison={stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON}
+              comparisonSense={avgSense}
+              hideComparison={!showVsPrevious}
+              details={
+                showVsPrevious
+                  ? avgComparisonDetails(
+                      stats?.avgPerDayVsPrevious ?? EMPTY_COMPARISON,
+                      tHome("previousPeriod"),
+                      tHome("change"),
+                      avgSense,
+                      previousDateRange ? applyPreviousPeriod : undefined,
+                    )
+                  : undefined
               }
-            }
-            dateRangeType={stats?.dateRangeType ?? DateRangeType.Month}
-            comparisonSense={totalsSense}
-            onPreviousPeriodClick={
-              previousDateRange ? applyPreviousPeriod : undefined
-            }
-          />
-        </div>
+            />
+          </div>
+        ) : null}
+        {showVsPrevious && !scopedType ? (
+          <div className={SUMMARY_CARD_SHELL}>
+            <VsPreviousPeriodCard
+              title={tHome("vsPrevious")}
+              loading={loadingStats}
+              comparison={
+                stats?.vsPreviousPeriod ?? {
+                  current: { amount: "0", currency: "RUB" },
+                  previous: null,
+                  deltaAmount: null,
+                  deltaPercent: null,
+                }
+              }
+              dateRangeType={stats?.dateRangeType ?? DateRangeType.Month}
+              comparisonSense={totalsSense}
+              onPreviousPeriodClick={
+                previousDateRange ? applyPreviousPeriod : undefined
+              }
+            />
+          </div>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
-        <div className="flex min-h-0 min-w-0">
-          <TopCategoriesCard
-            title={categoryChartTitle(typeFilter, t, tHome)}
-            description={
-              typeFilter === "all" ? t("topCategoriesMixedHint") : undefined
-            }
+      <div className="grid gap-3 lg:grid-cols-2">
+        <TopCategoriesCard
+          title={categoryChartTitle(typeFilter, t, tHome)}
+          description={
+            typeFilter === "all" ? t("topCategoriesMixedHint") : undefined
+          }
+          loading={loadingStats}
+          items={stats?.topCategories ?? []}
+          currency={stats?.displayCurrency ?? "RUB"}
+          showTypeHints={typeFilter === "all"}
+        />
+        <CategoryPieChart
+          title={
+            typeFilter === "all"
+              ? t("categoryShare")
+              : categoryChartTitle(typeFilter, t, tHome)
+          }
+          description={
+            typeFilter === "all" ? t("categoryShareMixedHint") : undefined
+          }
+          loading={loadingStats}
+          slices={stats?.categoryPie ?? []}
+          currency={stats?.displayCurrency ?? "RUB"}
+          showTypeHints={typeFilter === "all"}
+        />
+        {stats?.hasMultipleCurrencies && stats.currencyBreakdown ? (
+          <CurrencyBreakdownCard
+            title={t("currencyBreakdown")}
             loading={loadingStats}
-            items={stats?.topCategories ?? []}
-            currency={stats?.displayCurrency ?? "RUB"}
-            showTypeHints={typeFilter === "all"}
-            className="h-full w-full"
+            items={stats.currencyBreakdown}
           />
-        </div>
-        <div className="flex min-h-0 min-w-0">
-          <CategoryPieChart
-            title={
-              typeFilter === "all"
-                ? t("categoryShare")
-                : categoryChartTitle(typeFilter, t, tHome)
-            }
-            description={
-              typeFilter === "all" ? t("categoryShareMixedHint") : undefined
-            }
-            loading={loadingStats}
-            slices={stats?.categoryPie ?? []}
-            currency={stats?.displayCurrency ?? "RUB"}
-            layout="stack"
-            showTypeHints={typeFilter === "all"}
-            className="h-full w-full"
-          />
-        </div>
+        ) : null}
       </div>
 
       <TimelineWithDrilldown
@@ -558,21 +541,15 @@ export function TransactionsPage() {
         currency={stats?.displayCurrency ?? "RUB"}
         mode={timelineModeForFilter(typeFilter)}
         filters={heatmapFilters}
+        drilldownLayout="below"
       />
 
       <ActivityHeatmapCard
         title={tCharts("activity")}
         currency={stats?.displayCurrency ?? "RUB"}
         filters={heatmapFilters}
+        drilldownLayout="below"
       />
-
-      {stats?.hasMultipleCurrencies && stats.currencyBreakdown ? (
-        <CurrencyBreakdownCard
-          title={t("currencyBreakdown")}
-          loading={loadingStats}
-          items={stats.currencyBreakdown}
-        />
-      ) : null}
 
       <TransactionTable
         items={displayItems}

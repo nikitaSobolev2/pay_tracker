@@ -65,24 +65,20 @@ function BreakdownList({
 
 function DebtCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/90 p-5">
-      <div className="space-y-4">
+    <div className="h-full rounded-xl border border-border/50 bg-card/80 p-4">
+      <div className="space-y-3">
         <div>
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="mt-2 h-9 w-40 max-w-full md:h-10 md:w-48" />
-          <Skeleton className="mt-3 h-6 w-36 max-w-full rounded-full" />
+          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="mt-1.5 h-8 w-36 max-w-full" />
         </div>
-        <div className="space-y-2.5 rounded-xl bg-muted/35 px-3.5 py-3">
-          {Array.from({ length: 3 }, (_, index) => (
+        <div className="space-y-2">
+          {Array.from({ length: 2 }, (_, index) => (
             <div
               key={`debt-row-${index}`}
-              className={cn(
-                "flex justify-between gap-3",
-                index < 2 && "border-b border-border/40 pb-2",
-              )}
+              className="flex justify-between gap-3"
             >
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-3.5 w-14" />
             </div>
           ))}
         </div>
@@ -107,16 +103,15 @@ function DebtCard({
   readonly tone: "owe" | "owed";
 }) {
   const tCharts = useTranslations("charts");
-  const top = breakdown.slice(0, 3);
+  const top = breakdown.slice(0, 2);
   const amountClass =
     tone === "owe" ? "text-rose-400" : "text-emerald-400";
   const borderClass =
     tone === "owe"
-      ? "border-rose-400/30 bg-rose-500/5 hover:bg-rose-500/10"
-      : "border-emerald-400/30 bg-emerald-500/5 hover:bg-emerald-500/10";
-  const dotClass = tone === "owe" ? "bg-rose-400" : "bg-emerald-400";
+      ? "border-rose-400/25 bg-rose-500/5 hover:bg-rose-500/10"
+      : "border-emerald-400/25 bg-emerald-500/5 hover:bg-emerald-500/10";
   const cardClassName = cn(
-    "block rounded-2xl border p-5 outline-none transition-colors",
+    "flex h-full flex-col rounded-xl border p-4 outline-none transition-colors",
     "focus-visible:ring-2 focus-visible:ring-ring/50",
     borderClass,
   );
@@ -132,56 +127,51 @@ function DebtCard({
           )
         }
       >
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p
-              className={cn(
-                "mt-1 text-3xl font-semibold tracking-tight tabular-nums",
-                amountClass,
-              )}
-            >
-              {formatChartMoney(amount, currency)}
+        <div className="flex flex-1 flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {title}
             </p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-background/40 px-2.5 py-1 text-xs text-muted-foreground">
-              <span className={cn("size-1.5 rounded-full", dotClass)} />
+            <p className="text-[11px] text-muted-foreground">
               {breakdown.length === 0
                 ? tCharts("noOpenDebts")
                 : tCharts("counterpartiesCount", { count: breakdown.length })}
-            </div>
+            </p>
           </div>
-
-          <div className="rounded-xl bg-background/35 px-3.5 py-3">
-            {top.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {tCharts("nothingToShow")}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {top.map((item, index) => (
-                  <li
-                    key={`${item.id ?? item.name}-${item.amount}`}
+          <p
+            className={cn(
+              "text-2xl font-semibold tracking-tight tabular-nums",
+              amountClass,
+            )}
+          >
+            {formatChartMoney(amount, currency)}
+          </p>
+          {top.length === 0 ? (
+            <p className="mt-auto text-sm text-muted-foreground">
+              {tCharts("nothingToShow")}
+            </p>
+          ) : (
+            <ul className="mt-auto space-y-1.5">
+              {top.map((item) => (
+                <li
+                  key={`${item.id ?? item.name}-${item.amount}`}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span className="truncate text-muted-foreground">
+                    {item.name}
+                  </span>
+                  <span
                     className={cn(
-                      "flex items-center justify-between gap-3 text-sm",
-                      index < top.length - 1 && "border-b border-border/40 pb-2",
+                      "shrink-0 font-medium tabular-nums",
+                      amountClass,
                     )}
                   >
-                    <span className="truncate text-muted-foreground">
-                      {item.name}
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 font-medium tabular-nums",
-                        amountClass,
-                      )}
-                    >
-                      {formatChartMoney(item.amount, currency)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                    {formatChartMoney(item.amount, currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
@@ -212,9 +202,9 @@ export function DebtSummaryCards({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="relative space-y-2">
       {!disableShare ? (
-        <div className="flex justify-end">
+        <div className="absolute top-0 right-0 z-10 -mt-1">
           <ShareChartButton
             title={shareTitle}
             payload={{

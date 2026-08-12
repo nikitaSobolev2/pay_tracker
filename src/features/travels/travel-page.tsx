@@ -308,17 +308,17 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
 
   if (!hasMounted || loading) {
     return (
-      <div className="mx-auto w-full max-w-4xl space-y-4 pb-10">
-        <Skeleton className="h-48 w-full rounded-2xl" />
-        <Skeleton className="h-32 w-full rounded-2xl" />
+      <div className="mx-auto w-full max-w-6xl space-y-4 pb-10">
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-28 w-full rounded-xl" />
       </div>
     );
   }
 
   if (!travel) {
     return (
-      <div className="mx-auto w-full max-w-4xl pb-10">
-        <p className="rounded-2xl border border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+      <div className="mx-auto w-full max-w-6xl pb-10">
+        <p className="rounded-xl border border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
           {t("unavailable")}
         </p>
       </div>
@@ -350,31 +350,62 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 pb-10">
+    <div className="mx-auto w-full max-w-6xl space-y-5 pb-10">
       <header className="space-y-4">
         <PageTitleWithBack fallbackHref="/travels">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-semibold tracking-tight">
-                  {travel.title}
-                </h1>
-                <TravelPhaseBadge phase={travel.phase} />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {formatSchedule(travel.startsAt, travel.endsAt)}
-              </p>
-              {travel.placeLabel ? (
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MapPin className="size-3.5" />
-                  {travel.placeLabel}
-                </p>
-              ) : null}
+            <div className="min-w-0 flex-1 space-y-3">
+              {travel.imageUrl ? (
+                <div className="relative overflow-hidden rounded-xl ring-1 ring-border/50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={travel.imageUrl}
+                    alt=""
+                    className="h-36 w-full object-cover sm:h-44"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 space-y-1 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-2xl font-semibold tracking-tight text-white">
+                        {travel.title}
+                      </h1>
+                      <TravelPhaseBadge phase={travel.phase} />
+                    </div>
+                    <p className="text-xs text-white/80 sm:text-sm">
+                      {formatSchedule(travel.startsAt, travel.endsAt)}
+                    </p>
+                    {travel.placeLabel ? (
+                      <p className="flex items-center gap-1.5 text-xs text-white/75 sm:text-sm">
+                        <MapPin className="size-3.5" />
+                        {travel.placeLabel}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                      {travel.title}
+                    </h1>
+                    <TravelPhaseBadge phase={travel.phase} />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSchedule(travel.startsAt, travel.endsAt)}
+                  </p>
+                  {travel.placeLabel ? (
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="size-3.5" />
+                      {travel.placeLabel}
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
             <Button
               type="button"
               variant="outline"
-              className="h-11 gap-1.5 rounded-xl"
+              className="h-10 gap-1.5 rounded-xl"
               onClick={() => setEditOpen(true)}
             >
               <Pencil className="size-4" />
@@ -382,15 +413,6 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             </Button>
           </div>
         </PageTitleWithBack>
-
-        {travel.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={travel.imageUrl}
-            alt=""
-            className="h-44 w-full rounded-2xl object-cover ring-1 ring-border/50 sm:h-56"
-          />
-        ) : null}
 
         <TravelClocksCard
           placeCity={travel.placeCity}
@@ -429,7 +451,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
               }
             }}
           >
-            <SelectTrigger className="h-11 w-48 rounded-xl">
+            <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-80">
@@ -451,34 +473,32 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         </div>
       </header>
 
-      <TravelTicketsList
-        travelId={travel.id}
-        items={travel.tickets}
-        onChanged={refresh}
-      />
-
-      <TravelPlacesToVisitList
-        travelId={travel.id}
-        items={travel.placesToVisit}
-        onChanged={refresh}
-      />
-
-      <TravelThingsToGrabList
-        travelId={travel.id}
-        items={travel.thingsToGrab}
-        onChanged={refresh}
-      />
-
       {travel.phase === TravelPhase.Prepares ? (
         <TravelPrepareSection travel={travel} onRefresh={refresh} />
       ) : null}
       {travel.phase === TravelPhase.InProgress ? (
-        <TravelInProgressSection travel={travel} />
+        <TravelInProgressSection travel={travel} onRefresh={refresh} />
       ) : null}
       {travel.phase === TravelPhase.Finished ||
       travel.phase === TravelPhase.Failed ? (
         <TravelFinishedSection travel={travel} />
       ) : null}
+
+      <TravelTicketsList
+        travelId={travel.id}
+        items={travel.tickets}
+        onChanged={refresh}
+      />
+      <TravelPlacesToVisitList
+        travelId={travel.id}
+        items={travel.placesToVisit}
+        onChanged={refresh}
+      />
+      <TravelThingsToGrabList
+        travelId={travel.id}
+        items={travel.thingsToGrab}
+        onChanged={refresh}
+      />
 
       <TravelActivityHeatmap travel={travel} />
 

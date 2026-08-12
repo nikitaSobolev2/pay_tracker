@@ -109,7 +109,7 @@ export function MobileNavIsland({ onOpenSearch }: MobileNavIslandProps) {
           </IslandIconButton>
           <IslandLabelButton
             ariaLabel={t("spending")}
-            label={t("spending")}
+            label={activeTravel ? "" : t("spending")}
             onClick={() => openTransactionModal(TransactionFormMode.Spending)}
           >
             <Plus className="size-4 text-rose-400" />
@@ -128,7 +128,7 @@ export function MobileNavIsland({ onOpenSearch }: MobileNavIslandProps) {
           ) : null}
           <IslandLabelButton
             ariaLabel={t("earning")}
-            label={t("earning")}
+            label={activeTravel ? "" : t("earning")}
             onClick={() => openTransactionModal(TransactionFormMode.Earning)}
           >
             <Plus className="size-4 text-emerald-400" />
@@ -365,7 +365,9 @@ function IslandLabelButton({
       )}
     >
       {children}
-      <span className="truncate text-sm font-medium">{label}</span>
+      {label ? (
+        <span className="truncate text-sm font-medium">{label}</span>
+      ) : null}
     </Button>
   );
 }

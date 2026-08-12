@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   createCounterparty,
   listCounterparties,
@@ -90,9 +90,7 @@ export function EventAttendeePicker({
   }
 
   return (
-    <div className="space-y-2">
-      <Label>{t("attendees")}</Label>
-
+    <FormField label={t("attendees")} optional>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -175,7 +173,7 @@ export function EventAttendeePicker({
           ))}
         </div>
       ) : null}
-    </div>
+    </FormField>
   );
 }
 

@@ -44,7 +44,7 @@ export function DateRangeTypeSwitcher({
             <TabsTrigger
               key={option}
               value={option}
-              className="rounded-lg px-2 text-sm font-medium md:min-w-24 md:px-5 md:text-base"
+              className="rounded-xl px-2 text-sm font-medium md:min-w-24 md:px-5 md:text-base"
             >
               {t(option)}
             </TabsTrigger>

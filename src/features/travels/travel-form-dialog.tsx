@@ -13,8 +13,8 @@ import {
 } from "@/components/place-city-country-picker";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -170,22 +170,20 @@ export function TravelFormDialog({
             </DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="travel-title">{t("titleField")}</Label>
+        <ResponsiveDialogBody>
+          <FormField label={t("titleField")} htmlFor="travel-title" required>
             <Input
               id="travel-title"
               value={values.title}
               placeholder={t("titlePlaceholder")}
-              className="h-12 rounded-xl text-base md:h-11"
+              required
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, title: event.target.value }))
               }
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t("date")}</Label>
+          <FormField label={t("date")} required>
             <DateRangeSchedulePicker
               requireEnd
               value={{ startsAt: values.startsAt, endsAt: values.endsAt }}
@@ -203,7 +201,7 @@ export function TravelFormDialog({
               addEndLabel={t("scheduleAddEnd")}
               removeEndLabel={t("scheduleRemoveEnd")}
             />
-          </div>
+          </FormField>
 
           <CoverImageField
             value={values.imageUrl}
@@ -274,15 +272,15 @@ export function TravelFormDialog({
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="travel-housing-entrance">
-                {t("housingEntrance")}
-              </Label>
+            <FormField
+              label={t("housingEntrance")}
+              htmlFor="travel-housing-entrance"
+              optional
+            >
               <Input
                 id="travel-housing-entrance"
                 value={values.housingEntrance}
                 placeholder={t("housingEntrancePlaceholder")}
-                className="h-12 rounded-xl text-base md:h-11"
                 onChange={(event) =>
                   setValues((prev) => ({
                     ...prev,
@@ -290,14 +288,16 @@ export function TravelFormDialog({
                   }))
                 }
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="travel-housing-floor">{t("housingFloor")}</Label>
+            </FormField>
+            <FormField
+              label={t("housingFloor")}
+              htmlFor="travel-housing-floor"
+              optional
+            >
               <Input
                 id="travel-housing-floor"
                 value={values.housingFloor}
                 placeholder={t("housingFloorPlaceholder")}
-                className="h-12 rounded-xl text-base md:h-11"
                 onChange={(event) =>
                   setValues((prev) => ({
                     ...prev,
@@ -305,16 +305,16 @@ export function TravelFormDialog({
                   }))
                 }
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="travel-housing-apartment">
-                {t("housingApartment")}
-              </Label>
+            </FormField>
+            <FormField
+              label={t("housingApartment")}
+              htmlFor="travel-housing-apartment"
+              optional
+            >
               <Input
                 id="travel-housing-apartment"
                 value={values.housingApartment}
                 placeholder={t("housingApartmentPlaceholder")}
-                className="h-12 rounded-xl text-base md:h-11"
                 onChange={(event) =>
                   setValues((prev) => ({
                     ...prev,
@@ -322,7 +322,7 @@ export function TravelFormDialog({
                   }))
                 }
               />
-            </div>
+            </FormField>
           </div>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>

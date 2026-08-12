@@ -1,7 +1,7 @@
 "use client";
 
-import { File, FileText, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { Plus, Ticket } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,12 +17,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -44,7 +41,6 @@ import {
   removeTicketFromCache,
   upsertTicketInCache,
 } from "@/stores/travel-cache.store";
-import { cn } from "@/lib/utils";
 import type { TravelTicketDto } from "@/server/services/travel-service.types";
 
 import {
@@ -52,10 +48,7 @@ import {
   TravelSectionHeader,
 } from "./travel-section-card";
 import { TravelTicketAiReviewDialog } from "./travel-ticket-ai-review-dialog";
-import {
-  ticketPreviewKind,
-  type TicketPreviewKind,
-} from "./travel-ticket-preview-kind";
+import { TravelTicketPass } from "./travel-ticket-pass";
 import { TravelTicketPreviewDialog } from "./travel-ticket-preview-dialog";
 import {
   canAnalyzeTicketFile,
@@ -203,14 +196,12 @@ export function TravelTicketsList({
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
         <TravelSectionHeader
-          icon={Ticket}
           title={t("tickets")}
           count={items.length > 0 ? String(items.length) : undefined}
           action={
             <Button
               type="button"
               variant="outline"
-              className="h-9 gap-1.5 rounded-lg"
               disabled={uploading || analyzing || savingSegments}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -238,7 +229,7 @@ export function TravelTicketsList({
           ) : (
             <div className="flex flex-col gap-3">
               {items.map((ticket) => (
-                <TicketCard
+                <TravelTicketPass
                   key={ticket.id}
                   ticket={ticket}
                   onOpen={() => setPreview(ticket)}
@@ -424,6 +415,7 @@ async function enqueueTicketRows(
       ticketNumber: segment.ticketNumber,
       flightNumber: segment.flightNumber,
       bookingCode: segment.bookingCode,
+      seat: segment.seat,
       createdAt: now,
       updatedAt: now,
     });
@@ -440,129 +432,6 @@ async function enqueueTicketRows(
       },
     });
   }
-}
-
-function TicketCard({
-  ticket,
-  onOpen,
-  onEdit,
-  onDelete,
-}: {
-  readonly ticket: TravelTicketDto;
-  readonly onOpen: () => void;
-  readonly onEdit: () => void;
-  readonly onDelete: () => void;
-}) {
-  const t = useTranslations("travels");
-  const tCommon = useTranslations("common");
-  const locale = useLocale();
-  const kind = ticketPreviewKind(ticket.contentType);
-
-  return (
-    <div className="relative flex min-h-20 w-full overflow-visible rounded-2xl shadow-[0_6px_20px_oklch(0_0_0/0.07)] sm:aspect-6/1 sm:min-h-28">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onOpen();
-          }
-        }}
-        className={cn(
-          "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-l-2xl border border-r-0 border-border/70 bg-card py-2.5 pl-2.5 pr-1.5 text-left sm:gap-3 sm:py-3 sm:pl-3 sm:pr-2",
-          "transition hover:bg-muted/30",
-          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
-        )}
-      >
-        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground sm:size-12">
-          <TicketThumbnail fileUrl={ticket.fileUrl} kind={kind} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-snug">
-            {ticket.title}
-          </p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {ticketCardSubtitle(ticket, kind, locale, t)}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8 rounded-lg"
-            aria-label={tCommon("edit")}
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit();
-            }}
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8 rounded-lg text-destructive"
-            aria-label={t("ticketDelete")}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={t("ticketOpen")}
-        className={cn(
-          "relative flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch rounded-r-2xl bg-sky-600 px-1 text-white sm:w-28 sm:gap-1.5 md:w-40",
-          "transition hover:bg-sky-500",
-          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50",
-        )}
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-0 top-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card sm:size-3.5"
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 size-2.5 -translate-x-1/2 translate-y-1/2 rounded-full bg-card sm:size-3.5"
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute bottom-1.5 left-0 top-1.5 w-0 -translate-x-1/2 border-l-2 border-dashed border-card sm:bottom-2 sm:top-2"
-        />
-        <Ticket className="size-3.5 sm:size-5" />
-        <span className="text-[10px] font-semibold leading-none sm:text-sm">
-          {t("ticketOpen")}
-        </span>
-      </button>
-    </div>
-  );
-}
-
-function TicketThumbnail({
-  fileUrl,
-  kind,
-}: {
-  readonly fileUrl: string;
-  readonly kind: TicketPreviewKind;
-}) {
-  if (kind === "image") {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={fileUrl} alt="" className="size-full object-cover" />;
-  }
-  if (kind === "pdf") {
-    return <FileText className="size-5" />;
-  }
-  return <File className="size-5" />;
 }
 
 function TicketTitleDialog({
@@ -634,14 +503,19 @@ function TicketTitleDialog({
             <DialogTitle>{t("ticketEditTitle")}</DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-2">
-          <Label htmlFor="travel-ticket-title">{t("ticketTitle")}</Label>
-          <Input
-            id="travel-ticket-title"
-            value={title}
-            className="h-12 rounded-xl text-base md:h-11"
-            onChange={(event) => setTitle(event.target.value)}
-          />
+        <ResponsiveDialogBody>
+          <FormField
+            label={t("ticketTitle")}
+            htmlFor="travel-ticket-title"
+            required
+          >
+            <Input
+              id="travel-ticket-title"
+              value={title}
+              required
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </FormField>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button
@@ -665,51 +539,4 @@ function TicketTitleDialog({
       </ResponsiveDialogContent>
     </Dialog>
   );
-}
-
-function ticketCardSubtitle(
-  ticket: TravelTicketDto,
-  kind: TicketPreviewKind,
-  locale: string,
-  t: ReturnType<typeof useTranslations<"travels">>,
-): string {
-  const route =
-    ticket.origin && ticket.destination
-      ? `${ticket.origin} → ${ticket.destination}`
-      : ticket.origin ?? ticket.destination;
-  const when = formatTicketWhen(ticket.departsAt, locale);
-  const parts = [route, ticket.flightNumber, when].filter(Boolean);
-  if (parts.length > 0) {
-    return parts.join(" · ");
-  }
-  return `${ticketTypeLabel(kind, t)} · ${ticket.fileName}`;
-}
-
-function formatTicketWhen(iso: string | null, locale: string): string | null {
-  if (!iso) {
-    return null;
-  }
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return date.toLocaleString(locale, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function ticketTypeLabel(
-  kind: TicketPreviewKind,
-  t: ReturnType<typeof useTranslations<"travels">>,
-): string {
-  if (kind === "image") {
-    return t("ticketTypeImage");
-  }
-  if (kind === "pdf") {
-    return t("ticketTypePdf");
-  }
-  return t("ticketTypeFile");
 }

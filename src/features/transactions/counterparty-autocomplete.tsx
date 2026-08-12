@@ -9,6 +9,7 @@ import {
   listCounterparties,
   type CounterpartyDto,
 } from "@/lib/api/counterparties";
+import { FIELD_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
 import type { TransactionKind } from "@/types/enums";
@@ -112,7 +113,7 @@ export function CounterpartyAutocomplete({
     <div className={cn("space-y-2", className)}>
       <div className="relative">
         <Input
-          className="h-12 w-full rounded-xl text-base md:h-11"
+          className={FIELD_CLASS}
           value={value}
           placeholder={placeholder}
           tabIndex={inactive ? -1 : undefined}

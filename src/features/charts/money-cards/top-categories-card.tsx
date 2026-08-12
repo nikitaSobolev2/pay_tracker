@@ -13,11 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryChildrenDetails } from "@/features/charts/category-children-details";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
+import { BENTO_CHART_CLASS } from "@/lib/bento";
 import {
   categorySliceFill,
   sliceIdentityKey,
 } from "@/lib/category-chart-style";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import type { CategorySlice } from "@/server/services/stats-service.types";
 import { TransactionType } from "@/types/enums";
 
@@ -100,7 +102,7 @@ export function TopCategoriesCard({
       contentClassName="min-h-0"
       bleed
       skeleton={
-        <Skeleton className="mx-2 mb-2 min-h-56 w-[calc(100%-1rem)] flex-1" />
+        <Skeleton className={cn("mx-2 mb-2 w-[calc(100%-1rem)]", BENTO_CHART_CLASS)} />
       }
     >
       {data.length === 0 ? (
@@ -108,7 +110,7 @@ export function TopCategoriesCard({
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <div className="relative min-h-56 w-full flex-1">
+        <div className={cn("relative w-full", BENTO_CHART_CLASS)}>
           <ChartContainer
             config={chartConfig}
             className="absolute inset-0 aspect-auto h-full w-full px-2 pb-2"

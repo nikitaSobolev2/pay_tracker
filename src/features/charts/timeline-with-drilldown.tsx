@@ -61,7 +61,7 @@ export function TimelineWithDrilldown({
   filters,
   disableShare = false,
   shareId,
-  drilldownLayout = "side",
+  drilldownLayout = "below",
 }: TimelineWithDrilldownProps) {
   const t = useTranslations("home");
   const tCharts = useTranslations("charts");
@@ -175,28 +175,23 @@ export function TimelineWithDrilldown({
     : "";
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3",
-        !stackDrilldown && "lg:flex-row lg:items-stretch",
-        selectedBucket && "rounded-2xl bg-muted/35 p-3",
-      )}
-    >
+    <div className={cn("flex flex-col gap-3")}>
       <div
         className={cn(
-          "flex min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
-          stackDrilldown
-            ? "w-full"
-            : selectedBucket
+          "w-full min-w-0",
+          !stackDrilldown &&
+            "flex transition-[flex-basis,max-width,width] duration-500 ease-out",
+          !stackDrilldown &&
+            (selectedBucket
               ? "lg:basis-1/2 lg:max-w-[50%]"
-              : "lg:basis-full lg:max-w-full",
+              : "lg:basis-full lg:max-w-full"),
         )}
       >
         <StatCard
           title={title}
           loading={loading}
           bleed
-          className="h-full min-w-0 flex-1"
+          className={cn(!stackDrilldown && "h-full flex-1")}
           sharePayload={
             disableShare || loading || points.length === 0
               ? null
@@ -211,13 +206,13 @@ export function TimelineWithDrilldown({
           }
         >
           {data.length === 0 ? (
-            <div className="flex min-h-56 flex-1 items-center justify-center text-sm text-muted-foreground">
+            <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">
               {tCharts("noTransactions")}
             </div>
           ) : (
             <div
               className={cn(
-                "relative -mb-2 min-h-56 flex-1",
+                "relative -mb-2 h-56 w-full",
                 selectedBucket && "mb-0",
               )}
             >

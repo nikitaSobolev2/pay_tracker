@@ -7,6 +7,12 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DeviceBezelRail,
+  ObjectCard,
+  ObjectCardBody,
+  OBJECT_STACK_CLASS,
+} from "@/components/ui/object-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { authClient } from "@/lib/auth-client";
@@ -87,7 +93,7 @@ export function DevicesSessionsList() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className={OBJECT_STACK_CLASS}>
           <Skeleton className="h-28 w-full rounded-2xl" />
           <Skeleton className="h-28 w-full rounded-2xl" />
         </div>
@@ -96,7 +102,7 @@ export function DevicesSessionsList() {
           {t("noSessions")}
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className={OBJECT_STACK_CLASS}>
           {sessions.map((session) => {
             const isCurrent =
               session.token === currentToken ||
@@ -111,72 +117,72 @@ export function DevicesSessionsList() {
             });
 
             return (
-              <li
-                key={session.id}
-                className="rounded-2xl border border-border/60 bg-card/40 p-4 sm:p-5"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-base font-semibold tracking-tight">
-                        {deviceLabel}
-                      </p>
-                      {isCurrent ? (
-                        <Badge variant="secondary">{t("currentSession")}</Badge>
-                      ) : null}
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          active
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {active ? t("statusActive") : t("statusOffline")}
-                      </Badge>
+              <li key={session.id}>
+                <ObjectCard>
+                  <DeviceBezelRail />
+                  <ObjectCardBody className="flex-col items-stretch gap-3 py-3 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold tracking-tight">
+                          {deviceLabel}
+                        </p>
+                        {isCurrent ? (
+                          <Badge variant="secondary">{t("currentSession")}</Badge>
+                        ) : null}
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            active
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {active ? t("statusActive") : t("statusOffline")}
+                        </Badge>
+                      </div>
+
+                      <dl className="grid gap-2 text-xs sm:grid-cols-2 sm:text-sm">
+                        <div>
+                          <dt className="text-muted-foreground">
+                            {t("firstLogin")}
+                          </dt>
+                          <dd className="font-medium">
+                            {formatReadableDateTime(createdAt)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">
+                            {t("lastEnter")}
+                          </dt>
+                          <dd className="font-medium">
+                            {formatReadableDateTime(updatedAt)}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="text-muted-foreground">{t("ipAddress")}</dt>
+                          <dd className="font-medium tabular-nums">
+                            {session.ipAddress || t("unknownIp")}
+                          </dd>
+                        </div>
+                      </dl>
                     </div>
 
-                    <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                      <div>
-                        <dt className="text-muted-foreground">
-                          {t("firstLogin")}
-                        </dt>
-                        <dd className="font-medium">
-                          {formatReadableDateTime(createdAt)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">
-                          {t("lastEnter")}
-                        </dt>
-                        <dd className="font-medium">
-                          {formatReadableDateTime(updatedAt)}
-                        </dd>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <dt className="text-muted-foreground">{t("ipAddress")}</dt>
-                        <dd className="font-medium tabular-nums">
-                          {session.ipAddress || t("unknownIp")}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="h-12 w-full shrink-0 gap-2 rounded-xl text-base sm:h-10 sm:w-auto sm:text-sm"
-                    disabled={isCurrent || revokingToken === session.token}
-                    onClick={() => void handleRevoke(session.token)}
-                  >
-                    {revokingToken === session.token ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Trash2 data-icon="inline-start" />
-                    )}
-                    {t("terminate")}
-                  </Button>
-                </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-11 w-full shrink-0 gap-2 rounded-xl sm:h-10 sm:w-auto"
+                      disabled={isCurrent || revokingToken === session.token}
+                      onClick={() => void handleRevoke(session.token)}
+                    >
+                      {revokingToken === session.token ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Trash2 data-icon="inline-start" />
+                      )}
+                      {t("terminate")}
+                    </Button>
+                  </ObjectCardBody>
+                </ObjectCard>
               </li>
             );
           })}

@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { LocaleSelect } from "@/components/locale-select";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -33,6 +33,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { getClientCurrencies } from "@/lib/currencies";
 import { persistPreferredLocale } from "@/lib/locale-preference";
+import { BENTO_LABEL_CLASS, FIELD_SELECT_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 import { AppLocale, AppTheme } from "@/types/enums";
 
@@ -154,10 +155,10 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl pb-10">
-      <header className="mb-10">
+      <header className="mb-6">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {user?.username}
             {user?.email ? (
               <span className="text-muted-foreground/80"> · {user.email}</span>
@@ -251,22 +252,34 @@ export function SettingsPage() {
 
         <SettingsZone title={t("changePassword")}>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label={t("currentPassword")}>
+            <FormField
+              label={t("currentPassword")}
+              htmlFor="settings-current-password"
+              required
+            >
               <Input
+                id="settings-current-password"
                 type="password"
                 className={controlClassName}
                 value={currentPassword}
+                required
                 onChange={(event) => setCurrentPassword(event.target.value)}
               />
-            </Field>
-            <Field label={t("newPassword")}>
+            </FormField>
+            <FormField
+              label={t("newPassword")}
+              htmlFor="settings-new-password"
+              required
+            >
               <Input
+                id="settings-new-password"
                 type="password"
                 className={controlClassName}
                 value={newPassword}
+                required
                 onChange={(event) => setNewPassword(event.target.value)}
               />
-            </Field>
+            </FormField>
           </div>
           <Button
             className={cn(actionButtonClassName, "mt-6")}
@@ -334,11 +347,10 @@ export function SettingsPage() {
   );
 }
 
-const controlClassName =
-  "h-11 w-full rounded-xl text-base data-[size=default]:h-11 md:text-sm";
+const controlClassName = FIELD_SELECT_CLASS;
 
 const actionButtonClassName =
-  "h-14 w-full rounded-xl text-base font-medium md:h-12";
+  "h-11 w-full rounded-xl text-base font-medium";
 
 const THEME_ITEMS = [
   { value: AppTheme.Light, label: "Light" },
@@ -361,10 +373,11 @@ function SettingsZone({
   readonly danger?: boolean;
 }) {
   return (
-    <section className="py-8 first:pt-2 last:pb-0">
+    <section className="py-5 first:pt-2 last:pb-0">
       <h2
         className={cn(
-          "mb-5 text-lg font-semibold tracking-tight",
+          BENTO_LABEL_CLASS,
+          "mb-4",
           danger && "text-destructive",
         )}
       >
@@ -382,20 +395,15 @@ function Field({
   readonly label: string;
   readonly children: ReactNode;
 }) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  );
+  return <FormField label={label}>{children}</FormField>;
 }
 
 function SettingsPageSkeleton({ title }: { readonly title: string }) {
   return (
     <div className="mx-auto w-full max-w-2xl pb-10">
-      <header className="mb-10">
+      <header className="mb-6">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
           <Skeleton className="mt-2 h-5 w-48 max-w-full sm:h-6 sm:w-64" />
         </PageTitleWithBack>
       </header>

@@ -10,8 +10,14 @@ import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  FolderTabRail,
+  ObjectCard,
+  ObjectCardBody,
+  OBJECT_STACK_CLASS,
+} from "@/components/ui/object-card";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -292,13 +298,13 @@ export function CategoriesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 pb-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {t("title")}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -334,7 +340,7 @@ export function CategoriesPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
+      <section>
         <CategoriesListContent
           loading={loading}
           categories={visibleCategories}
@@ -368,13 +374,12 @@ export function CategoriesPage() {
             <div className="pb-3" />
           </ResponsiveDialogHeader>
 
-          <ResponsiveDialogBody className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t("titleField")}</Label>
+          <ResponsiveDialogBody>
+            <FormField label={t("titleField")} required>
               <Input
-                className="h-12 rounded-xl text-base md:h-11"
                 value={draftTitle}
                 autoFocus
+                required
                 onChange={(event) => setDraftTitle(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -383,19 +388,19 @@ export function CategoriesPage() {
                   }
                 }}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("keywords")}</Label>
+            </FormField>
+            <FormField
+              label={t("keywords")}
+              optional
+              hint={t("keywordsHint")}
+            >
               <Input
-                className="h-12 rounded-xl text-base md:h-11"
                 value={draftKeywords}
-                placeholder={t("keywordsHint")}
                 onChange={(event) => setDraftKeywords(event.target.value)}
               />
-            </div>
+            </FormField>
             {dialogMode === "create" ? (
-              <div className="space-y-2">
-                <Label>{t("typeField")}</Label>
+              <FormField label={t("typeField")} required>
                 <Select
                   value={draftType}
                   items={typeSelectItems}
@@ -420,10 +425,9 @@ export function CategoriesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </FormField>
             ) : null}
-            <div className="space-y-2">
-              <Label>{t("parentCategory")}</Label>
+            <FormField label={t("parentCategory")} optional>
               <Select
                 value={draftParentId ?? NO_PARENT_VALUE}
                 items={parentSelectItems}
@@ -446,14 +450,14 @@ export function CategoriesPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           </ResponsiveDialogBody>
 
           <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+              className="h-11 w-full rounded-xl text-base sm:w-auto"
               disabled={saving}
               onClick={closeDialog}
             >
@@ -461,7 +465,7 @@ export function CategoriesPage() {
             </Button>
             <Button
               type="button"
-              className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+              className="h-11 w-full rounded-xl text-base sm:w-auto"
               disabled={saving || !draftTitle.trim()}
               onClick={() => void saveDialog()}
             >
@@ -533,18 +537,9 @@ function CategoriesListContent({
 
   if (loading) {
     return (
-      <div className="space-y-0 divide-y divide-border/50">
+      <div className={OBJECT_STACK_CLASS}>
         {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-56" />
-            </div>
-            <Skeleton className="h-11 w-full sm:h-9 sm:w-24" />
-          </div>
+          <Skeleton key={index} className="h-24 w-full rounded-2xl" />
         ))}
       </div>
     );
@@ -568,15 +563,17 @@ function CategoriesListContent({
   }
 
   return (
-    <ul className="divide-y divide-border/50">
+    <ul className={OBJECT_STACK_CLASS}>
       {categories.map((category) => {
         const activity = activityById.get(category.id) ?? null;
         const transactionsHref = `/transactions?type=${encodeURIComponent(category.type)}&categoryIds=${encodeURIComponent(category.id)}&dateRangeType=all_time`;
         return (
-          <li
-            key={category.id}
-            className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          >
+          <li key={category.id}>
+            <ObjectCard>
+              <FolderTabRail
+                earning={category.type === TransactionType.Earning}
+              />
+              <ObjectCardBody className="flex-col items-stretch sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Link
@@ -655,6 +652,8 @@ function CategoriesListContent({
                 {tCommon("delete")}
               </Button>
             </div>
+              </ObjectCardBody>
+            </ObjectCard>
           </li>
         );
       })}

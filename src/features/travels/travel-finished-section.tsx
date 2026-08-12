@@ -15,6 +15,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import { listTransactions } from "@/lib/api/transactions";
 import { formatChartMoney, toDecimal } from "@/lib/money";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
@@ -144,7 +145,7 @@ export function TravelFinishedSection({
       {dayBars.length > 0 ? (
         <Card className="border-border/60 shadow-none">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className={BENTO_LABEL_CLASS}>
               {t("dailySpend")}
             </CardTitle>
           </CardHeader>

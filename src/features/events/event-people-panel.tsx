@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  ObjectCard,
+  ObjectCardBody,
+  ObjectCardCopy,
+  OBJECT_STACK_CLASS,
+  PassAvatar,
+  PassStripeRail,
+} from "@/components/ui/object-card";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -38,6 +46,7 @@ import {
 } from "@/lib/api/events";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import type {
   EventAttendeeDto,
   EventPaymentDto,
@@ -102,7 +111,7 @@ export function EventPeoplePanel({
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="text-base">{t("attendeesTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("attendeesTitle")}</CardTitle>
         <CardAction>
           <span className="text-sm text-muted-foreground tabular-nums">
             {event.attendees.length}
@@ -113,7 +122,7 @@ export function EventPeoplePanel({
         {event.attendees.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("attendeesEmpty")}</p>
         ) : (
-          <ul className="divide-y divide-border/50 rounded-xl border border-border/60">
+          <ul className={OBJECT_STACK_CLASS}>
             {event.attendees.map((attendee) => {
               const balance = balanceByAttendee.get(attendee.id);
               const payments = paymentsByAttendee.get(attendee.id) ?? [];
@@ -240,75 +249,70 @@ function PersonRow({
   const paidAmount = Number(paid);
 
   return (
-    <li
-      className={cn(
-        "px-3 py-2.5 first:rounded-t-xl last:rounded-b-xl",
-        hasPaidShare && "bg-emerald-500/5",
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Same width for every row so names stay aligned when some have no payments. */}
-        <div className="flex size-8 shrink-0 items-center justify-center">
-          {canManagePayments && hasPayments ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-lg"
-              aria-label={t("paymentsHistory")}
-              aria-expanded={expanded}
-              onClick={() => setExpanded((current) => !current)}
-            >
-              <ChevronDown
-                className={cn(
-                  "size-4 transition-transform",
-                  expanded && "rotate-180",
-                )}
-              />
-            </Button>
-          ) : null}
-        </div>
-        <span className="min-w-0 flex-1 truncate font-medium">
-          {attendee.name}
-        </span>
-        {hasPaidShare ? (
-          <CheckCircle2
-            className="size-4 shrink-0 text-emerald-400"
-            aria-label={t("paidUp")}
+    <li>
+      <ObjectCard>
+        <PassStripeRail seed={attendee.id} />
+        <ObjectCardBody className="flex-wrap">
+          <PassAvatar name={attendee.name} />
+          <ObjectCardCopy
+            title={attendee.name}
+            meta={
+              paidAmount > 0
+                ? formatMoney(paid, event.currency)
+                : undefined
+            }
           />
-        ) : null}
-        {paidAmount > 0 ? (
-          <span className="shrink-0 text-sm font-semibold tabular-nums">
-            {formatMoney(paid, event.currency)}
-          </span>
-        ) : null}
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          <StatusToggle
-            attendee={attendee}
-            disabled={busy || !canEdit}
-            onToggle={onToggleStatus}
-          />
-          {canManagePayments ? (
-            <AddPaymentButton attendeeId={attendee.id} />
+          {hasPaidShare ? (
+            <CheckCircle2
+              className="size-4 shrink-0 text-emerald-400"
+              aria-label={t("paidUp")}
+            />
           ) : null}
-          {canRemove ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-lg text-destructive"
-              aria-label={t("attendeeRemove")}
-              disabled={busy}
-              onClick={onRemove}
-            >
-              <UserMinus className="size-4" />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {canManagePayments && hasPayments ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-xl"
+                aria-label={t("paymentsHistory")}
+                aria-expanded={expanded}
+                onClick={() => setExpanded((current) => !current)}
+              >
+                <ChevronDown
+                  className={cn(
+                    "size-4 transition-transform",
+                    expanded && "rotate-180",
+                  )}
+                />
+              </Button>
+            ) : null}
+            <StatusToggle
+              attendee={attendee}
+              disabled={busy || !canEdit}
+              onToggle={onToggleStatus}
+            />
+            {canManagePayments ? (
+              <AddPaymentButton attendeeId={attendee.id} />
+            ) : null}
+            {canRemove ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-xl text-destructive"
+                aria-label={t("attendeeRemove")}
+                disabled={busy}
+                onClick={onRemove}
+              >
+                <UserMinus className="size-4" />
+              </Button>
+            ) : null}
+          </div>
+        </ObjectCardBody>
+      </ObjectCard>
       {canManagePayments && expanded && hasPayments ? (
-        <ul className="mt-2 space-y-1 border-l border-border/60 pl-3 ml-8">
+        <ul className="mt-1.5 ml-4 space-y-1 border-l border-dashed border-border/60 pl-3">
           {payments.map((payment) => (
             <PaymentRow key={payment.id} payment={payment} />
           ))}
@@ -385,7 +389,7 @@ function PaymentRow({ payment }: { readonly payment: EventPaymentDto }) {
       {editing ? (
         <Input
           inputMode="numeric"
-          className="h-9 w-24 rounded-lg"
+          className="h-9 w-24 rounded-xl"
           value={amount}
           onChange={(changeEvent) =>
             setAmount(changeEvent.target.value.replace(/\D/g, ""))
@@ -404,7 +408,7 @@ function PaymentRow({ payment }: { readonly payment: EventPaymentDto }) {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 rounded-lg"
+              className="size-9 rounded-xl"
               aria-label={tCommon("save")}
               disabled={rowBusy || !amount}
               onClick={() =>
@@ -419,7 +423,7 @@ function PaymentRow({ payment }: { readonly payment: EventPaymentDto }) {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 rounded-lg"
+              className="size-9 rounded-xl"
               aria-label={tCommon("cancel")}
               disabled={rowBusy}
               onClick={() => {
@@ -435,7 +439,7 @@ function PaymentRow({ payment }: { readonly payment: EventPaymentDto }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg"
+            className="size-9 rounded-xl"
             aria-label={tCommon("edit")}
             onClick={() => setEditing(true)}
           >
@@ -446,7 +450,7 @@ function PaymentRow({ payment }: { readonly payment: EventPaymentDto }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8 rounded-lg text-destructive"
+          className="size-9 rounded-xl text-destructive"
           aria-label={tCommon("delete")}
           disabled={rowBusy}
           onClick={() =>
@@ -527,7 +531,7 @@ function AddPaymentButton({ attendeeId }: { readonly attendeeId: string }) {
         <div className="flex gap-2">
           <Input
             inputMode="numeric"
-            className="h-9 rounded-lg"
+            className="h-9 rounded-xl"
             value={amount}
             onChange={(changeEvent) =>
               setAmount(toWholeDigits(changeEvent.target.value))
@@ -535,7 +539,7 @@ function AddPaymentButton({ attendeeId }: { readonly attendeeId: string }) {
           />
           <Button
             type="button"
-            className="h-9 shrink-0 rounded-lg"
+            className="h-9 shrink-0 rounded-xl"
             disabled={saving || !amount.trim()}
             onClick={() => void submit()}
           >

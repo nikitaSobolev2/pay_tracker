@@ -53,7 +53,7 @@ export function TimezoneCombobox({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "h-12 w-full justify-between rounded-xl px-3 text-base font-normal md:h-11 md:text-sm",
+              "h-11 w-full justify-between rounded-xl px-3 text-base font-normal md:text-sm",
               className,
             )}
           />

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -189,7 +189,7 @@ function TravelAiAnalyzeDialog({
           <div className="pb-3" />
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody className="space-y-4">
+        <ResponsiveDialogBody>
           {running ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <div
@@ -208,10 +208,11 @@ function TravelAiAnalyzeDialog({
             </div>
           ) : (
             <>
-              <div className="space-y-2">
-                <Label id="travel-ai-response-locale-label">
-                  {t("aiLanguage")}
-                </Label>
+              <FormField
+                label={t("aiLanguage")}
+                labelId="travel-ai-response-locale-label"
+                required
+              >
                 <div
                   role="group"
                   aria-labelledby="travel-ai-response-locale-label"
@@ -238,15 +239,14 @@ function TravelAiAnalyzeDialog({
                     RU
                   </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{t("aiContext")}</Label>
+              </FormField>
+              <FormField label={t("aiContext")} optional>
                 <Textarea
                   value={contextMessage}
                   className="min-h-28 rounded-xl text-base md:text-sm"
                   onChange={(event) => setContextMessage(event.target.value)}
                 />
-              </div>
+              </FormField>
             </>
           )}
         </ResponsiveDialogBody>
@@ -255,7 +255,7 @@ function TravelAiAnalyzeDialog({
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={running}
             onClick={() => onOpenChange(false)}
           >

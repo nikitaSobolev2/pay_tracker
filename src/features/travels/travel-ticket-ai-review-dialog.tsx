@@ -6,8 +6,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -27,6 +27,7 @@ type TicketSegmentDraft = {
   ticketNumber: string;
   flightNumber: string;
   bookingCode: string;
+  seat: string;
 };
 
 type TravelTicketAiReviewDialogProps = {
@@ -80,7 +81,7 @@ export function TravelTicketAiReviewDialog({
             </p>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-4">
+        <ResponsiveDialogBody>
           {drafts.map((draft, index) => (
             <SegmentEditor
               key={draft.key}
@@ -173,6 +174,7 @@ function SegmentEditor({
         id={`${draft.key}-title`}
         label={t("ticketTitle")}
         value={draft.title}
+        required
         onChange={(title) => patch({ title })}
       />
       <div className="grid grid-cols-2 gap-2">
@@ -180,12 +182,14 @@ function SegmentEditor({
           id={`${draft.key}-origin`}
           label={t("ticketOrigin")}
           value={draft.origin}
+          optional
           onChange={(origin) => patch({ origin })}
         />
         <Field
           id={`${draft.key}-destination`}
           label={t("ticketDestination")}
           value={draft.destination}
+          optional
           onChange={(destination) => patch({ destination })}
         />
       </div>
@@ -195,6 +199,7 @@ function SegmentEditor({
           label={t("ticketDepartsAt")}
           type="datetime-local"
           value={draft.departsAt}
+          optional
           onChange={(departsAt) => patch({ departsAt })}
         />
         <Field
@@ -202,25 +207,38 @@ function SegmentEditor({
           label={t("ticketArrivesAt")}
           type="datetime-local"
           value={draft.arrivesAt}
+          optional
           onChange={(arrivesAt) => patch({ arrivesAt })}
         />
       </div>
-      <Field
-        id={`${draft.key}-flight`}
-        label={t("ticketFlightNumber")}
-        value={draft.flightNumber}
-        onChange={(flightNumber) => patch({ flightNumber })}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <Field
+          id={`${draft.key}-flight`}
+          label={t("ticketFlightNumber")}
+          value={draft.flightNumber}
+          optional
+          onChange={(flightNumber) => patch({ flightNumber })}
+        />
+        <Field
+          id={`${draft.key}-seat`}
+          label={t("ticketSeat")}
+          value={draft.seat}
+          optional
+          onChange={(seat) => patch({ seat })}
+        />
+      </div>
       <Field
         id={`${draft.key}-number`}
         label={t("ticketNumber")}
         value={draft.ticketNumber}
+        optional
         onChange={(ticketNumber) => patch({ ticketNumber })}
       />
       <Field
         id={`${draft.key}-booking`}
         label={t("ticketBookingCode")}
         value={draft.bookingCode}
+        optional
         onChange={(bookingCode) => patch({ bookingCode })}
       />
     </div>
@@ -233,24 +251,32 @@ function Field({
   value,
   onChange,
   type = "text",
+  required = false,
+  optional = false,
 }: {
   readonly id: string;
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly type?: "text" | "datetime-local";
+  readonly required?: boolean;
+  readonly optional?: boolean;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <FormField
+      label={label}
+      htmlFor={id}
+      required={required}
+      optional={optional}
+    >
       <Input
         id={id}
         type={type}
         value={value}
+        required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-xl"
       />
-    </div>
+    </FormField>
   );
 }
 
@@ -265,6 +291,7 @@ function toDraft(segment: AnalyzedTicketSegment): TicketSegmentDraft {
     ticketNumber: segment.ticketNumber ?? "",
     flightNumber: segment.flightNumber ?? "",
     bookingCode: segment.bookingCode ?? "",
+    seat: segment.seat ?? "",
   };
 }
 
@@ -278,6 +305,7 @@ function fromDraft(draft: TicketSegmentDraft): AnalyzedTicketSegment {
     ticketNumber: emptyToNull(draft.ticketNumber),
     flightNumber: emptyToNull(draft.flightNumber),
     bookingCode: emptyToNull(draft.bookingCode),
+    seat: emptyToNull(draft.seat),
   };
 }
 
@@ -292,6 +320,7 @@ function emptyDraft(): TicketSegmentDraft {
     ticketNumber: "",
     flightNumber: "",
     bookingCode: "",
+    seat: "",
   };
 }
 

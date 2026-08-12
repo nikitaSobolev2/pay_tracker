@@ -14,7 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import {
   Popover,
   PopoverContent,
@@ -184,8 +184,7 @@ export function PlaceCityCountryPicker({
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="space-y-2">
-        <Label>{t("placeCountry")}</Label>
+      <FormField label={t("placeCountry")} optional>
         <SearchSelect
           isMobile={isMobile}
           valueLabel={countryDisplay ?? t("placeCountryPlaceholder")}
@@ -199,10 +198,9 @@ export function PlaceCityCountryPicker({
             onSelect: () => selectCountry(country),
           }))}
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <Label>{t("placeCity")}</Label>
+      <FormField label={t("placeCity")} optional>
         {yandexEnabled && selectedCountry ? (
           <CityRemoteSearchSelect
             isMobile={isMobile}
@@ -236,7 +234,7 @@ export function PlaceCityCountryPicker({
             }))}
           />
         )}
-      </div>
+      </FormField>
 
       {value?.placeLabel || value?.placeCity || countryDisplay ? (
         <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">

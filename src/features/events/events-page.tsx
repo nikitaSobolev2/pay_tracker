@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CalendarDateRail, ObjectCard } from "@/components/ui/object-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
@@ -18,7 +19,6 @@ import {
   type UpdateEventBody,
 } from "@/lib/api/events";
 import { formatMoney } from "@/lib/money";
-import { cn } from "@/lib/utils";
 import type {
   EventDetailResponse,
   EventListItemDto,
@@ -146,13 +146,13 @@ export function EventsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 pb-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {t("title")}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -169,7 +169,7 @@ export function EventsPage() {
       {loading ? (
         <EventListSkeleton />
       ) : events.length === 0 ? (
-        <p className="rounded-2xl border border-border/60 bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl bg-card px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
           {t("empty")}
         </p>
       ) : (
@@ -230,12 +230,8 @@ function EventCard({
   const formatSchedule = useEventScheduleLabel();
 
   return (
-    <article
-      className={cn(
-        "flex overflow-hidden rounded-2xl border border-border/60 bg-card/40",
-        "transition-colors hover:border-border hover:bg-card/60",
-      )}
-    >
+    <ObjectCard className="min-h-0">
+      <CalendarDateRail iso={event.occursAt} />
       <Link
         href={`/event/${event.id}`}
         className="flex min-w-0 flex-1 gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -245,17 +241,12 @@ function EventCard({
           <img
             src={event.imageUrl}
             alt=""
-            className="hidden w-28 shrink-0 object-cover sm:block"
+            className="hidden w-24 shrink-0 object-cover sm:block"
             loading="lazy"
           />
-        ) : (
-          <div
-            aria-hidden
-            className="hidden w-1.5 shrink-0 bg-linear-to-b from-primary/50 to-primary/10 sm:block"
-          />
-        )}
+        ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-4">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="min-w-0 text-lg font-semibold tracking-tight">
               {event.title}
@@ -293,7 +284,7 @@ function EventCard({
         </div>
       </Link>
 
-      <div className="flex shrink-0 items-start border-l border-border/50 p-2 sm:p-3">
+      <div className="flex shrink-0 items-start p-2 sm:p-3">
         <Button
           type="button"
           variant="ghost"
@@ -307,7 +298,7 @@ function EventCard({
           <Pencil className="size-4" />
         </Button>
       </div>
-    </article>
+    </ObjectCard>
   );
 }
 

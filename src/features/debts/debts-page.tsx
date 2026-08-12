@@ -6,6 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
+import {
+  ObjectCard,
+  PassAvatar,
+  PassStripeRail,
+} from "@/components/ui/object-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CloseDebtDialog,
@@ -63,11 +68,11 @@ export function DebtsPage() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <header>
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -154,7 +159,7 @@ export function DebtsPage() {
 
 function DebtsPageSkeleton() {
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <header>
         <Skeleton className="h-9 w-44" />
         <Skeleton className="mt-2 h-4 w-72 max-w-full" />
@@ -175,7 +180,7 @@ function SummaryCardSkeleton({ tone }: { readonly tone: "owe" | "owed" }) {
   return (
     <article
       className={cn(
-        "rounded-2xl border p-5 sm:p-6",
+        "rounded-xl border p-5 sm:p-6",
         tone === "owe"
           ? "border-rose-400/35 bg-rose-500/8"
           : "border-emerald-400/35 bg-emerald-500/8",
@@ -218,7 +223,7 @@ function PeopleSectionSkeleton() {
         {Array.from({ length: 3 }, (_, index) => (
           <article
             key={`person-skeleton-${index}`}
-            className="flex h-full flex-col rounded-2xl border border-border/60 bg-card/40 p-4 sm:p-5"
+            className="flex flex-col rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-2">
@@ -275,7 +280,7 @@ function SummaryCard({
   return (
     <article
       className={cn(
-        "rounded-2xl border p-5 sm:p-6",
+        "rounded-xl border p-5 sm:p-6",
         tone === "owe"
           ? "border-rose-400/35 bg-rose-500/8"
           : "border-emerald-400/35 bg-emerald-500/8",
@@ -377,92 +382,96 @@ function DebtPeopleSection({
       </div>
 
       {counterparties.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/60 px-5 py-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-xl border border-dashed border-border/60 px-5 py-10 text-center text-sm text-muted-foreground">
           {emptyLabel}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {counterparties.map((person) => (
-            <article
+            <ObjectCard
               key={person.counterpartyId}
-              className="flex h-full flex-col rounded-2xl border border-border/60 bg-card/40 p-4 sm:p-5"
+              className="h-full min-h-0"
             >
-              <Link
-                href={`/debts/${person.counterpartyId}`}
-                className="flex items-start justify-between gap-3 rounded-lg outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold tracking-tight">
-                    {person.name}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {eventsLabel}: {person.eventCount}
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    "shrink-0 text-xl font-semibold tabular-nums",
-                    tone === "owe" ? "text-rose-400" : "text-emerald-400",
-                  )}
+              <PassStripeRail seed={person.counterpartyId} />
+              <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
+                <Link
+                  href={`/debts/${person.counterpartyId}`}
+                  className="flex items-start gap-2.5 rounded-lg outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {formatMoney(
-                    person.totalAllTime.amount,
-                    person.totalAllTime.currency,
-                  )}
-                </p>
-              </Link>
-
-              <dl className="mt-4 space-y-2 border-t border-border/50 pt-3 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{monthLabel}</dt>
-                  <dd className="tabular-nums">
-                    {formatMoney(
-                      person.totalThisMonth.amount,
-                      person.totalThisMonth.currency,
+                  <PassAvatar name={person.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold tracking-tight">
+                      {person.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {eventsLabel}: {person.eventCount}
+                    </p>
+                  </div>
+                  <p
+                    className={cn(
+                      "shrink-0 text-lg font-semibold tabular-nums",
+                      tone === "owe" ? "text-rose-400" : "text-emerald-400",
                     )}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{allLabel}</dt>
-                  <dd className="font-medium tabular-nums">
+                  >
                     {formatMoney(
                       person.totalAllTime.amount,
                       person.totalAllTime.currency,
                     )}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{avgLabel}</dt>
-                  <dd className="tabular-nums">
-                    {formatMoney(
-                      person.averageAmount.amount,
-                      person.averageAmount.currency,
-                    )}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{frequencyLabel}</dt>
-                  <dd className="tabular-nums">
-                    {formatDays(person.frequencyDays)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">{medianSettleLabel}</dt>
-                  <dd className="tabular-nums">
-                    {formatDays(person.medianSettleDays)}
-                  </dd>
-                </div>
-              </dl>
+                  </p>
+                </Link>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4 h-10 w-full rounded-xl"
-                onClick={() => onCloseDebt(person)}
-              >
-                {closeLabel}
-              </Button>
-            </article>
+                <dl className="mt-4 space-y-2 border-t border-border/50 pt-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{monthLabel}</dt>
+                    <dd className="tabular-nums">
+                      {formatMoney(
+                        person.totalThisMonth.amount,
+                        person.totalThisMonth.currency,
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{allLabel}</dt>
+                    <dd className="font-medium tabular-nums">
+                      {formatMoney(
+                        person.totalAllTime.amount,
+                        person.totalAllTime.currency,
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{avgLabel}</dt>
+                    <dd className="tabular-nums">
+                      {formatMoney(
+                        person.averageAmount.amount,
+                        person.averageAmount.currency,
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{frequencyLabel}</dt>
+                    <dd className="tabular-nums">
+                      {formatDays(person.frequencyDays)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{medianSettleLabel}</dt>
+                    <dd className="tabular-nums">
+                      {formatDays(person.medianSettleDays)}
+                    </dd>
+                  </div>
+                </dl>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 h-10 w-full cursor-pointer rounded-xl"
+                  onClick={() => onCloseDebt(person)}
+                >
+                  {closeLabel}
+                </Button>
+              </div>
+            </ObjectCard>
           ))}
         </div>
       )}

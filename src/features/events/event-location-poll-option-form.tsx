@@ -8,8 +8,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -72,7 +72,7 @@ export function pollOptionToDraft(option: {
 }
 
 const FOOTER_BUTTON_CLASS =
-  "h-12 w-full rounded-xl text-base sm:w-auto md:h-10";
+  "h-11 w-full rounded-xl text-base sm:w-auto";
 
 export function EventLocationPollOptionFields({
   value,
@@ -100,25 +100,23 @@ export function EventLocationPollOptionFields({
 
   return (
     <>
-      <div className="min-w-0 space-y-4 overflow-hidden">
-        <div className="space-y-2">
-          <Label>{t("pollOptionTitle")}</Label>
+      <div className="min-w-0 space-y-3 overflow-hidden">
+        <FormField label={t("pollOptionTitle")} required>
           <Input
             value={value.title}
-            placeholder={t("pollOptionTitle")}
             className={EVENT_CONTROL_CLASS}
+            required
             onChange={(event) => onChange({ title: event.target.value })}
           />
-        </div>
-        <div className="space-y-2">
-          <Label>{t("pollOptionLink")}</Label>
+        </FormField>
+        <FormField label={t("pollOptionLink")} optional>
           <Input
             value={value.link}
-            placeholder={t("pollOptionLink")}
+            placeholder="https://"
             className={EVENT_CONTROL_CLASS}
             onChange={(event) => onChange({ link: event.target.value })}
           />
-        </div>
+        </FormField>
         {value.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -130,8 +128,7 @@ export function EventLocationPollOptionFields({
             }}
           />
         ) : null}
-        <div className="space-y-2">
-          <Label>{t("pollOptionAddress")}</Label>
+        <FormField label={t("pollOptionAddress")} optional>
           <Button
             type="button"
             variant="outline"
@@ -143,7 +140,7 @@ export function EventLocationPollOptionFields({
               {value.address || t("pollOptionAddress")}
             </span>
           </Button>
-        </div>
+        </FormField>
       </div>
 
       {typeof document !== "undefined"
@@ -165,9 +162,10 @@ export function EventLocationPollOptionFields({
                   </ResponsiveDialogHeaderInner>
                   <div className="pb-3" />
                 </ResponsiveDialogHeader>
-                <ResponsiveDialogBody className="space-y-4">
+                <ResponsiveDialogBody>
                   <EventAddressPicker
                     mapActive={addressOpen}
+                    showLabel={false}
                     mapClassName="event-address-picker-map--lg min-h-64 sm:min-h-[min(58svh,36rem)]"
                     value={{
                       address: value.address,

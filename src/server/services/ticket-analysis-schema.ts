@@ -12,10 +12,12 @@ export type ParsedTicketSegment = {
   readonly ticketNumber: string | null;
   readonly flightNumber: string | null;
   readonly bookingCode: string | null;
+  readonly seat: string | null;
 };
 
 const optionalText = z
   .union([z.string(), z.null(), z.undefined()])
+  .optional()
   .transform((value): string | null => {
     if (typeof value !== "string") {
       return null;
@@ -26,6 +28,7 @@ const optionalText = z
 
 const optionalDateTime = z
   .union([z.string(), z.null(), z.undefined()])
+  .optional()
   .transform((value): string | null => {
     if (typeof value !== "string") {
       return null;
@@ -50,6 +53,7 @@ const segmentSchema = z.object({
   ticket_number: optionalText,
   flight_number: optionalText,
   booking_code: optionalText,
+  seat: optionalText,
 });
 
 const responseSchema = z.object({
@@ -90,7 +94,21 @@ function toSegment(
     ticketNumber: row.ticket_number,
     flightNumber,
     bookingCode: row.booking_code,
+    seat: normalizeTicketSeat(row.seat),
   };
+}
+
+export function normalizeTicketSeat(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const stripped = value
+    .replace(/^(место|seat|place|plaza)\s*[:.]?\s*/i, "")
+    .trim();
+  if (!stripped) {
+    return null;
+  }
+  return stripped.replace(/[A-Za-z]/g, (letter) => letter.toUpperCase());
 }
 
 export function buildFallbackTitle(

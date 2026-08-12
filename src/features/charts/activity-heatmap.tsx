@@ -64,7 +64,7 @@ export function ActivityHeatmapCard({
   sharedData,
   shareId,
   disableShare = false,
-  drilldownLayout = "side",
+  drilldownLayout = "below",
   weekFlow = "column",
 }: ActivityHeatmapCardProps) {
   const t = useTranslations("charts");
@@ -182,13 +182,7 @@ export function ActivityHeatmapCard({
   const stackDrilldown = drilldownLayout === "below";
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3",
-        !stackDrilldown && "lg:flex-row lg:items-stretch",
-        selected && "rounded-2xl bg-muted/35 p-3",
-      )}
-    >
+    <div className={cn("flex flex-col gap-3")}>
       <div
         className={cn(
           "min-w-0 transition-[flex-basis,max-width,width] duration-500 ease-out",
@@ -215,7 +209,7 @@ export function ActivityHeatmapCard({
           }
           loading={loading}
           skeleton={<HeatmapSkeleton weekFlow={weekFlow} />}
-          className="min-w-0"
+          className="w-full min-w-0"
         >
           {data && data.days.length > 0 ? (
             <TooltipProvider delay={280}>

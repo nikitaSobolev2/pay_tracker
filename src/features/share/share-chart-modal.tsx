@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import {
   ResponsiveDialogBody,
@@ -137,17 +138,14 @@ export function ShareChartModal() {
           <div className="pb-3" />
         </ResponsiveDialogHeader>
 
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium"
-              htmlFor="share-title"
-            >
-              {t("titleOptional")}
-            </label>
+        <ResponsiveDialogBody>
+          <FormField
+            label={t("titleOptional")}
+            htmlFor="share-title"
+            optional
+          >
             <Input
               id="share-title"
-              className="h-12 rounded-xl text-base md:h-11"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               onBlur={() => {
@@ -157,18 +155,15 @@ export function ShareChartModal() {
               maxLength={120}
               disabled={creating || !shareId}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="share-link">
-              {t("link")}
-            </label>
+          <FormField label={t("link")} htmlFor="share-link">
             <div className="flex items-center gap-2">
               <Input
                 id="share-link"
                 readOnly
                 value={creating ? t("creatingLink") : shareUrl}
-                className="h-12 rounded-xl font-mono text-xs md:h-11"
+                className="font-mono text-xs"
               />
               <Button
                 type="button"
@@ -202,14 +197,14 @@ export function ShareChartModal() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">{t("publicHint")}</p>
-          </div>
+          </FormField>
         </ResponsiveDialogBody>
 
         <ResponsiveDialogFooter>
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             onClick={closeShare}
             disabled={publishing}
           >
@@ -217,7 +212,7 @@ export function ShareChartModal() {
           </Button>
           <Button
             type="button"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             onClick={() => {
               void handlePublish();
             }}

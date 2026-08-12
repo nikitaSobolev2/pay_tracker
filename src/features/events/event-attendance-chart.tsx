@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
+import { cn } from "@/lib/utils";
 import { EventAttendanceStatus } from "@/types/enums";
 
 import { useEventContext } from "./event-context";
@@ -25,11 +27,11 @@ export function EventAttendanceCard({
   const uncertainPercent = maxCount > 0 ? (uncertainCount / maxCount) * 100 : 0;
 
   return (
-    <Card className={className}>
+    <Card className={cn(BENTO_CARD_CLASS, className)}>
       <CardHeader>
-        <CardTitle className="text-base">{t("attendanceTitle")}</CardTitle>
+        <CardTitle className={BENTO_LABEL_CLASS}>{t("attendanceTitle")}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-1 flex-col gap-3">
         <div>
           <p className="text-3xl font-semibold tabular-nums">{certainCount}</p>
           <p className="text-sm text-muted-foreground">
@@ -37,7 +39,7 @@ export function EventAttendanceCard({
           </p>
         </div>
         {maxCount > 0 ? (
-          <>
+          <div className="mt-auto space-y-3">
             <div className="space-y-1.5">
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
                 <div className="flex h-full w-full">
@@ -83,9 +85,9 @@ export function EventAttendanceCard({
                 {t("attendanceAllCertain")}
               </p>
             )}
-          </>
+          </div>
         ) : (
-          <p className="text-sm text-muted-foreground">{t("attendeesEmpty")}</p>
+          <p className="mt-auto text-sm text-muted-foreground">{t("attendeesEmpty")}</p>
         )}
       </CardContent>
     </Card>

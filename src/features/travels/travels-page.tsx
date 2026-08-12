@@ -7,6 +7,11 @@ import { toast } from "sonner";
 
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
+import {
+  BoardingStub,
+  ObjectCard,
+  OBJECT_CARD_SHADOW,
+} from "@/components/ui/object-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
@@ -174,11 +179,11 @@ export function TravelsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 pb-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6 pb-10">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleWithBack fallbackHref="/">
-          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
@@ -195,7 +200,7 @@ export function TravelsPage() {
       {loading ? (
         <TravelListSkeleton />
       ) : travels.length === 0 ? (
-        <p className="rounded-2xl border border-border/60 bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl bg-card px-4 py-10 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
           {t("empty")}
         </p>
       ) : (
@@ -254,8 +259,8 @@ function TravelCard({
   const formatSchedule = useTravelScheduleLabel();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/40">
-      <div className="flex">
+    <div className={cn("flex overflow-visible", OBJECT_CARD_SHADOW)}>
+      <ObjectCard className="min-h-0 flex-1 overflow-hidden rounded-r-none border-r-0 shadow-none">
         <Link
           href={`/travels/${travel.id}`}
           className="flex min-w-0 flex-1 gap-3 p-3 sm:p-4"
@@ -310,7 +315,16 @@ function TravelCard({
             <Pencil className="size-4" />
           </Button>
         </div>
-      </div>
+      </ObjectCard>
+      <Link
+        href={`/travels/${travel.id}`}
+        aria-label={travel.title}
+        className="rounded-r-2xl"
+      >
+        <BoardingStub className="h-full rounded-r-2xl border border-l-0 border-border/70">
+          <Plane className="size-3.5 sm:size-4" />
+        </BoardingStub>
+      </Link>
     </div>
   );
 }

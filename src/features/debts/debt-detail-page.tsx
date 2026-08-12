@@ -97,10 +97,10 @@ export function DebtDetailPage({
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6 pb-10">
         <Skeleton className="h-10 w-56" />
-        <Skeleton className="h-36 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-xl" />
         <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
         </div>
       </div>
     );
@@ -160,7 +160,7 @@ export function DebtDetailPage({
         ) : null}
       </header>
 
-      <Card className="rounded-2xl border-border/60 bg-card/50 shadow-none">
+      <Card className="rounded-xl border-border/60 bg-card/50 shadow-none">
         <CardContent className="grid gap-6 p-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
             <p className="text-sm text-muted-foreground">{t("netBalance")}</p>
@@ -259,7 +259,7 @@ export function DebtDetailPage({
         />
       </div>
 
-      <Card className="rounded-2xl border-border/60 shadow-none">
+      <Card className="rounded-xl border-border/60 shadow-none">
         <CardHeader>
           <CardTitle className="text-xl">{t("history")}</CardTitle>
         </CardHeader>
@@ -358,7 +358,7 @@ function DebtDetailTitle({
   const title = (
     <>
       <p className="text-sm text-muted-foreground">{eyebrow}</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
         {name}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">{toneLabel}</p>

@@ -1,18 +1,16 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { CardTitle } from "@/components/ui/card";
+import { BENTO_LABEL_CLASS } from "@/lib/bento";
 
 type TravelSectionHeaderProps = {
-  readonly icon: LucideIcon;
   readonly title: string;
   readonly count?: string;
   readonly action?: ReactNode;
 };
 
 export function TravelSectionHeader({
-  icon: Icon,
   title,
   count,
   action,
@@ -20,18 +18,14 @@ export function TravelSectionHeader({
   return (
     <div
       data-slot="card-header"
-      className="flex flex-col gap-3 border-b border-border/50 px-(--card-spacing) pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+      className="flex flex-col gap-3 px-(--card-spacing) pb-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
     >
-      <CardTitle className="flex min-w-0 items-center gap-2 text-base font-semibold tracking-tight">
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate">{title}</span>
+      <CardTitle className="flex min-w-0 items-baseline gap-2">
+        <span className={BENTO_LABEL_CLASS}>{title}</span>
         {count ? (
-          <Badge
-            variant="secondary"
-            className="rounded-full px-2 text-xs font-medium tabular-nums"
-          >
+          <span className="text-xs tabular-nums text-muted-foreground">
             {count}
-          </Badge>
+          </span>
         ) : null}
       </CardTitle>
       {action ? (
@@ -53,8 +47,8 @@ export function TravelSectionEmpty({
   text,
 }: TravelSectionEmptyProps) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-8 text-center">
-      <Icon className="size-6 text-muted-foreground/50" />
+    <div className="flex flex-col items-center gap-2 rounded-xl px-4 py-8 text-center ring-1 ring-foreground/10">
+      <Icon className="size-5 text-muted-foreground/50" />
       <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );

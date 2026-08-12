@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dropzone } from "@/components/ui/dropzone";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 
 export type CoverImageFieldProps = {
   readonly value: string;
@@ -46,8 +46,7 @@ export function CoverImageField({
   }
 
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
+    <FormField label={label} optional>
       {value ? (
         <div className="relative overflow-hidden rounded-xl border border-border/60">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -79,6 +78,6 @@ export function CoverImageField({
           <span className="text-xs text-muted-foreground">{formatsHint}</span>
         </Dropzone>
       )}
-    </div>
+    </FormField>
   );
 }

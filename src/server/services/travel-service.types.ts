@@ -56,6 +56,7 @@ export type TravelTicketDto = {
   readonly ticketNumber: string | null;
   readonly flightNumber: string | null;
   readonly bookingCode: string | null;
+  readonly seat: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
@@ -68,6 +69,7 @@ export type TravelTicketSegmentFields = {
   readonly ticketNumber?: string | null;
   readonly flightNumber?: string | null;
   readonly bookingCode?: string | null;
+  readonly seat?: string | null;
 };
 
 export type TravelAiReportDto = {

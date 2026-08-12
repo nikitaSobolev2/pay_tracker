@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/features/charts/stat-card";
+import { BENTO_CHART_CLASS } from "@/lib/bento";
 import { formatChartMoney } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 type DualSeriesBarsProps = {
   readonly title: string;
@@ -44,13 +46,13 @@ export function DualSeriesBars({
     <StatCard
       title={title}
       loading={loading}
-      skeleton={<Skeleton className="h-52 w-full" />}
+      skeleton={<Skeleton className={BENTO_CHART_CLASS} />}
       bleed
     >
       {chartData.length === 0 ? (
         <p className="px-6 pb-6 text-sm text-muted-foreground">—</p>
       ) : (
-        <ChartContainer config={config} className="h-56 w-full px-2">
+        <ChartContainer config={config} className={cn(BENTO_CHART_CLASS, "px-2")}>
           <BarChart data={chartData}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="bucket" tickLine={false} axisLine={false} />

@@ -17,6 +17,7 @@ const createBodySchema = z.object({
   ticketNumber: z.string().max(100).nullish(),
   flightNumber: z.string().max(50).nullish(),
   bookingCode: z.string().max(50).nullish(),
+  seat: z.string().max(20).nullish(),
 });
 
 type RouteContext = {
@@ -42,6 +43,7 @@ export async function POST(request: Request, context: RouteContext) {
       ticketNumber: body.ticketNumber,
       flightNumber: body.flightNumber,
       bookingCode: body.bookingCode,
+      seat: body.seat,
     });
     return jsonOk({ ticket }, { status: 201 });
   } catch (error) {

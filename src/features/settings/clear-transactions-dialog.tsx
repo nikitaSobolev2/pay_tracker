@@ -16,8 +16,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { clearTransactions } from "@/lib/api/transactions";
 import { cn } from "@/lib/utils";
 
@@ -110,26 +110,34 @@ export function ClearTransactionsDialog({
 
           {mode === "range" ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="clear-tx-from">{t("clearTransactionsFrom")}</Label>
+              <FormField
+                label={t("clearTransactionsFrom")}
+                htmlFor="clear-tx-from"
+                required
+              >
                 <Input
                   id="clear-tx-from"
                   type="date"
                   value={startDate}
                   disabled={loading}
+                  required
                   onChange={(event) => setStartDate(event.target.value)}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="clear-tx-to">{t("clearTransactionsTo")}</Label>
+              </FormField>
+              <FormField
+                label={t("clearTransactionsTo")}
+                htmlFor="clear-tx-to"
+                required
+              >
                 <Input
                   id="clear-tx-to"
                   type="date"
                   value={endDate}
                   disabled={loading}
+                  required
                   onChange={(event) => setEndDate(event.target.value)}
                 />
-              </div>
+              </FormField>
             </div>
           ) : null}
         </div>

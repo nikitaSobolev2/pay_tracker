@@ -3,7 +3,6 @@
 import {
   Check,
   ChevronDown,
-  ClipboardList,
   Pencil,
   Plus,
   Trash2,
@@ -17,8 +16,9 @@ import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ObjectCard, ObjectCardBody, ReceiptRail } from "@/components/ui/object-card";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -170,7 +170,7 @@ export function TravelPlannedSpendingsList({
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-none">
-      <TravelSectionHeader icon={ClipboardList} title={t("spendings")} />
+      <TravelSectionHeader title={t("spendings")} />
       <CardContent className="space-y-3 pt-3">
         {groups.map((group) => {
           const Icon = CATEGORY_ICONS[group.category];
@@ -183,7 +183,7 @@ export function TravelPlannedSpendingsList({
           return (
             <div
               key={group.category}
-              className="overflow-hidden rounded-2xl border border-border/50"
+              className="overflow-hidden rounded-xl border border-border/50"
             >
               <div
                 className={cn(
@@ -487,7 +487,7 @@ function DesktopSpendingRow({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-10 rounded-lg"
+            className="size-9 rounded-xl"
             onClick={onEdit}
           >
             <Pencil className="size-4" />
@@ -496,7 +496,7 @@ function DesktopSpendingRow({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-10 rounded-lg text-destructive"
+            className="size-9 rounded-xl text-destructive"
             onClick={onDelete}
           >
             <Trash2 className="size-4" />
@@ -519,10 +519,12 @@ function MobileSpendingCard({
   readonly onAmountCommit: (amount: string) => Promise<void>;
 }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-background/60 p-3">
+    <ObjectCard dashed>
+      <ReceiptRail />
+      <ObjectCardBody className="flex-col items-stretch gap-2 py-3">
       <button
         type="button"
-        className="mb-2 min-h-11 w-full text-left text-base font-medium"
+        className="min-h-11 w-full text-left text-sm font-semibold"
         onClick={onEdit}
       >
         {item.title}
@@ -541,7 +543,8 @@ function MobileSpendingCard({
           <Trash2 className="size-4" />
         </Button>
       </div>
-    </div>
+      </ObjectCardBody>
+    </ObjectCard>
   );
 }
 
@@ -685,32 +688,28 @@ function PlannedSpendingEditDialog({
             <DialogTitle>{t("edit")}</DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <Label>{t("spendingTitle")}</Label>
+        <ResponsiveDialogBody>
+          <FormField label={t("spendingTitle")} required>
             <Input
               value={title}
-              className="h-12 rounded-xl text-base md:h-11"
+              required
               onChange={(event) => setTitle(event.target.value)}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("spendingAmount")}</Label>
+          </FormField>
+          <FormField label={t("spendingAmount")} required>
             <AmountInput
               integerOnly
               value={amount}
-              className="h-12 rounded-xl md:h-11"
               onValueChange={setAmount}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("spendingNote")}</Label>
+          </FormField>
+          <FormField label={t("spendingNote")} optional>
             <Textarea
               value={note}
               className="min-h-24 rounded-xl"
               onChange={(event) => setNote(event.target.value)}
             />
-          </div>
+          </FormField>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button

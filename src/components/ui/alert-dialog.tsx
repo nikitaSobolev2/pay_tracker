@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 const ALERT_DIALOG_ACTION_CLASS =
-  "h-12 w-full rounded-xl text-base sm:h-9 sm:w-auto sm:rounded-lg sm:text-sm"
+  "h-11 w-full rounded-xl text-base sm:w-auto"
 
 function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />

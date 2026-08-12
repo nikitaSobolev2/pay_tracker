@@ -3,6 +3,14 @@
 import { Backpack, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import {
+  SwipeableList,
+  SwipeableListItem,
+  SwipeAction,
+  TrailingActions,
+  Type as SwipeType,
+} from "react-swipeable-list";
+import "react-swipeable-list/dist/styles.css";
 import { toast } from "sonner";
 
 import {
@@ -19,8 +27,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  LuggageQtyRail,
+  ObjectCard,
+  ObjectCardBody,
+  ObjectCardCopy,
+} from "@/components/ui/object-card";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -28,14 +42,14 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogHeaderInner,
 } from "@/components/ui/responsive-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import type { TravelThingToGrabDto } from "@/server/services/travel-service.types";
 import {
   makeLocalEntityId,
   removeThingFromCache,
   upsertThingInCache,
 } from "@/stores/travel-cache.store";
-import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
-import { cn } from "@/lib/utils";
-import type { TravelThingToGrabDto } from "@/server/services/travel-service.types";
 
 import {
   TravelSectionEmpty,
@@ -118,7 +132,6 @@ export function TravelThingsToGrabList({
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
         <TravelSectionHeader
-          icon={Backpack}
           title={t("thingsToGrab")}
           count={
             items.length > 0
@@ -126,12 +139,7 @@ export function TravelThingsToGrabList({
               : undefined
           }
           action={
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 gap-1.5 rounded-lg"
-              onClick={openCreate}
-            >
+            <Button type="button" variant="outline" onClick={openCreate}>
               <Plus className="size-4" />
               {t("grabAdd")}
             </Button>
@@ -141,7 +149,12 @@ export function TravelThingsToGrabList({
           {items.length === 0 ? (
             <TravelSectionEmpty icon={Backpack} text={t("grabsEmpty")} />
           ) : (
-            <ul className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
+            <SwipeableList
+              type={SwipeType.IOS}
+              fullSwipe={false}
+              threshold={0.45}
+              className="object-swipe-list"
+            >
               {items.map((item) => (
                 <GrabRow
                   key={item.id}
@@ -152,7 +165,7 @@ export function TravelThingsToGrabList({
                   onDelete={() => setDeleteTarget(item)}
                 />
               ))}
-            </ul>
+            </SwipeableList>
           )}
         </CardContent>
       </Card>
@@ -205,67 +218,95 @@ export function TravelThingsToGrabList({
   );
 }
 
+type SwipeableListInjectedProps = {
+  readonly fullSwipe?: boolean;
+  readonly listType?: SwipeType;
+  readonly threshold?: number;
+  readonly actionDelay?: number;
+  readonly destructiveCallbackDelay?: number;
+  readonly optOutMouseEvents?: boolean;
+  readonly scrollStartThreshold?: number;
+  readonly swipeStartThreshold?: number;
+  readonly clickedCallback?: (id: string) => void;
+  readonly id?: string;
+  readonly resetState?: (close: () => void) => void;
+};
+
 function GrabRow({
   item,
   toggling,
   onToggle,
   onEdit,
   onDelete,
+  ...swipeProps
 }: {
   readonly item: TravelThingToGrabDto;
   readonly toggling: boolean;
   readonly onToggle: () => void;
   readonly onEdit: () => void;
   readonly onDelete: () => void;
-}) {
+} & SwipeableListInjectedProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
+  const isMobile = useIsMobile();
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 px-3 py-2 sm:gap-x-3">
-      <Checkbox
-        className="size-5"
-        checked={item.isChecked}
-        disabled={toggling}
-        onCheckedChange={onToggle}
-        aria-label={t("grabToggleChecked")}
-      />
-      <p
-        className={cn(
-          "min-w-0 truncate text-[15px] font-medium leading-snug",
-          item.isChecked && "text-muted-foreground line-through",
-        )}
-      >
-        {item.title}
-        {item.amount > 1 ? (
-          <span className="ml-1.5 text-sm font-medium tabular-nums text-muted-foreground">
-            {t("grabQuantityValue", { count: item.amount })}
-          </span>
-        ) : null}
-      </p>
-      <div className="flex shrink-0 items-center gap-0.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-lg"
-          aria-label={tCommon("edit")}
-          onClick={onEdit}
-        >
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-lg text-destructive"
-          aria-label={t("grabDelete")}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-    </li>
+    <SwipeableListItem
+      {...swipeProps}
+      blockSwipe={!isMobile}
+      trailingActions={
+        <TrailingActions>
+          <SwipeAction onClick={onEdit}>
+            <div className="object-swipe-action bg-muted text-foreground">
+              <Pencil className="size-4" />
+              <span>{tCommon("edit")}</span>
+            </div>
+          </SwipeAction>
+          <SwipeAction onClick={onDelete}>
+            <div className="object-swipe-action bg-destructive text-destructive-foreground">
+              <Trash2 className="size-4" />
+              <span>{tCommon("delete")}</span>
+            </div>
+          </SwipeAction>
+        </TrailingActions>
+      }
+    >
+      <ObjectCard faded={item.isChecked}>
+        <LuggageQtyRail quantity={item.amount} />
+        <ObjectCardBody>
+          <Checkbox
+            className="size-5"
+            checked={item.isChecked}
+            disabled={toggling}
+            onCheckedChange={onToggle}
+            aria-label={t("grabToggleChecked")}
+          />
+          <ObjectCardCopy title={item.title} struck={item.isChecked} />
+          <div className="hidden shrink-0 items-center gap-0.5 md:flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl"
+              aria-label={tCommon("edit")}
+              onClick={onEdit}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl text-destructive"
+              aria-label={t("grabDelete")}
+              onClick={onDelete}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </ObjectCardBody>
+      </ObjectCard>
+    </SwipeableListItem>
   );
 }
 
@@ -375,21 +416,27 @@ function GrabFormDialog({
             </DialogTitle>
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
-        <ResponsiveDialogBody className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="travel-grab-title">{t("grabTitle")}</Label>
+        <ResponsiveDialogBody>
+          <FormField
+            label={t("grabTitle")}
+            htmlFor="travel-grab-title"
+            required
+          >
             <Input
               id="travel-grab-title"
               value={values.title}
-              className="h-12 rounded-xl text-base md:h-11"
               placeholder={t("grabTitlePlaceholder")}
+              required
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, title: event.target.value }))
               }
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="travel-grab-amount">{t("grabAmount")}</Label>
+          </FormField>
+          <FormField
+            label={t("grabAmount")}
+            htmlFor="travel-grab-amount"
+            required
+          >
             <Input
               id="travel-grab-amount"
               type="number"
@@ -398,8 +445,8 @@ function GrabFormDialog({
               max={9999}
               step={1}
               value={values.amount}
-              className="h-12 rounded-xl text-base md:h-11"
               placeholder="1"
+              required
               onChange={(event) =>
                 setValues((prev) => ({
                   ...prev,
@@ -407,7 +454,7 @@ function GrabFormDialog({
                 }))
               }
             />
-          </div>
+          </FormField>
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button

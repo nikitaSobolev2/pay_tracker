@@ -467,24 +467,31 @@ function resolveBucketKeys(
     );
   }
 
+  const rangeEnd = capTimelineEnd(end);
+
   if (bucket === "hour") {
-    return eachHourOfInterval({ start, end }).map((date) =>
+    return eachHourOfInterval({ start, end: rangeEnd }).map((date) =>
       format(toZonedTime(date, timezone), "yyyy-MM-dd HH:00"),
     );
   }
   if (bucket === "day") {
-    return eachDayOfInterval({ start, end }).map((date) =>
+    return eachDayOfInterval({ start, end: rangeEnd }).map((date) =>
       format(toZonedTime(date, timezone), "yyyy-MM-dd"),
     );
   }
   if (bucket === "month") {
-    return eachMonthOfInterval({ start, end }).map((date) =>
+    return eachMonthOfInterval({ start, end: rangeEnd }).map((date) =>
       format(toZonedTime(date, timezone), "yyyy-MM"),
     );
   }
-  return eachYearOfInterval({ start, end }).map((date) =>
+  return eachYearOfInterval({ start, end: rangeEnd }).map((date) =>
     format(toZonedTime(date, timezone), "yyyy"),
   );
+}
+
+function capTimelineEnd(end: Date): Date {
+  const now = new Date();
+  return end.getTime() > now.getTime() ? now : end;
 }
 
 function formatBucketKey(

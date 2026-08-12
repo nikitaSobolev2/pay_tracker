@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/ui/form-field";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -128,8 +128,11 @@ export function EventAiAnalyzeDialog({
             </div>
           ) : (
             <>
-              <div className="space-y-2">
-                <Label id="ai-response-locale-label">{t("aiLanguageLabel")}</Label>
+              <FormField
+                label={t("aiLanguageLabel")}
+                labelId="ai-response-locale-label"
+                required
+              >
                 <div
                   role="group"
                   aria-labelledby="ai-response-locale-label"
@@ -156,16 +159,15 @@ export function EventAiAnalyzeDialog({
                     {t("aiLanguageRu")}
                   </Button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{t("aiContextLabel")}</Label>
+              </FormField>
+              <FormField label={t("aiContextLabel")} optional>
                 <Textarea
                   className="min-h-28 rounded-xl text-base md:text-sm"
                   placeholder={t("aiContextPlaceholder")}
                   value={contextMessage}
                   onChange={(event) => setContextMessage(event.target.value)}
                 />
-              </div>
+              </FormField>
             </>
           )}
         </ResponsiveDialogBody>
@@ -174,7 +176,7 @@ export function EventAiAnalyzeDialog({
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-xl text-base sm:w-auto md:h-10"
+            className="h-11 w-full rounded-xl text-base sm:w-auto"
             disabled={running}
             onClick={() => onOpenChange(false)}
           >
