@@ -2,6 +2,7 @@
 
 import { Clock3, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppUser } from "@/hooks/use-app-user";
@@ -53,42 +54,58 @@ export function TravelClocksCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
           <TravelClock
             nowMs={nowMs}
             timezone={userTimezone}
             title={t("clockYou")}
-            subtitle={userTimezone}
+            tone="you"
           />
           {showDestinationSlot ? (
             destination.loading && !destination.timezone ? (
-              <div className="flex min-h-[15rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/40 px-4 py-5 text-sm text-muted-foreground">
+              <ClockPlaceholder>
                 <Loader2 className="size-5 animate-spin" />
-                {t("clockDestinationLoading")}
-              </div>
+                <span>{t("clockDestinationLoading")}</span>
+              </ClockPlaceholder>
             ) : destination.timezone ? (
               <TravelClock
                 nowMs={nowMs}
                 timezone={destination.timezone}
                 title={t("clockDestination")}
-                subtitle={
-                  destination.label
-                    ? `${destination.label} · ${destination.timezone}`
-                    : destination.timezone
-                }
+                placeLabel={destination.label}
+                tone="destination"
               />
             ) : (
-              <div className="flex min-h-[15rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground">
+              <ClockPlaceholder muted>
                 {t("clockTimezoneUnknown")}
-              </div>
+              </ClockPlaceholder>
             )
           ) : (
-            <div className="flex min-h-[15rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-center text-sm text-muted-foreground">
-              {t("clockDestinationEmpty")}
-            </div>
+            <ClockPlaceholder muted>{t("clockDestinationEmpty")}</ClockPlaceholder>
           )}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ClockPlaceholder({
+  children,
+  muted = false,
+}: {
+  readonly children: ReactNode;
+  readonly muted?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-[17.5rem] flex-col items-center justify-center gap-2 rounded-2xl px-4 py-5 text-center text-sm text-muted-foreground",
+        muted
+          ? "border border-dashed border-border/60 bg-muted/15"
+          : "travel-clock travel-clock--you",
+      )}
+    >
+      {children}
+    </div>
   );
 }
