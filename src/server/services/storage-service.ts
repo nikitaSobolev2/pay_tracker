@@ -163,6 +163,26 @@ export async function downloadTravelTicket(
   }
 }
 
+/** Removes a ticket object when no travel ticket row still points at it. */
+export async function deleteTravelTicketObject(fileUrl: string): Promise<void> {
+  if (!isOwnedTravelTicketUrl(fileUrl)) {
+    return;
+  }
+  const fileName = fileUrl.split("/").pop() ?? "";
+  if (!TICKET_FILE_NAME_PATTERN.test(fileName)) {
+    return;
+  }
+  const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${fileName}`;
+  try {
+    await getClient().removeObject(readBucket(), key);
+  } catch (error) {
+    if (isMissingObjectError(error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
 function isMissingObjectError(error: unknown): boolean {
   return (
     typeof error === "object" &&

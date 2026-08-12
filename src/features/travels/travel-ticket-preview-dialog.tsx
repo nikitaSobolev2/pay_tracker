@@ -1,9 +1,10 @@
 "use client";
 
-import { ExternalLink, X } from "lucide-react";
+import { Download, ExternalLink, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -50,16 +51,21 @@ export function TravelTicketPreviewDialog({
           <DialogTitle className="truncate text-base font-semibold text-white">
             {ticket?.title ?? t("tickets")}
           </DialogTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-10 shrink-0 rounded-xl text-white hover:bg-white/10"
-            aria-label={t("ticketPreviewClose")}
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="size-5" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {ticket ? (
+              <TicketDownloadButton ticket={ticket} pdfBlob={pdfFile.data} />
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-10 shrink-0 rounded-xl text-white hover:bg-white/10"
+              aria-label={t("ticketPreviewClose")}
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="size-5" />
+            </Button>
+          </div>
         </div>
 
         <div
@@ -70,7 +76,12 @@ export function TravelTicketPreviewDialog({
           }
         >
           {ticket ? (
-            <TicketPreviewBody ticket={ticket} kind={kind} pdf={pdfFile} />
+            <TicketPreviewBody
+              key={`${ticket.id}-${pdfFile.data ? "ready" : "pending"}`}
+              ticket={ticket}
+              kind={kind}
+              pdf={pdfFile}
+            />
           ) : null}
         </div>
       </DialogContent>
@@ -85,32 +96,26 @@ type PdfBlobState = {
 };
 
 function useTicketPdfBlob(ticket: TravelTicketDto | null): PdfBlobState {
+  const ticketId = ticket?.id ?? null;
+  const fileUrl = ticket?.fileUrl ?? null;
+  const [loadedId, setLoadedId] = useState<string | null>(ticketId);
   const [data, setData] = useState<Blob | null>(null);
   const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  if (ticketId !== loadedId) {
+    setLoadedId(ticketId);
+    setData(null);
+    setFailed(false);
+  }
 
   useEffect(() => {
-    if (!ticket) {
-      setData(null);
-      setFailed(false);
-      setLoading(false);
+    if (!fileUrl) {
       return;
     }
-
     let cancelled = false;
-    setLoading(true);
-    setFailed(false);
-    setData(null);
-
     void (async () => {
       try {
-        const response = await fetch(ticket.fileUrl, {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const blob = await response.blob();
+        const blob = await fetchTicketBlob(fileUrl);
         if (!cancelled) {
           setData(blob);
           setFailed(false);
@@ -120,19 +125,76 @@ function useTicketPdfBlob(ticket: TravelTicketDto | null): PdfBlobState {
           setData(null);
           setFailed(true);
         }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [ticket]);
+  }, [fileUrl, ticketId]);
 
-  return { data, failed, loading };
+  if (!ticket) {
+    return { data: null, failed: false, loading: false };
+  }
+  return { data, failed, loading: data === null && !failed };
+}
+
+function TicketDownloadButton({
+  ticket,
+  pdfBlob,
+}: {
+  readonly ticket: TravelTicketDto;
+  readonly pdfBlob: Blob | null;
+}) {
+  const t = useTranslations("travels");
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await saveTicketFile(ticket, pdfBlob);
+    } catch {
+      toast.error(t("ticketDownloadFailed"));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      disabled={downloading}
+      className="size-10 shrink-0 rounded-xl text-white hover:bg-white/10"
+      aria-label={t("ticketDownload")}
+      onClick={() => void handleDownload()}
+    >
+      <Download className="size-5" />
+    </Button>
+  );
+}
+
+async function saveTicketFile(
+  ticket: TravelTicketDto,
+  pdfBlob: Blob | null,
+): Promise<void> {
+  const blob = pdfBlob ?? (await fetchTicketBlob(ticket.fileUrl));
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = ticket.fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function fetchTicketBlob(fileUrl: string): Promise<Blob> {
+  const response = await fetch(fileUrl, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.blob();
 }
 
 function TicketPreviewBody({
@@ -146,10 +208,6 @@ function TicketPreviewBody({
 }) {
   const t = useTranslations("travels");
   const [renderFailed, setRenderFailed] = useState(false);
-
-  useEffect(() => {
-    setRenderFailed(false);
-  }, [ticket.id, pdf.data]);
 
   if (kind === "image") {
     return (

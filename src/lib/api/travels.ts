@@ -54,7 +54,17 @@ export type ThingToGrabBody = {
   isChecked?: boolean;
 };
 
-export type TravelTicketBody = {
+export type TravelTicketSegmentBody = {
+  origin?: string | null;
+  destination?: string | null;
+  departsAt?: string | null;
+  arrivesAt?: string | null;
+  ticketNumber?: string | null;
+  flightNumber?: string | null;
+  bookingCode?: string | null;
+};
+
+export type TravelTicketBody = TravelTicketSegmentBody & {
   title: string;
   fileUrl: string;
   fileName: string;
@@ -211,6 +221,26 @@ export function deleteTravelTicket(travelId: string, ticketId: string) {
     { method: "DELETE" },
   );
 }
+
+export function analyzeTravelTicketFile(travelId: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<{ tickets: AnalyzedTicketSegment[] }>(
+    `/api/travels/${travelId}/tickets/analyze`,
+    { method: "POST", formData },
+  );
+}
+
+export type AnalyzedTicketSegment = {
+  title: string;
+  origin: string | null;
+  destination: string | null;
+  departsAt: string | null;
+  arrivesAt: string | null;
+  ticketNumber: string | null;
+  flightNumber: string | null;
+  bookingCode: string | null;
+};
 
 export function analyzeTravel(
   travelId: string,

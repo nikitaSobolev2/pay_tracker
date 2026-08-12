@@ -6,6 +6,11 @@ export type AiJsonRequest = {
   readonly userPrompt: string;
 };
 
+export type AiImagePart = {
+  readonly mediaType: string;
+  readonly base64: string;
+};
+
 export type AiJsonResponse = {
   readonly content: string;
   readonly model: string;
@@ -17,6 +22,11 @@ type ChatCompletionResponse = {
   }[];
 };
 
+type ChatMessage = {
+  readonly role: "system" | "user";
+  readonly content: unknown;
+};
+
 const DEFAULT_TIMEOUT_MS = 120_000;
 /** Analysis is deterministic bookkeeping advice, so keep the model conservative. */
 const TEMPERATURE = 0.2;
@@ -25,8 +35,37 @@ const TEMPERATURE = 0.2;
 export async function requestJsonCompletion(
   request: AiJsonRequest,
 ): Promise<AiJsonResponse> {
+  return completeJson([
+    { role: "system", content: request.systemPrompt },
+    { role: "user", content: request.userPrompt },
+  ]);
+}
+
+export async function requestJsonCompletionWithImages(input: {
+  readonly systemPrompt: string;
+  readonly userPrompt: string;
+  readonly images: readonly AiImagePart[];
+}): Promise<AiJsonResponse> {
+  const imageParts = input.images.map((image) => ({
+    type: "image_url",
+    image_url: {
+      url: `data:${image.mediaType};base64,${image.base64}`,
+    },
+  }));
+  return completeJson([
+    { role: "system", content: input.systemPrompt },
+    {
+      role: "user",
+      content: [{ type: "text", text: input.userPrompt }, ...imageParts],
+    },
+  ]);
+}
+
+async function completeJson(
+  messages: readonly ChatMessage[],
+): Promise<AiJsonResponse> {
   const model = requireEnv("AI_MODEL_ID");
-  const response = await postCompletion(request, model);
+  const response = await postCompletion(messages, model);
 
   if (!response.ok) {
     throw await toAiRequestError(response);
@@ -66,7 +105,7 @@ async function readErrorDetail(response: Response): Promise<string | null> {
 }
 
 async function postCompletion(
-  request: AiJsonRequest,
+  messages: readonly ChatMessage[],
   model: string,
 ): Promise<Response> {
   try {
@@ -81,10 +120,7 @@ async function postCompletion(
         model,
         temperature: TEMPERATURE,
         response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: request.systemPrompt },
-          { role: "user", content: request.userPrompt },
-        ],
+        messages,
       }),
     });
   } catch (error) {

@@ -49,8 +49,25 @@ export type TravelTicketDto = {
   readonly fileUrl: string;
   readonly fileName: string;
   readonly contentType: string;
+  readonly origin: string | null;
+  readonly destination: string | null;
+  readonly departsAt: string | null;
+  readonly arrivesAt: string | null;
+  readonly ticketNumber: string | null;
+  readonly flightNumber: string | null;
+  readonly bookingCode: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+};
+
+export type TravelTicketSegmentFields = {
+  readonly origin?: string | null;
+  readonly destination?: string | null;
+  readonly departsAt?: Date | null;
+  readonly arrivesAt?: Date | null;
+  readonly ticketNumber?: string | null;
+  readonly flightNumber?: string | null;
+  readonly bookingCode?: string | null;
 };
 
 export type TravelAiReportDto = {
@@ -223,7 +240,7 @@ export type UpdateThingToGrabInput = {
   readonly isChecked?: boolean;
 };
 
-export type CreateTravelTicketInput = {
+export type CreateTravelTicketInput = TravelTicketSegmentFields & {
   readonly userId: string;
   readonly travelId: string;
   readonly title: string;

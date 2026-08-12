@@ -11,6 +11,7 @@ import {
 import {
   isOwnedTravelObjectUrl,
   travelTicketProxyUrl,
+  deleteTravelTicketObject,
 } from "@/server/services/storage-service";
 import { ApiErrorCode } from "@/types/api";
 import {
@@ -551,9 +552,20 @@ export async function createTravelTicket(
       fileUrl: input.fileUrl,
       fileName: input.fileName.trim(),
       contentType: input.contentType.trim(),
+      origin: normalizeSegmentText(input.origin),
+      destination: normalizeSegmentText(input.destination),
+      departsAt: input.departsAt ?? null,
+      arrivesAt: input.arrivesAt ?? null,
+      ticketNumber: normalizeSegmentText(input.ticketNumber),
+      flightNumber: normalizeSegmentText(input.flightNumber),
+      bookingCode: normalizeSegmentText(input.bookingCode),
     },
   });
   return mapTicket(created);
+}
+
+function normalizeSegmentText(value: string | null | undefined): string | null {
+  return value?.trim() || null;
 }
 
 export async function updateTravelTicket(
@@ -581,11 +593,18 @@ export async function deleteTravelTicket(input: {
   readonly ticketId: string;
 }): Promise<void> {
   await requireOwnedTravel(input.userId, input.travelId);
-  const result = await prisma.travelTicket.deleteMany({
+  const existing = await prisma.travelTicket.findFirst({
     where: { id: input.ticketId, travelId: input.travelId },
   });
-  if (result.count === 0) {
+  if (!existing) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Travel ticket not found");
+  }
+  await prisma.travelTicket.delete({ where: { id: existing.id } });
+  const siblings = await prisma.travelTicket.count({
+    where: { fileUrl: existing.fileUrl },
+  });
+  if (siblings === 0) {
+    await deleteTravelTicketObject(existing.fileUrl);
   }
 }
 
@@ -831,6 +850,13 @@ function mapTicket(row: {
   readonly fileUrl: string;
   readonly fileName: string;
   readonly contentType: string;
+  readonly origin: string | null;
+  readonly destination: string | null;
+  readonly departsAt: Date | null;
+  readonly arrivesAt: Date | null;
+  readonly ticketNumber: string | null;
+  readonly flightNumber: string | null;
+  readonly bookingCode: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }): TravelTicketDto {
@@ -841,6 +867,13 @@ function mapTicket(row: {
     fileUrl: travelTicketProxyUrl(row.fileUrl),
     fileName: row.fileName,
     contentType: row.contentType,
+    origin: row.origin,
+    destination: row.destination,
+    departsAt: row.departsAt?.toISOString() ?? null,
+    arrivesAt: row.arrivesAt?.toISOString() ?? null,
+    ticketNumber: row.ticketNumber,
+    flightNumber: row.flightNumber,
+    bookingCode: row.bookingCode,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

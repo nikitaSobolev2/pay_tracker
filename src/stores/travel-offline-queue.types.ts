@@ -2,6 +2,7 @@ import type {
   PlaceToVisitBody,
   PlannedSpendingBody,
   ThingToGrabBody,
+  TravelTicketSegmentBody,
   UpdateTravelBody,
 } from "@/lib/api/travels";
 import type { UpdateTransactionInput } from "@/lib/api/transactions";
@@ -68,6 +69,7 @@ export type TravelOfflineOp =
       fileId: string;
       fileName: string;
       contentType: string;
+      segment?: TravelTicketSegmentBody;
     }
   | {
       kind: "updateTicket";

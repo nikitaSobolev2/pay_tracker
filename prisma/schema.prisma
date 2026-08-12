@@ -673,14 +673,21 @@ model TravelThingToGrab {
 }
 
 model TravelTicket {
-  id          String   @id @default(cuid())
-  travelId    String
-  title       String
-  fileUrl     String
-  fileName    String
-  contentType String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  travelId     String
+  title        String
+  fileUrl      String
+  fileName     String
+  contentType  String
+  origin       String?
+  destination  String?
+  departsAt    DateTime?
+  arrivesAt    DateTime?
+  ticketNumber String?
+  flightNumber String?
+  bookingCode  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   travel Travel @relation(fields: [travelId], references: [id], onDelete: Cascade)
 

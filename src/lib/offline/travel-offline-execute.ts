@@ -30,7 +30,9 @@ import {
   getTravelOfflineFile,
 } from "@/lib/offline/travel-offline-files";
 import { useTravelCacheStore } from "@/stores/travel-cache.store";
+import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import type { TravelOfflineQueueItem } from "@/stores/travel-offline-queue.types";
+import { FastQueueStatus } from "@/types/enums";
 
 export type TravelOfflineRemap = {
   kind: "place" | "thing" | "planned" | "ticket" | "transaction";
@@ -141,18 +143,13 @@ export async function executeTravelOfflineOp(
       break;
     }
     case "createTicket": {
-      const fileRecord = await getTravelOfflineFile(op.fileId);
-      if (!fileRecord) {
-        throw new Error("Queued ticket file missing");
-      }
-      const uploaded = await uploadTravelTicketFile(
-        fileFromOfflineRecord(fileRecord),
-      );
+      const uploaded = await resolveTicketUpload(op.fileId);
       const result = await createTravelTicket(travelId, {
         title: op.title,
         fileUrl: uploaded.url,
         fileName: uploaded.fileName,
         contentType: uploaded.contentType,
+        ...op.segment,
       });
       remaps.push({
         kind: "ticket",
@@ -171,7 +168,7 @@ export async function executeTravelOfflineOp(
           ticket.id === result.ticket.id ? result.ticket : ticket,
         ),
       }));
-      await deleteTravelOfflineFile(op.fileId);
+      await maybeDeleteSharedTicketFile(item.localId, op.fileId);
       break;
     }
     case "updateTicket": {
@@ -230,4 +227,47 @@ export async function executeTravelOfflineOp(
   }
 
   return remaps;
+}
+
+type TicketUploadResult = {
+  readonly url: string;
+  readonly fileName: string;
+  readonly contentType: string;
+};
+
+const ticketUploadsByFileId = new Map<string, TicketUploadResult>();
+
+async function resolveTicketUpload(fileId: string): Promise<TicketUploadResult> {
+  const cached = ticketUploadsByFileId.get(fileId);
+  if (cached) {
+    return cached;
+  }
+  const fileRecord = await getTravelOfflineFile(fileId);
+  if (!fileRecord) {
+    throw new Error("Queued ticket file missing");
+  }
+  const uploaded = await uploadTravelTicketFile(
+    fileFromOfflineRecord(fileRecord),
+  );
+  ticketUploadsByFileId.set(fileId, uploaded);
+  return uploaded;
+}
+
+async function maybeDeleteSharedTicketFile(
+  currentLocalId: string,
+  fileId: string,
+): Promise<void> {
+  const others = useTravelOfflineQueueStore.getState().items.some(
+    (row) =>
+      row.localId !== currentLocalId &&
+      row.op.kind === "createTicket" &&
+      row.op.fileId === fileId &&
+      (row.status === FastQueueStatus.Pending ||
+        row.status === FastQueueStatus.Error),
+  );
+  if (others) {
+    return;
+  }
+  ticketUploadsByFileId.delete(fileId);
+  await deleteTravelOfflineFile(fileId);
 }

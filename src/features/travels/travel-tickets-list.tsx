@@ -1,7 +1,7 @@
 "use client";
 
 import { File, FileText, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -31,7 +31,14 @@ import {
   ResponsiveDialogHeaderInner,
 } from "@/components/ui/responsive-dialog";
 import { storeFileForOffline } from "@/lib/offline/travel-offline-files";
+import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import {
+  analyzeTravelTicketFile,
+  createTravelTicket,
+  uploadTravelTicketFile,
+  type AnalyzedTicketSegment,
+} from "@/lib/api/travels";
 import {
   makeLocalEntityId,
   removeTicketFromCache,
@@ -44,11 +51,18 @@ import {
   TravelSectionEmpty,
   TravelSectionHeader,
 } from "./travel-section-card";
+import { TravelTicketAiReviewDialog } from "./travel-ticket-ai-review-dialog";
 import {
   ticketPreviewKind,
   type TicketPreviewKind,
 } from "./travel-ticket-preview-kind";
 import { TravelTicketPreviewDialog } from "./travel-ticket-preview-dialog";
+import {
+  canAnalyzeTicketFile,
+  emptyTicketMeta,
+  segmentToTicketBody,
+  ticketFileTitle,
+} from "./travel-ticket-segment";
 
 type TravelTicketsListProps = {
   readonly travelId: string;
@@ -69,39 +83,39 @@ export function TravelTicketsList({
   const [editing, setEditing] = useState<TravelTicketDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TravelTicketDto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [askAnalyzeOpen, setAskAnalyzeOpen] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewSegments, setReviewSegments] = useState<
+    AnalyzedTicketSegment[]
+  >([]);
+  const [savingSegments, setSavingSegments] = useState(false);
 
-  async function handleFileSelected(file: File | undefined) {
+  function handleFileSelected(file: File | undefined) {
     if (!file) {
       return;
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    if (canAnalyzeTicketFile(file.type)) {
+      setPendingFile(file);
+      setAskAnalyzeOpen(true);
+      return;
+    }
+    void createSingleTicket(file);
+  }
+
+  async function createSingleTicket(file: File) {
     setUploading(true);
     try {
-      const title = file.name.replace(/\.[^.]+$/, "") || file.name;
-      const fileId = await storeFileForOffline(file);
-      const previewUrl = URL.createObjectURL(file);
-      const entityLocalId = makeLocalEntityId();
-      const now = new Date().toISOString();
-      upsertTicketInCache(travelId, {
-        id: entityLocalId,
-        travelId,
-        title,
-        fileUrl: previewUrl,
-        fileName: file.name,
-        contentType: file.type || "application/octet-stream",
-        createdAt: now,
-        updatedAt: now,
-      });
-      enqueueTravelOp({
-        travelId,
-        op: {
-          kind: "createTicket",
-          entityLocalId,
-          title,
-          fileId,
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
+      await enqueueTicketRows(travelId, file, [
+        {
+          title: ticketFileTitle(file.name),
+          ...emptyTicketMeta(),
         },
-      });
+      ]);
       await onChanged();
     } catch (error) {
       toast.error(
@@ -109,10 +123,65 @@ export function TravelTicketsList({
       );
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
+  }
+
+  async function handleAnalyze() {
+    if (!pendingFile) {
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.error(t("ticketAnalyzeNeedOnline"));
+      setAskAnalyzeOpen(false);
+      await createSingleTicket(pendingFile);
+      setPendingFile(null);
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const result = await analyzeTravelTicketFile(travelId, pendingFile);
+      setReviewSegments(result.tickets);
+      setAskAnalyzeOpen(false);
+      setReviewOpen(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("ticketAnalyzeFailed"),
+      );
+      setAskAnalyzeOpen(false);
+      await createSingleTicket(pendingFile);
+      setPendingFile(null);
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  async function handleReviewConfirm(segments: AnalyzedTicketSegment[]) {
+    if (!pendingFile) {
+      return;
+    }
+    setSavingSegments(true);
+    try {
+      await persistAnalyzedTickets(travelId, pendingFile, segments);
+      await onChanged();
+      setReviewOpen(false);
+      setPendingFile(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t("ticketUploadFailed"),
+      );
+    } finally {
+      setSavingSegments(false);
+    }
+  }
+
+  async function handleReviewSkip() {
+    if (!pendingFile) {
+      return;
+    }
+    setReviewOpen(false);
+    const file = pendingFile;
+    setPendingFile(null);
+    await createSingleTicket(file);
   }
 
   async function handleDelete() {
@@ -142,11 +211,15 @@ export function TravelTicketsList({
               type="button"
               variant="outline"
               className="h-9 gap-1.5 rounded-lg"
-              disabled={uploading}
+              disabled={uploading || analyzing || savingSegments}
               onClick={() => fileInputRef.current?.click()}
             >
               <Plus className="size-4" />
-              {uploading ? t("ticketUploading") : t("ticketAdd")}
+              {analyzing
+                ? t("ticketAnalyzeWorking")
+                : uploading || savingSegments
+                  ? t("ticketUploading")
+                  : t("ticketAdd")}
             </Button>
           }
         />
@@ -186,6 +259,64 @@ export function TravelTicketsList({
             setPreview(null);
           }
         }}
+      />
+
+      <AlertDialog
+        open={askAnalyzeOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !analyzing) {
+            setAskAnalyzeOpen(false);
+            setPendingFile(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ticketAnalyzeAskTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("ticketAnalyzeAskBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={analyzing}
+              onClick={() => {
+                const file = pendingFile;
+                setAskAnalyzeOpen(false);
+                setPendingFile(null);
+                if (file) {
+                  void createSingleTicket(file);
+                }
+              }}
+            >
+              {t("ticketAnalyzeSkip")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={analyzing}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleAnalyze();
+              }}
+            >
+              {t("ticketAnalyzeYes")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <TravelTicketAiReviewDialog
+        open={reviewOpen}
+        fileName={pendingFile?.name ?? ""}
+        segments={reviewSegments}
+        saving={savingSegments}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !savingSegments) {
+            setReviewOpen(false);
+            setPendingFile(null);
+          }
+        }}
+        onConfirm={(segments) => void handleReviewConfirm(segments)}
+        onSkip={() => void handleReviewSkip()}
       />
 
       <TicketTitleDialog
@@ -239,6 +370,78 @@ export function TravelTicketsList({
   );
 }
 
+async function persistAnalyzedTickets(
+  travelId: string,
+  file: File,
+  segments: readonly AnalyzedTicketSegment[],
+): Promise<void> {
+  const online =
+    typeof navigator === "undefined" || navigator.onLine !== false;
+  if (online) {
+    try {
+      const uploaded = await uploadTravelTicketFile(file);
+      for (const segment of segments) {
+        await createTravelTicket(travelId, {
+          title: segment.title,
+          fileUrl: uploaded.url,
+          fileName: uploaded.fileName,
+          contentType: uploaded.contentType,
+          ...segmentToTicketBody(segment),
+        });
+      }
+      return;
+    } catch (error) {
+      if (!isNetworkError(error)) {
+        throw error;
+      }
+    }
+  }
+  await enqueueTicketRows(travelId, file, segments);
+}
+
+async function enqueueTicketRows(
+  travelId: string,
+  file: File,
+  segments: readonly AnalyzedTicketSegment[],
+): Promise<void> {
+  const fileId = await storeFileForOffline(file);
+  const previewUrl = URL.createObjectURL(file);
+  const now = new Date().toISOString();
+  const contentType = file.type || "application/octet-stream";
+  for (const segment of segments) {
+    const entityLocalId = makeLocalEntityId();
+    upsertTicketInCache(travelId, {
+      id: entityLocalId,
+      travelId,
+      title: segment.title,
+      fileUrl: previewUrl,
+      fileName: file.name,
+      contentType,
+      origin: segment.origin,
+      destination: segment.destination,
+      departsAt: segment.departsAt,
+      arrivesAt: segment.arrivesAt,
+      ticketNumber: segment.ticketNumber,
+      flightNumber: segment.flightNumber,
+      bookingCode: segment.bookingCode,
+      createdAt: now,
+      updatedAt: now,
+    });
+    enqueueTravelOp({
+      travelId,
+      op: {
+        kind: "createTicket",
+        entityLocalId,
+        title: segment.title,
+        fileId,
+        fileName: file.name,
+        contentType,
+        segment: segmentToTicketBody(segment),
+      },
+    });
+  }
+}
+
 function TicketCard({
   ticket,
   onOpen,
@@ -252,6 +455,7 @@ function TicketCard({
 }) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const kind = ticketPreviewKind(ticket.contentType);
 
   return (
@@ -280,11 +484,7 @@ function TicketCard({
             {ticket.title}
           </p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            <span className="font-medium uppercase tracking-wide">
-              {ticketTypeLabel(kind, t)}
-            </span>
-            <span className="mx-1.5 opacity-60">·</span>
-            {ticket.fileName}
+            {ticketCardSubtitle(ticket, kind, locale, t)}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -465,6 +665,40 @@ function TicketTitleDialog({
       </ResponsiveDialogContent>
     </Dialog>
   );
+}
+
+function ticketCardSubtitle(
+  ticket: TravelTicketDto,
+  kind: TicketPreviewKind,
+  locale: string,
+  t: ReturnType<typeof useTranslations<"travels">>,
+): string {
+  const route =
+    ticket.origin && ticket.destination
+      ? `${ticket.origin} → ${ticket.destination}`
+      : ticket.origin ?? ticket.destination;
+  const when = formatTicketWhen(ticket.departsAt, locale);
+  const parts = [route, ticket.flightNumber, when].filter(Boolean);
+  if (parts.length > 0) {
+    return parts.join(" · ");
+  }
+  return `${ticketTypeLabel(kind, t)} · ${ticket.fileName}`;
+}
+
+function formatTicketWhen(iso: string | null, locale: string): string | null {
+  if (!iso) {
+    return null;
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString(locale, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function ticketTypeLabel(
