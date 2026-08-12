@@ -27,6 +27,7 @@ import {
 import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import { TravelPhase } from "@/types/enums";
 
+import { TravelClocksCard } from "./travel-clocks-card";
 import { TravelFinishedSection } from "./travel-finished-section";
 import {
   TravelFormDialog,
@@ -390,6 +391,14 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             className="h-44 w-full rounded-2xl object-cover ring-1 ring-border/50 sm:h-56"
           />
         ) : null}
+
+        <TravelClocksCard
+          placeCity={travel.placeCity}
+          placeCountry={travel.placeCountry}
+          placeLabel={travel.placeLabel}
+          housingLatitude={travel.housingLatitude}
+          housingLongitude={travel.housingLongitude}
+        />
 
         {showHousingMap ? (
           <TravelHousingMapCard
