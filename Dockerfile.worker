@@ -4,6 +4,8 @@ RUN apk add --no-cache openssl
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+# postinstall may run copy-pdf-worker; keep script available before npm ci.
+COPY scripts/copy-pdf-worker.js ./scripts/copy-pdf-worker.js
 # postinstall runs `prisma generate`; schema + placeholder URL must exist.
 # Generate never connects; the real URL is injected at runtime.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder

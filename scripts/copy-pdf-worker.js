@@ -23,5 +23,7 @@ if (!fs.existsSync(source)) {
   process.exit(0);
 }
 
+const targetDir = path.dirname(target);
+fs.mkdirSync(targetDir, { recursive: true });
 fs.copyFileSync(source, target);
 console.log("[copy-pdf-worker] wrote public/pdf.worker.min.mjs");

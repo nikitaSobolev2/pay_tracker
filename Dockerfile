@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+# postinstall copies pdf.js worker; script must exist before npm ci.
+COPY scripts/copy-pdf-worker.js ./scripts/copy-pdf-worker.js
 # postinstall runs `prisma generate`; schema + placeholder URL must exist.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 RUN npm ci
@@ -20,6 +22,8 @@ ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
 # Placeholder URL: prisma.config.ts requires DATABASE_URL, but `generate`
 # never connects. The real URL is injected at runtime.
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+# Worker is gitignored — regenerate into public for the image.
+RUN node scripts/copy-pdf-worker.js
 RUN npx prisma generate
 RUN npm run build
 
