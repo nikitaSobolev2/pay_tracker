@@ -1,22 +1,22 @@
-import { apiFetch, buildQuery } from "@/lib/api/client";
 import type { GeocodeResultDto } from "@/server/services/geocode-service";
 
-export function searchAddress(query: string, locale: string) {
-  return apiFetch<{ places: GeocodeResultDto[] }>(
-    `/api/geocode${buildQuery({ q: query, locale })}`,
-  );
+import {
+  reversePlaceWithYmaps,
+  searchPlacesWithYmaps,
+} from "@/lib/yandex-geocode-client";
+
+/** Address search via Yandex Maps JS API (uses NEXT_PUBLIC_YANDEX_MAPS_API_KEY). */
+export async function searchAddress(query: string, locale: string) {
+  const places = await searchPlacesWithYmaps(query, locale);
+  return { places } satisfies { places: GeocodeResultDto[] };
 }
 
-export function reverseAddress(
+/** Reverse geocode via Yandex Maps JS API (uses NEXT_PUBLIC_YANDEX_MAPS_API_KEY). */
+export async function reverseAddress(
   latitude: number,
   longitude: number,
   locale: string,
 ) {
-  return apiFetch<{ place: GeocodeResultDto | null }>(
-    `/api/geocode/reverse${buildQuery({
-      lat: latitude,
-      lon: longitude,
-      locale,
-    })}`,
-  );
+  const place = await reversePlaceWithYmaps(latitude, longitude, locale);
+  return { place } satisfies { place: GeocodeResultDto | null };
 }

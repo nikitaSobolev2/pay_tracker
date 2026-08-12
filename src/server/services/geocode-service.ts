@@ -8,7 +8,7 @@ export type GeocodeResultDto = {
   readonly longitude: number;
 };
 
-const GEOCODER_BASE_URL = "https://geocode-maps.yandex.ru/1.x/";
+const GEOCODER_BASE_URL = "https://geocode-maps.yandex.ru/v1/";
 const SUGGEST_BASE_URL = "https://suggest-maps.yandex.ru/v1/suggest";
 const CACHE_LIMIT = 200;
 const SEARCH_LIMIT = 5;
@@ -25,6 +25,22 @@ function readGeocoderApiKey(): string {
     );
   }
   return key;
+}
+
+/**
+ * Yandex keys with HTTP Referer restrictions reject server calls that omit
+ * Referer (returns 403 "Invalid api key"). Use the app origin.
+ */
+function yandexFetchHeaders(): HeadersInit {
+  const refererBase =
+    process.env.YANDEX_GEOCODER_REFERER?.trim() ||
+    process.env.BETTER_AUTH_URL?.trim();
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (refererBase) {
+    const normalized = refererBase.replace(/\/$/, "");
+    headers.Referer = `${normalized}/`;
+  }
+  return headers;
 }
 
 export function toYandexLanguage(locale: string): string {
@@ -57,7 +73,7 @@ export async function searchPlaces(
   }
 
   const response = await fetch(cacheKey, {
-    headers: { Accept: "application/json" },
+    headers: yandexFetchHeaders(),
   });
   if (!response.ok) {
     throwUnavailableLookup(response.status);
@@ -180,7 +196,7 @@ async function geocodeQuery(
   }
 
   const response = await fetch(cacheKey, {
-    headers: { Accept: "application/json" },
+    headers: yandexFetchHeaders(),
   });
   if (!response.ok) {
     throwUnavailableLookup(response.status);
@@ -195,7 +211,7 @@ function throwUnavailableLookup(status: number): never {
   if (status === 401 || status === 403) {
     throw new AppServiceError(
       ApiErrorCode.Internal,
-      "Address lookup rejected the API key (check YANDEX_GEOCODER_API_KEY)",
+      "Address lookup rejected the API key (check key restrictions / Referer domain)",
     );
   }
   throw new AppServiceError(

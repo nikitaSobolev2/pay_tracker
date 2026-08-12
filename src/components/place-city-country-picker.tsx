@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, ChevronsUpDown, MapPin, X } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { Check, ChevronsUpDown, Loader2, MapPin, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { City, Country } from "country-state-city";
 
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { localizedCountryName } from "@/lib/place-names";
 import { cn } from "@/lib/utils";
+import {
+  geocodeCenterWithYmaps,
+  searchLocalitiesWithYmaps,
+} from "@/lib/yandex-geocode-client";
+import { readYandexMapsApiKey } from "@/lib/yandex-maps";
 
 export type PlaceValue = {
   readonly placeCountry: string;
   readonly placeCity: string;
   readonly placeLabel: string;
+  readonly latitude?: number | null;
+  readonly longitude?: number | null;
 };
 
 export type PlaceCityCountryPickerProps = {
@@ -44,12 +52,19 @@ export type PlaceCityCountryPickerProps = {
 type CountryOption = {
   readonly isoCode: string;
   readonly name: string;
+  readonly latitude: number | null;
+  readonly longitude: number | null;
 };
 
 type CityOption = {
   readonly name: string;
-  readonly stateCode: string;
+  readonly id: string;
+  readonly latitude: number | null;
+  readonly longitude: number | null;
 };
+
+const CITY_SEARCH_DEBOUNCE_MS = 350;
+const MIN_CITY_QUERY_LENGTH = 2;
 
 export function PlaceCityCountryPicker({
   value,
@@ -57,17 +72,26 @@ export function PlaceCityCountryPicker({
   className,
 }: PlaceCityCountryPickerProps) {
   const t = useTranslations("travels");
+  const locale = useLocale();
   const isMobile = useIsMobile();
-  const countries = useMemo(
-    () =>
-      Country.getAllCountries().map(
-        (country): CountryOption => ({
-          isoCode: country.isoCode,
-          name: country.name,
-        }),
-      ),
-    [],
-  );
+  const yandexEnabled = Boolean(readYandexMapsApiKey());
+
+  const countries = useMemo(() => {
+    const options = Country.getAllCountries().map((country): CountryOption => {
+      const latitude = Number(country.latitude);
+      const longitude = Number(country.longitude);
+      return {
+        isoCode: country.isoCode,
+        name: localizedCountryName(country.isoCode, locale),
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+      };
+    });
+    options.sort((left, right) =>
+      left.name.localeCompare(right.name, locale, { sensitivity: "base" }),
+    );
+    return options;
+  }, [locale]);
 
   const selectedCountry = countries.find(
     (country) =>
@@ -75,36 +99,88 @@ export function PlaceCityCountryPicker({
       country.name === value?.placeCountry,
   );
 
-  const cities = useMemo(() => {
-    if (!selectedCountry) {
+  const fallbackCities = useMemo(() => {
+    if (!selectedCountry || yandexEnabled) {
       return [] as CityOption[];
     }
-    return City.getCitiesOfCountry(selectedCountry.isoCode)?.map(
-      (city): CityOption => ({
-        name: city.name,
-        stateCode: city.stateCode,
-      }),
-    ) ?? [];
-  }, [selectedCountry]);
+    return (
+      City.getCitiesOfCountry(selectedCountry.isoCode)?.map((city): CityOption => {
+        const latitude = Number(city.latitude);
+        const longitude = Number(city.longitude);
+        return {
+          name: city.name,
+          id: `${city.stateCode}:${city.name}`,
+          latitude: Number.isFinite(latitude) ? latitude : null,
+          longitude: Number.isFinite(longitude) ? longitude : null,
+        };
+      }) ?? []
+    );
+  }, [selectedCountry, yandexEnabled]);
 
   function selectCountry(country: CountryOption) {
     onChange({
       placeCountry: country.isoCode,
       placeCity: "",
       placeLabel: country.name,
+      latitude: yandexEnabled ? null : country.latitude,
+      longitude: yandexEnabled ? null : country.longitude,
     });
+    if (!yandexEnabled) {
+      return;
+    }
+    void geocodeCenterWithYmaps(country.name, locale, "country")
+      .then((place) => {
+        if (!place) {
+          onChange({
+            placeCountry: country.isoCode,
+            placeCity: "",
+            placeLabel: country.name,
+            latitude: country.latitude,
+            longitude: country.longitude,
+          });
+          return;
+        }
+        onChange({
+          placeCountry: country.isoCode,
+          placeCity: "",
+          placeLabel: country.name,
+          latitude: place.latitude,
+          longitude: place.longitude,
+        });
+      })
+      .catch(() => {
+        onChange({
+          placeCountry: country.isoCode,
+          placeCity: "",
+          placeLabel: country.name,
+          latitude: country.latitude,
+          longitude: country.longitude,
+        });
+      });
   }
 
-  function selectCity(city: CityOption) {
+  function selectCity(
+    cityName: string,
+    latitude: number | null,
+    longitude: number | null,
+  ) {
     if (!selectedCountry) {
       return;
     }
     onChange({
       placeCountry: selectedCountry.isoCode,
-      placeCity: city.name,
-      placeLabel: `${city.name}, ${selectedCountry.name}`,
+      placeCity: cityName,
+      placeLabel: `${cityName}, ${selectedCountry.name}`,
+      latitude,
+      longitude,
     });
   }
+
+  const countryDisplay =
+    selectedCountry?.name ??
+    (value?.placeCountry
+      ? localizedCountryName(value.placeCountry, locale)
+      : null);
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -112,7 +188,7 @@ export function PlaceCityCountryPicker({
         <Label>{t("placeCountry")}</Label>
         <SearchSelect
           isMobile={isMobile}
-          valueLabel={selectedCountry?.name ?? t("placeCountryPlaceholder")}
+          valueLabel={countryDisplay ?? t("placeCountryPlaceholder")}
           searchPlaceholder={t("placeSearchCountry")}
           emptyLabel={t("placeEmpty")}
           sheetTitle={t("placeCountry")}
@@ -127,30 +203,49 @@ export function PlaceCityCountryPicker({
 
       <div className="space-y-2">
         <Label>{t("placeCity")}</Label>
-        <SearchSelect
-          isMobile={isMobile}
-          disabled={!selectedCountry}
-          valueLabel={
-            value?.placeCity
-              ? value.placeCity
-              : t("placeCityPlaceholder")
-          }
-          searchPlaceholder={t("placeSearchCity")}
-          emptyLabel={t("placeEmpty")}
-          sheetTitle={t("placeCity")}
-          options={cities.map((city) => ({
-            id: `${city.stateCode}:${city.name}`,
-            label: city.name,
-            selected: city.name === value?.placeCity,
-            onSelect: () => selectCity(city),
-          }))}
-        />
+        {yandexEnabled && selectedCountry ? (
+          <CityRemoteSearchSelect
+            isMobile={isMobile}
+            locale={locale}
+            countryName={selectedCountry.name}
+            valueLabel={value?.placeCity || t("placeCityPlaceholder")}
+            searchPlaceholder={t("placeSearchCity")}
+            emptyLabel={t("placeEmpty")}
+            sheetTitle={t("placeCity")}
+            selectedCity={value?.placeCity ?? ""}
+            onSelect={(city) =>
+              selectCity(city.name, city.latitude, city.longitude)
+            }
+          />
+        ) : (
+          <SearchSelect
+            isMobile={isMobile}
+            disabled={!selectedCountry}
+            valueLabel={
+              value?.placeCity ? value.placeCity : t("placeCityPlaceholder")
+            }
+            searchPlaceholder={t("placeSearchCity")}
+            emptyLabel={t("placeEmpty")}
+            sheetTitle={t("placeCity")}
+            options={fallbackCities.map((city) => ({
+              id: city.id,
+              label: city.name,
+              selected: city.name === value?.placeCity,
+              onSelect: () =>
+                selectCity(city.name, city.latitude, city.longitude),
+            }))}
+          />
+        )}
       </div>
 
-      {value?.placeLabel ? (
+      {value?.placeLabel || value?.placeCity || countryDisplay ? (
         <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
           <MapPin className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate">{value.placeLabel}</span>
+          <span className="min-w-0 flex-1 truncate">
+            {value?.placeCity && countryDisplay
+              ? `${value.placeCity}, ${countryDisplay}`
+              : (value?.placeLabel ?? countryDisplay)}
+          </span>
           <Button
             type="button"
             variant="ghost"
@@ -173,6 +268,146 @@ type SearchOption = {
   readonly selected: boolean;
   readonly onSelect: () => void;
 };
+
+function CityRemoteSearchSelect({
+  isMobile,
+  locale,
+  countryName,
+  valueLabel,
+  searchPlaceholder,
+  emptyLabel,
+  sheetTitle,
+  selectedCity,
+  onSelect,
+}: {
+  readonly isMobile: boolean;
+  readonly locale: string;
+  readonly countryName: string;
+  readonly valueLabel: string;
+  readonly searchPlaceholder: string;
+  readonly emptyLabel: string;
+  readonly sheetTitle: string;
+  readonly selectedCity: string;
+  readonly onSelect: (city: CityOption) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [options, setOptions] = useState<CityOption[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const trimmed = query.trim();
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (trimmed.length < MIN_CITY_QUERY_LENGTH) {
+        setOptions([]);
+        setSearching(false);
+        return;
+      }
+      setSearching(true);
+      searchLocalitiesWithYmaps(trimmed, countryName, locale)
+        .then((places) => {
+          if (cancelled) {
+            return;
+          }
+          const unique = new Map<string, CityOption>();
+          for (const place of places) {
+            const name =
+              place.displayName.split(",")[0]?.trim() || place.displayName;
+            if (!unique.has(name)) {
+              unique.set(name, {
+                name,
+                id: `${place.latitude},${place.longitude}`,
+                latitude: place.latitude,
+                longitude: place.longitude,
+              });
+            }
+          }
+          setOptions([...unique.values()]);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setOptions([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setSearching(false);
+          }
+        });
+    }, CITY_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [countryName, locale, open, query]);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setOptions([]);
+      setSearching(false);
+    }
+  }, [open]);
+
+  const list = (
+    <Command shouldFilter={false} className="rounded-xl">
+      <CommandInput
+        placeholder={searchPlaceholder}
+        value={query}
+        onValueChange={setQuery}
+      />
+      <CommandList className="max-h-64">
+        {searching ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+          </div>
+        ) : (
+          <>
+            <CommandEmpty>{emptyLabel}</CommandEmpty>
+            <CommandGroup>
+              {options.map((city) => (
+                <CommandItem
+                  key={city.id}
+                  value={city.name}
+                  className="min-h-11"
+                  onSelect={() => {
+                    onSelect(city);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "size-4",
+                      city.name === selectedCity ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {city.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
+      </CommandList>
+    </Command>
+  );
+
+  return (
+    <SearchShell
+      isMobile={isMobile}
+      open={open}
+      onOpenChange={setOpen}
+      valueLabel={valueLabel}
+      sheetTitle={sheetTitle}
+    >
+      {list}
+    </SearchShell>
+  );
+}
 
 function SearchSelect({
   isMobile,
@@ -223,24 +458,51 @@ function SearchSelect({
     </Command>
   );
 
-  const trigger = (
-    <Button
-      type="button"
-      variant="outline"
+  return (
+    <SearchShell
+      isMobile={isMobile}
       disabled={disabled}
-      className="h-12 w-full justify-between rounded-xl px-3 text-base font-normal md:h-11"
-      onClick={() => setOpen(true)}
+      open={open}
+      onOpenChange={setOpen}
+      valueLabel={valueLabel}
+      sheetTitle={sheetTitle}
     >
-      <span className="truncate text-left">{valueLabel}</span>
-      <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
-    </Button>
+      {list}
+    </SearchShell>
   );
+}
 
+function SearchShell({
+  isMobile,
+  disabled,
+  open,
+  onOpenChange,
+  valueLabel,
+  sheetTitle,
+  children,
+}: {
+  readonly isMobile: boolean;
+  readonly disabled?: boolean;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly valueLabel: string;
+  readonly sheetTitle: string;
+  readonly children: ReactNode;
+}) {
   if (isMobile) {
     return (
       <>
-        {trigger}
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className="h-12 w-full justify-between rounded-xl px-3 text-base font-normal md:h-11"
+          onClick={() => onOpenChange(true)}
+        >
+          <span className="truncate text-left">{valueLabel}</span>
+          <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
+        </Button>
+        <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
             className="h-[85dvh] gap-0 rounded-t-2xl p-0"
@@ -248,7 +510,7 @@ function SearchSelect({
             <SheetHeader className="border-b border-border/50 px-4 py-3">
               <SheetTitle>{sheetTitle}</SheetTitle>
             </SheetHeader>
-            <div className="min-h-0 flex-1 overflow-hidden p-2">{list}</div>
+            <div className="min-h-0 flex-1 overflow-hidden p-2">{children}</div>
           </SheetContent>
         </Sheet>
       </>
@@ -256,7 +518,7 @@ function SearchSelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         render={
           <Button
@@ -274,7 +536,7 @@ function SearchSelect({
         align="start"
         className="w-[var(--radix-popover-trigger-width)] min-w-[18rem] p-0"
       >
-        {list}
+        {children}
       </PopoverContent>
     </Popover>
   );

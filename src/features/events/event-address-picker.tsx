@@ -31,6 +31,8 @@ export type EventAddressPickerProps = {
   readonly mapClassName?: string;
   /** Override the field label (defaults to events.address). */
   readonly label?: string;
+  /** Map zoom (e.g. country overview vs city). */
+  readonly zoom?: number;
 };
 
 const SEARCH_DEBOUNCE_MS = 500;
@@ -45,6 +47,7 @@ export function EventAddressPicker({
   mapActive = true,
   mapClassName,
   label,
+  zoom,
 }: EventAddressPickerProps) {
   const t = useTranslations("events");
   const locale = useLocale();
@@ -209,6 +212,7 @@ export function EventAddressPicker({
         <EventMapLazy
           point={point}
           pickable
+          zoom={zoom}
           className={cn(
             "h-56 w-full overflow-hidden rounded-xl border border-border/60",
             mapClassName,

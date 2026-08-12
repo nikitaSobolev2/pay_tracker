@@ -4,6 +4,13 @@ import { useLocale } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
+import {
+  loadYmaps,
+  readYandexMapsApiKey,
+  toYmapsLang,
+  type YMapsApi,
+  type YMapsMap,
+} from "@/lib/yandex-maps";
 
 export type MapPoint = {
   readonly latitude: number;
@@ -25,51 +32,6 @@ export type EventMapProps = {
 const FALLBACK_CENTER: MapPoint = { latitude: 55.751244, longitude: 37.618423 };
 const DEFAULT_ZOOM = 15;
 const MIN_MAP_EDGE_PX = 2;
-
-type YMapsMap = {
-  destroy: () => void;
-  getCenter: () => [number, number];
-  setCenter: (
-    center: [number, number],
-    zoom?: number,
-    options?: { duration?: number },
-  ) => void;
-  getZoom: () => number;
-  geoObjects: {
-    add: (object: unknown) => void;
-    removeAll: () => void;
-  };
-  events: {
-    add: (type: string, handler: () => void) => void;
-  };
-  container: {
-    fitToViewport: () => void;
-  };
-};
-
-type YMapsApi = {
-  ready: (callback: () => void) => void;
-  Map: new (
-    element: HTMLElement | string,
-    state: {
-      center: [number, number];
-      zoom: number;
-      controls?: string[];
-    },
-    options?: { suppressMapOpenBlock?: boolean },
-  ) => YMapsMap;
-  Placemark: new (
-    coords: [number, number],
-    properties?: Record<string, unknown>,
-    options?: Record<string, unknown>,
-  ) => unknown;
-};
-
-declare global {
-  interface Window {
-    ymaps?: YMapsApi;
-  }
-}
 
 /** Yandex Maps is DOM-only, so this component must never be server rendered. */
 export function EventMap({
@@ -106,7 +68,7 @@ export function EventMap({
       return;
     }
     const container: HTMLDivElement = root;
-    const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY?.trim();
+    const apiKey = readYandexMapsApiKey();
     if (!apiKey) {
       return;
     }
@@ -263,13 +225,14 @@ export function EventMap({
     if (
       synced &&
       isSameCoordinate(synced.latitude, point.latitude) &&
-      isSameCoordinate(synced.longitude, point.longitude)
+      isSameCoordinate(synced.longitude, point.longitude) &&
+      map.getZoom() === zoom
     ) {
       return;
     }
     syncedCenterRef.current = point;
     try {
-      map.setCenter([point.latitude, point.longitude], map.getZoom(), {
+      map.setCenter([point.latitude, point.longitude], zoom, {
         duration: 0,
       });
       if (!pickableRef.current && placemarkRef.current) {
@@ -288,9 +251,9 @@ export function EventMap({
     } catch {
       // Map may already be destroyed.
     }
-  }, [point]);
+  }, [point, zoom]);
 
-  const apiKeyMissing = !process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY?.trim();
+  const apiKeyMissing = !readYandexMapsApiKey();
 
   return (
     <div className={cn("relative isolate min-h-0 overflow-hidden", className)}>
@@ -325,42 +288,4 @@ function CenterPin() {
 
 function isSameCoordinate(left: number, right: number): boolean {
   return Math.abs(left - right) < 1e-6;
-}
-
-function toYmapsLang(locale: string): string {
-  return locale.startsWith("en") ? "en_US" : "ru_RU";
-}
-
-let ymapsLoadPromise: Promise<YMapsApi> | null = null;
-
-function loadYmaps(apiKey: string, lang: string): Promise<YMapsApi> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("Yandex Maps requires a browser"));
-  }
-  if (window.ymaps) {
-    return new Promise((resolve) => {
-      window.ymaps!.ready(() => resolve(window.ymaps!));
-    });
-  }
-  if (ymapsLoadPromise) {
-    return ymapsLoadPromise;
-  }
-  ymapsLoadPromise = new Promise<YMapsApi>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=${encodeURIComponent(lang)}`;
-    script.async = true;
-    script.onload = () => {
-      if (!window.ymaps) {
-        reject(new Error("Yandex Maps failed to load"));
-        return;
-      }
-      window.ymaps.ready(() => resolve(window.ymaps!));
-    };
-    script.onerror = () => {
-      ymapsLoadPromise = null;
-      reject(new Error("Yandex Maps script failed to load"));
-    };
-    document.head.appendChild(script);
-  });
-  return ymapsLoadPromise;
 }

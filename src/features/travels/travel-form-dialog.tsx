@@ -219,18 +219,45 @@ export function TravelFormDialog({
           <PlaceCityCountryPicker
             value={placeValue}
             onChange={(place) =>
-              setValues((prev) => ({
-                ...prev,
-                placeCountry: place?.placeCountry ?? "",
-                placeCity: place?.placeCity ?? "",
-                placeLabel: place?.placeLabel ?? "",
-              }))
+              setValues((prev) => {
+                const next = {
+                  ...prev,
+                  placeCountry: place?.placeCountry ?? "",
+                  placeCity: place?.placeCity ?? "",
+                  placeLabel: place?.placeLabel ?? "",
+                };
+                if (
+                  place?.latitude == null ||
+                  place?.longitude == null ||
+                  !Number.isFinite(place.latitude) ||
+                  !Number.isFinite(place.longitude)
+                ) {
+                  return next;
+                }
+                const housingUnset =
+                  prev.housingLatitude == null ||
+                  prev.housingLongitude == null ||
+                  !prev.housingAddress.trim();
+                const housingMatchedPreviousPlace =
+                  Boolean(prev.placeLabel) &&
+                  prev.housingAddress.trim() === prev.placeLabel.trim();
+                if (!housingUnset && !housingMatchedPreviousPlace) {
+                  return next;
+                }
+                return {
+                  ...next,
+                  housingLatitude: place.latitude,
+                  housingLongitude: place.longitude,
+                  housingAddress: place.placeLabel || prev.housingAddress,
+                };
+              })
             }
           />
 
           <EventAddressPicker
             label={t("housingAddress")}
             mapActive={open}
+            zoom={values.placeCity ? 12 : values.placeCountry ? 5 : 15}
             value={{
               address: values.housingAddress ?? "",
               latitude: values.housingLatitude ?? null,
