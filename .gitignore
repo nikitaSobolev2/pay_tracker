@@ -53,6 +53,8 @@ next-env.d.ts
 **/public/sw.js.map
 **/public/workbox-*.js.map
 **/public/swe-worker-*.js
+# Copied from pdfjs-dist on postinstall for offline ticket PDFs
+/public/pdf.worker.min.mjs
 
 
 dev/

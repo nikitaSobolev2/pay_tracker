@@ -9,10 +9,18 @@ import "react-pdf/dist/Page/TextLayer.css";
 
 import { Button } from "@/components/ui/button";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+/** Stable public URL — SW precaches this for offline PDF ticket viewing. */
+const PDF_WORKER_URL = "/pdf.worker.min.mjs";
+
+pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
+
+/** Warm react-pdf + worker into the SW cache while online. */
+export function warmupPdfViewerForOffline(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  void fetch(PDF_WORKER_URL).catch(() => undefined);
+}
 
 type TravelTicketPdfViewerProps = {
   readonly file: Blob;

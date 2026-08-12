@@ -1,13 +1,15 @@
 /* PayTracker service worker — network-first shell + travel/transactions GET. */
-const CACHE = "paytracker-v6";
+const CACHE = "paytracker-v7";
 const FILE_CACHE = "paytracker-files-v1";
 const OFFLINE_URL = "/offline.html";
+const PDF_WORKER_URL = "/pdf.worker.min.mjs";
 
 const PRECACHE = [
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/logo.ico",
   "/icons/icon-192.png",
+  PDF_WORKER_URL,
 ];
 
 self.addEventListener("install", (event) => {
@@ -63,6 +65,7 @@ function isStaticAsset(url) {
     url.pathname === "/manifest.webmanifest" ||
     url.pathname === "/logo.ico" ||
     url.pathname === OFFLINE_URL ||
+    url.pathname === PDF_WORKER_URL ||
     url.pathname.startsWith("/icons/")
   ) {
     return true;

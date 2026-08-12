@@ -4,7 +4,8 @@ const TICKET_FILE_PROXY_PREFIX = "/api/files/travel-ticket/";
 
 /**
  * Warms the service worker file cache so ticket files opened online
- * stay viewable when the device goes offline.
+ * stay viewable when the device goes offline. Also loads the PDF viewer
+ * chunk + worker when any ticket is a PDF.
  */
 export function prefetchTicketFilesForOffline(
   tickets: readonly TravelTicketDto[],
@@ -20,5 +21,13 @@ export function prefetchTicketFilesForOffline(
     void fetch(ticket.fileUrl, { credentials: "include" }).catch(
       () => undefined,
     );
+  }
+
+  if (tickets.some((ticket) => ticket.contentType === "application/pdf")) {
+    void import("@/features/travels/travel-ticket-pdf-viewer")
+      .then((module) => {
+        module.warmupPdfViewerForOffline();
+      })
+      .catch(() => undefined);
   }
 }

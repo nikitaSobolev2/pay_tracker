@@ -12,7 +12,7 @@
     "db:deploy": "prisma migrate deploy",
     "fx:fetch": "tsx scripts/fetch-exchange-rates.ts",
     "seed:event-ai": "tsx scripts/seed-event-ai-fixture.ts",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node scripts/copy-pdf-worker.js",
     "test:unit": "tsx --test tests/unit/**/*.test.ts"
   },
   "dependencies": {
