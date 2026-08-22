@@ -13,10 +13,22 @@ import {
 import { TransactionKind, TransactionType } from "../../src/types/enums";
 
 describe("cashflow kind helpers", () => {
-  it("excludes only TRANSFER from default cashflow", () => {
+  it("excludes TRANSFER and FORGIVE from default cashflow", () => {
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Transfer), false);
+    assert.equal(includeRowInDefaultCashflow(TransactionKind.Forgive), false);
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Refund), true);
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Loan), true);
+  });
+
+  it("includes FORGIVE when kind-scoped to forgive", () => {
+    assert.equal(
+      includeRowInCashflow(TransactionKind.Forgive, [TransactionKind.Forgive]),
+      true,
+    );
+    assert.equal(
+      includeRowInCashflow(TransactionKind.Forgive, [TransactionKind.Refund]),
+      false,
+    );
   });
 
   it("includes TRANSFER when kind-scoped to transfer", () => {

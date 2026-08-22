@@ -4,6 +4,7 @@ import type {
   ThingToGrabBody,
   TravelTicketSegmentBody,
   UpdateTravelBody,
+  UpdateTravelTicketBody,
 } from "@/lib/api/travels";
 import type { UpdateTransactionInput } from "@/lib/api/transactions";
 import type { CreateTransactionInput } from "@/lib/api/transactions";
@@ -74,7 +75,7 @@ export type TravelOfflineOp =
   | {
       kind: "updateTicket";
       entityId: string;
-      title: string;
+      body: UpdateTravelTicketBody;
     }
   | {
       kind: "deleteTicket";

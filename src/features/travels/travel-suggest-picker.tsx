@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, Plane, X } from "lucide-react";
+import { Ban, ChevronsUpDown, Plane, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -123,6 +123,10 @@ export function TravelSuggestPicker({
                 travel={selected}
                 schedule={formatSchedule(selected.startsAt, selected.endsAt)}
               />
+            ) : value ? (
+              <span className="truncate text-sm font-medium">
+                {t("travelChooserUnknown")}
+              </span>
             ) : (
               <span className="text-muted-foreground">
                 {t("travelChooserNone")}
@@ -151,6 +155,15 @@ export function TravelSuggestPicker({
                   {t("travelChooserEmpty")}
                 </CommandEmpty>
                 <CommandGroup className="p-1.5 sm:p-1">
+                  <CommandItem
+                    value={t("travelChooserNone")}
+                    data-checked={!value ? true : undefined}
+                    className="min-h-12 items-center gap-2 rounded-lg px-2 py-2 sm:min-h-11"
+                    onSelect={() => apply(null)}
+                  >
+                    <Ban className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm">{t("travelChooserNone")}</span>
+                  </CommandItem>
                   {cachedTravels.map((travel) => (
                     <CommandItem
                       key={travel.id}
@@ -173,12 +186,12 @@ export function TravelSuggestPicker({
             </Command>
           </PopoverContent>
         </Popover>
-        {selected ? (
+        {value ? (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className={ICON_BUTTON_CLASS}
+            className={cn(ICON_BUTTON_CLASS, "size-11 shrink-0")}
             aria-label={t("travelChooserClear")}
             onClick={() => apply(null)}
           >

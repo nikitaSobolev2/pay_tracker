@@ -13,8 +13,9 @@ import { BalanceLineChart } from "@/features/charts/balance-line-chart";
 import { DualSeriesBars } from "@/features/charts/dual-series-bars";
 import { NamedAmountBars } from "@/features/charts/named-amount-bars";
 import {
-  CloseDebtDialog,
+  SettleDebtDialog,
   type DebtCloseTone,
+  type SettleDebtTarget,
 } from "@/features/debts/close-debt-dialog";
 import { ConfirmDeleteDialog } from "@/features/transactions/confirm-delete-dialog";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
@@ -46,7 +47,9 @@ export function DebtDetailPage({
   const openEdit = useUiStore((state) => state.openEditTransactionModal);
   const [stats, setStats] = useState<DebtDetailStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [closeOpen, setCloseOpen] = useState(false);
+  const [settleTarget, setSettleTarget] = useState<SettleDebtTarget | null>(
+    null,
+  );
   const [deleteTarget, setDeleteTarget] = useState<TransactionDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -129,6 +132,10 @@ export function DebtDetailPage({
     eventCount: stats.eventCount,
   };
 
+  function openSettle(mode: SettleDebtTarget["mode"]) {
+    setSettleTarget({ mode, tone: closeTone, person: closePerson });
+  }
+
   const amountNamed = stats.amountSizes.map((item) => ({
     id: item.id,
     name: item.label,
@@ -151,12 +158,22 @@ export function DebtDetailPage({
           eyebrow={t("title")}
         />
         {stats.tone !== "settled" ? (
-          <Button
-            className="h-11 w-full rounded-xl sm:w-auto"
-            onClick={() => setCloseOpen(true)}
-          >
-            {t("closeDebt")}
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              variant="outline"
+              className="h-11 w-full rounded-xl sm:w-auto"
+              onClick={() => openSettle("close")}
+            >
+              {t("closeDebt")}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 w-full rounded-xl sm:w-auto"
+              onClick={() => openSettle("forgive")}
+            >
+              {t("forgiveDebt")}
+            </Button>
+          </div>
         ) : null}
       </header>
 
@@ -210,6 +227,13 @@ export function DebtDetailPage({
                 ? "—"
                 : stats.medianSettleDays.toFixed(1)
             }
+          />
+          <Metric
+            label={t("forgivenAllTime")}
+            value={formatMoney(
+              stats.forgivenAllTime.amount,
+              stats.forgivenAllTime.currency,
+            )}
           />
         </CardContent>
       </Card>
@@ -277,10 +301,7 @@ export function DebtDetailPage({
                   className="min-w-0 flex-1"
                 >
                   <p className="truncate text-base font-medium">
-                    {item.title ||
-                      (item.kind === TransactionKind.Loan
-                        ? "Lend"
-                        : "Borrow")}
+                    {debtHistoryTitle(item, t)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatReadableDate(item.occurredAt)}
@@ -315,18 +336,15 @@ export function DebtDetailPage({
         </CardContent>
       </Card>
 
-      <CloseDebtDialog
-        target={
-          closeOpen
-            ? {
-                tone: closeTone,
-                person: closePerson,
-              }
-            : null
-        }
-        open={closeOpen}
-        onOpenChange={setCloseOpen}
-        onClosed={() => void load()}
+      <SettleDebtDialog
+        target={settleTarget}
+        open={Boolean(settleTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSettleTarget(null);
+          }
+        }}
+        onSettled={() => void load()}
       />
 
       <ConfirmDeleteDialog
@@ -342,6 +360,22 @@ export function DebtDetailPage({
       />
     </div>
   );
+}
+
+function debtHistoryTitle(
+  item: TransactionDto,
+  t: (key: "forgiveDebt") => string,
+): string {
+  if (item.title) {
+    return item.title;
+  }
+  if (item.kind === TransactionKind.Loan) {
+    return "Lend";
+  }
+  if (item.kind === TransactionKind.Debt) {
+    return "Borrow";
+  }
+  return t("forgiveDebt");
 }
 
 function DebtDetailTitle({

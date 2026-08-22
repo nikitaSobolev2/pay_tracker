@@ -45,7 +45,12 @@ export function TravelClocksCard({
     (housingLatitude != null && housingLongitude != null);
 
   return (
-    <div className={cn("grid grid-cols-2 gap-3", className)}>
+    <div
+      className={cn(
+        "grid grid-cols-2 grid-rows-[auto_auto_auto_auto] gap-3",
+        className,
+      )}
+    >
       <TravelClock
         nowMs={nowMs}
         timezone={userTimezone}
@@ -88,7 +93,7 @@ function ClockPlaceholder({
   return (
     <div
       className={cn(
-        "flex h-full min-h-64 flex-col items-center justify-center gap-2 rounded-xl px-4 py-6 text-center text-sm text-muted-foreground",
+        "col-span-1 row-span-4 flex h-full min-h-64 flex-col items-center justify-center gap-2 rounded-xl px-4 py-6 text-center text-sm text-muted-foreground",
         muted
           ? "border border-dashed border-border/60 bg-card"
           : "travel-clock travel-clock--you",

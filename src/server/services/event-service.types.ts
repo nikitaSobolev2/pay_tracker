@@ -5,6 +5,7 @@ import type {
   EventAuthorRole,
   EventGuestPermission,
   EventLinkType,
+  EventPhase,
   EventPublicity,
   EventSpendingCategory,
 } from "@/types/enums";
@@ -41,6 +42,8 @@ export type UpdateEventInput = {
   readonly guestPermission?: EventGuestPermission;
   readonly ownerDisplayName?: string | null;
   readonly manualPerPersonAmount?: string | null;
+  readonly phaseOverride?: EventPhase | null;
+  readonly clearPhaseOverride?: boolean;
 } & EventLocationInput;
 
 export type EventListItemDto = {
@@ -54,15 +57,17 @@ export type EventListItemDto = {
   readonly currency: string;
   readonly attendeeCount: number;
   readonly total: string;
+  readonly phase: EventPhase;
+  readonly phaseOverride: EventPhase | null;
 };
 
-/** Compact chip for desktop header (nearest upcoming / in-progress). */
+/** Compact chip for desktop header (nearest pending / in-progress). */
 export type UpcomingEventChipDto = {
   readonly id: string;
   readonly title: string;
   readonly occursAt: string;
   readonly endsAt: string | null;
-  readonly timing: "upcoming" | "inProgress";
+  readonly phase: Extract<EventPhase, "PENDING" | "IN_PROGRESS">;
 };
 
 export type EventLinkDto = {
@@ -152,6 +157,8 @@ export type EventDetailDto = {
   readonly publicity: EventPublicity;
   readonly guestPermission: EventGuestPermission;
   readonly currency: string;
+  readonly phase: EventPhase;
+  readonly phaseOverride: EventPhase | null;
   readonly ownerName: string;
   /** Owner override for per-person share; null = computed from spendings. */
   readonly manualPerPersonAmount: string | null;

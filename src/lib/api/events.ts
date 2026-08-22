@@ -19,6 +19,7 @@ import type {
   EventAttendanceStatus,
   EventGuestPermission,
   EventLinkType,
+  EventPhase,
   EventPollSelectionMode,
   EventPublicity,
   EventSpendingCategory,
@@ -47,6 +48,8 @@ export type UpdateEventBody = Partial<
 > & {
   ownerDisplayName?: string | null;
   manualPerPersonAmount?: string | null;
+  phaseOverride?: EventPhase | null;
+  clearPhaseOverride?: boolean;
 };
 
 export type SpendingBody = {

@@ -2,43 +2,104 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  isEventHeaderRelevant,
   pickNearestUpcomingEvent,
-  resolveEventTiming,
+  resolveAutoEventPhase,
+  resolveEventPhase,
 } from "@/lib/event-timing";
+import { EventPhase } from "@/types/enums";
 
-describe("resolveEventTiming", () => {
+describe("resolveEventPhase", () => {
   const now = new Date("2026-08-09T12:00:00.000Z");
 
-  it("marks future start as upcoming", () => {
+  it("marks future start as pending", () => {
     assert.equal(
-      resolveEventTiming({
-        occursAt: "2026-08-10T18:00:00.000Z",
-        endsAt: null,
-        now,
-      }),
-      "upcoming",
+      resolveAutoEventPhase("2026-08-10T18:00:00.000Z", null, now),
+      EventPhase.Pending,
     );
   });
 
   it("marks active range as in progress", () => {
     assert.equal(
-      resolveEventTiming({
-        occursAt: "2026-08-09T10:00:00.000Z",
-        endsAt: "2026-08-09T20:00:00.000Z",
+      resolveAutoEventPhase(
+        "2026-08-09T10:00:00.000Z",
+        "2026-08-09T20:00:00.000Z",
         now,
-      }),
-      "inProgress",
+      ),
+      EventPhase.InProgress,
     );
   });
 
   it("marks past end as finished", () => {
     assert.equal(
-      resolveEventTiming({
+      resolveAutoEventPhase(
+        "2026-08-01T10:00:00.000Z",
+        "2026-08-01T20:00:00.000Z",
+        now,
+      ),
+      EventPhase.Finished,
+    );
+  });
+
+  it("uses override when present", () => {
+    assert.equal(
+      resolveEventPhase({
+        occursAt: "2026-08-10T18:00:00.000Z",
+        endsAt: null,
+        phaseOverride: EventPhase.Canceled,
+        now,
+      }),
+      EventPhase.Canceled,
+    );
+  });
+});
+
+describe("isEventHeaderRelevant", () => {
+  const now = new Date("2026-08-09T12:00:00.000Z");
+
+  it("hides canceled events", () => {
+    assert.equal(
+      isEventHeaderRelevant({
+        occursAt: "2026-08-10T18:00:00.000Z",
+        endsAt: null,
+        phaseOverride: EventPhase.Canceled,
+        now,
+      }),
+      false,
+    );
+  });
+
+  it("hides finished events from the header", () => {
+    assert.equal(
+      isEventHeaderRelevant({
         occursAt: "2026-08-01T10:00:00.000Z",
         endsAt: "2026-08-01T20:00:00.000Z",
         now,
       }),
-      "finished",
+      false,
+    );
+  });
+
+  it("keeps pending events", () => {
+    assert.equal(
+      isEventHeaderRelevant({
+        occursAt: "2026-08-10T18:00:00.000Z",
+        endsAt: null,
+        now,
+      }),
+      true,
+    );
+  });
+
+  it("keeps an in-progress override after the end date", () => {
+    assert.equal(
+      isEventHeaderRelevant({
+        occursAt: "2026-08-01T10:00:00.000Z",
+        endsAt: "2026-08-01T20:00:00.000Z",
+        phaseOverride: EventPhase.InProgress,
+        now,
+      }),
+      true,
     );
   });
 });
@@ -46,7 +107,7 @@ describe("resolveEventTiming", () => {
 describe("pickNearestUpcomingEvent", () => {
   const now = new Date("2026-08-09T12:00:00.000Z");
 
-  it("prefers in-progress over later upcoming", () => {
+  it("prefers in-progress over later pending", () => {
     const picked = pickNearestUpcomingEvent(
       [
         {
@@ -65,7 +126,7 @@ describe("pickNearestUpcomingEvent", () => {
     assert.equal(picked?.id, "live");
   });
 
-  it("picks soonest upcoming when none in progress", () => {
+  it("picks soonest pending when none in progress", () => {
     const picked = pickNearestUpcomingEvent(
       [
         {
@@ -98,5 +159,25 @@ describe("pickNearestUpcomingEvent", () => {
       ),
       null,
     );
+  });
+
+  it("ignores canceled events even if dates are upcoming", () => {
+    const picked = pickNearestUpcomingEvent(
+      [
+        {
+          id: "canceled",
+          occursAt: "2026-08-10T18:00:00.000Z",
+          endsAt: null,
+          phaseOverride: EventPhase.Canceled,
+        },
+        {
+          id: "soon",
+          occursAt: "2026-08-12T18:00:00.000Z",
+          endsAt: null,
+        },
+      ],
+      now,
+    );
+    assert.equal(picked?.id, "soon");
   });
 });

@@ -23,6 +23,12 @@ export type MobilePageChromeAction =
       readonly kind: "back";
       readonly onClick: () => void;
       readonly label: string;
+    }
+  | {
+      readonly kind: "chat";
+      readonly onClick: () => void;
+      readonly label: string;
+      readonly unreadCount: number;
     };
 
 /** Page-specific tools merged into the mobile bottom island. */

@@ -19,6 +19,8 @@ export type EventChatDrawerProps = {
   readonly onClose: () => void;
   readonly onPosted: () => Promise<void>;
   readonly onDeleted: (messageId: string) => void;
+  /** e.g. `top-14` so the drawer sits below the in-app header. */
+  readonly className?: string;
 };
 
 /** Non-modal overlay: sits left of the chat rail and slides off to the right when closed. */
@@ -28,6 +30,7 @@ export function EventChatDrawer({
   onClose,
   onPosted,
   onDeleted,
+  className,
 }: EventChatDrawerProps) {
   const t = useTranslations("events");
 
@@ -36,8 +39,9 @@ export function EventChatDrawer({
       aria-label={t("chat")}
       aria-hidden={!open}
       className={cn(
-        "fixed inset-y-0 z-40 flex flex-col border-l border-border/60 bg-card shadow-2xl transition-[right] duration-200 ease-out max-md:hidden",
+        "fixed bottom-0 z-40 flex flex-col border-l border-border/60 bg-card shadow-2xl transition-[right] duration-200 ease-out max-md:hidden",
         !open && "pointer-events-none",
+        className ?? "top-0",
       )}
       style={{
         width: EVENT_CHAT_DRAWER_WIDTH_PX,

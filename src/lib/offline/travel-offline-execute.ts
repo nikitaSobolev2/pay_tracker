@@ -29,6 +29,7 @@ import {
   fileFromOfflineRecord,
   getTravelOfflineFile,
 } from "@/lib/offline/travel-offline-files";
+import { reconcileTravelTransactionCache } from "@/lib/travel-transaction-cache";
 import { useTravelCacheStore } from "@/stores/travel-cache.store";
 import { useTravelOfflineQueueStore } from "@/stores/travel-offline-queue.store";
 import type { TravelOfflineQueueItem } from "@/stores/travel-offline-queue.types";
@@ -172,7 +173,7 @@ export async function executeTravelOfflineOp(
       break;
     }
     case "updateTicket": {
-      await updateTravelTicket(travelId, op.entityId, { title: op.title });
+      await updateTravelTicket(travelId, op.entityId, op.body);
       break;
     }
     case "deleteTicket": {
@@ -212,7 +213,17 @@ export async function executeTravelOfflineOp(
     }
     case "updateTransaction": {
       const result = await updateTransaction(op.entityId, op.body);
-      cache.upsertTransaction(travelId, result.transaction);
+      const next = result.transaction;
+      const targets = reconcileTravelTransactionCache({
+        previousTravelId: travelId,
+        nextTravelId: next.travelId,
+      });
+      if (targets.removeFrom) {
+        cache.removeTransaction(targets.removeFrom, next.id);
+      }
+      if (targets.upsertTo) {
+        cache.upsertTransaction(targets.upsertTo, next);
+      }
       break;
     }
     case "deleteTransaction": {

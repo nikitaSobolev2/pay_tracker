@@ -1,12 +1,54 @@
-import { TransactionKind } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 /** Treat balances within this RUB epsilon as settled. */
 const ZERO_EPSILON = 0.005;
 
+export const DEBT_LEDGER_KINDS: readonly TransactionKind[] = [
+  TransactionKind.Loan,
+  TransactionKind.Debt,
+  TransactionKind.Forgive,
+];
+
+export function isDebtLedgerKind(kind: TransactionKind): boolean {
+  return (
+    kind === TransactionKind.Loan ||
+    kind === TransactionKind.Debt ||
+    kind === TransactionKind.Forgive
+  );
+}
+
+/**
+ * Signed ledger multiplier. Positive = they owe you; negative = you owe them.
+ * Forgive uses the same sign as Close: spending forgive is like Loan (+),
+ * earning forgive is like Debt (−).
+ */
+export function debtBalanceDelta(
+  kind: TransactionKind,
+  type: TransactionType,
+): number {
+  if (kind === TransactionKind.Loan) {
+    return 1;
+  }
+  if (kind === TransactionKind.Debt) {
+    return -1;
+  }
+  if (kind !== TransactionKind.Forgive) {
+    return 0;
+  }
+  if (type === TransactionType.Spending) {
+    return 1;
+  }
+  if (type === TransactionType.Earning) {
+    return -1;
+  }
+  return 0;
+}
+
 export type DebtEpisodeEvent = {
   readonly occurredAt: Date;
-  readonly kind: typeof TransactionKind.Loan | typeof TransactionKind.Debt;
+  readonly kind: TransactionKind;
+  readonly type: TransactionType;
   /** Canonical RUB amount (always positive). */
   readonly amountRub: number | string;
 };
@@ -26,7 +68,7 @@ function signedDelta(event: DebtEpisodeEvent): number {
   if (!Number.isFinite(amount)) {
     return 0;
   }
-  return event.kind === TransactionKind.Loan ? amount : -amount;
+  return amount * debtBalanceDelta(event.kind, event.type);
 }
 
 function balanceSign(balance: number): -1 | 0 | 1 {

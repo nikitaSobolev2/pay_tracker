@@ -582,11 +582,35 @@ export async function updateTravelTicket(
   }
   const updated = await prisma.travelTicket.update({
     where: { id: existing.id },
-    data: {
-      title: input.title?.trim(),
-    },
+    data: ticketUpdateData(input),
   });
   return mapTicket(updated);
+}
+
+function ticketUpdateData(input: UpdateTravelTicketInput) {
+  return {
+    ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+    ...(input.origin !== undefined
+      ? { origin: normalizeSegmentText(input.origin) }
+      : {}),
+    ...(input.destination !== undefined
+      ? { destination: normalizeSegmentText(input.destination) }
+      : {}),
+    ...(input.departsAt !== undefined ? { departsAt: input.departsAt } : {}),
+    ...(input.arrivesAt !== undefined ? { arrivesAt: input.arrivesAt } : {}),
+    ...(input.ticketNumber !== undefined
+      ? { ticketNumber: normalizeSegmentText(input.ticketNumber) }
+      : {}),
+    ...(input.flightNumber !== undefined
+      ? { flightNumber: normalizeSegmentText(input.flightNumber) }
+      : {}),
+    ...(input.bookingCode !== undefined
+      ? { bookingCode: normalizeSegmentText(input.bookingCode) }
+      : {}),
+    ...(input.seat !== undefined
+      ? { seat: normalizeTicketSeat(normalizeSegmentText(input.seat)) }
+      : {}),
+  };
 }
 
 export async function deleteTravelTicket(input: {

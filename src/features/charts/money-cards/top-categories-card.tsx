@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryChildrenDetails } from "@/features/charts/category-children-details";
 import { StatCard } from "@/features/charts/stat-card";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { BENTO_CHART_CLASS } from "@/lib/bento";
 import {
   categorySliceFill,
@@ -58,6 +59,11 @@ export function TopCategoriesCard({
 }) {
   const tCharts = useTranslations("charts");
   const tTx = useTranslations("transaction");
+  const isMobile = useIsMobile();
+  const plotClass = cn(
+    BENTO_CHART_CLASS,
+    isMobile && "h-64 max-h-64",
+  );
 
   const data = useMemo(() => {
     const typeCounts = { spending: 0, earning: 0 };
@@ -102,7 +108,7 @@ export function TopCategoriesCard({
       contentClassName="min-h-0"
       bleed
       skeleton={
-        <Skeleton className={cn("mx-2 mb-2 w-[calc(100%-1rem)]", BENTO_CHART_CLASS)} />
+        <Skeleton className={cn("mx-2 mb-2 w-[calc(100%-1rem)]", plotClass)} />
       }
     >
       {data.length === 0 ? (
@@ -110,14 +116,19 @@ export function TopCategoriesCard({
           {tCharts("noCategoriesYet")}
         </div>
       ) : (
-        <div className={cn("relative w-full", BENTO_CHART_CLASS)}>
+        <div className={cn("relative w-full", plotClass)}>
           <ChartContainer
             config={chartConfig}
             className="absolute inset-0 aspect-auto h-full w-full px-2 pb-2"
           >
             <BarChart
               data={data}
-              margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
+              margin={{
+                top: 8,
+                right: 8,
+                left: 4,
+                bottom: isMobile ? 44 : 4,
+              }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
@@ -125,7 +136,8 @@ export function TopCategoriesCard({
                 tickLine={false}
                 axisLine={false}
                 interval={0}
-                tick={{ fontSize: 11 }}
+                tick={isMobile ? <RotatedCategoryTick /> : { fontSize: 11 }}
+                height={isMobile ? 52 : undefined}
               />
               <YAxis
                 type="number"
@@ -209,6 +221,30 @@ function TopCategoriesTooltip({
         />
       ) : null}
     </div>
+  );
+}
+
+function RotatedCategoryTick({
+  x = 0,
+  y = 0,
+  payload,
+}: {
+  readonly x?: number | string;
+  readonly y?: number | string;
+  readonly payload?: { readonly value?: string };
+}) {
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        dy={8}
+        dx={-2}
+        textAnchor="end"
+        transform="rotate(-50)"
+        className="fill-muted-foreground text-[10px]"
+      >
+        {payload?.value}
+      </text>
+    </g>
   );
 }
 

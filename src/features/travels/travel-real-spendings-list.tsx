@@ -45,7 +45,6 @@ export function TravelRealSpendingsList({
     (state) => state.transactionsByTravelId[travelId],
   );
   const [items, setItems] = useState<TransactionDto[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -133,15 +132,6 @@ export function TravelRealSpendingsList({
           loading={loading}
           items={items}
           emptyText={t("spendingEmptyCategory")}
-          selected={selected}
-          onToggleOne={(id) =>
-            setSelected((prev) =>
-              prev.includes(id)
-                ? prev.filter((item) => item !== id)
-                : [...prev, id],
-            )
-          }
-          onEnterSelection={(id) => setSelected([id])}
           onEdit={(tx) => openEditTransactionModal(tx)}
         />
       </CardContent>
@@ -153,17 +143,11 @@ function RealSpendingsContent({
   loading,
   items,
   emptyText,
-  selected,
-  onToggleOne,
-  onEnterSelection,
   onEdit,
 }: {
   readonly loading: boolean;
   readonly items: TransactionDto[];
   readonly emptyText: string;
-  readonly selected: string[];
-  readonly onToggleOne: (id: string) => void;
-  readonly onEnterSelection: (id: string) => void;
   readonly onEdit: (item: TransactionDto) => void;
 }) {
   if (loading) {
@@ -181,9 +165,6 @@ function RealSpendingsContent({
     <TransactionMobileList
       variant="plain"
       items={items}
-      selected={selected}
-      onToggleOne={onToggleOne}
-      onEnterSelection={onEnterSelection}
       onEdit={onEdit}
     />
   );

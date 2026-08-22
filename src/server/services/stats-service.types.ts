@@ -179,6 +179,8 @@ export type DebtsStats = {
   displayCurrency: string;
   /** Median settle days across all completed debt episodes. */
   medianSettleDays: number | null;
+  /** All-time FORGIVE amounts, including counterparties whose net is now zero. */
+  forgivenAllTime: MoneyAmount;
   myDebts: {
     totalAllTime: MoneyAmount;
     totalThisMonth: MoneyAmount;

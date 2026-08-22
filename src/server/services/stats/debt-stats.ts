@@ -1,7 +1,9 @@
 import Decimal from "decimal.js";
 
 import {
+  DEBT_LEDGER_KINDS,
   detectCompletedDebtEpisodes,
+  isDebtLedgerKind,
   medianDays,
   type DebtEpisodeEvent,
 } from "@/lib/debt-episodes";
@@ -21,6 +23,7 @@ import {
   meanIntervalDays,
   moneyOf,
   netDebtBalance,
+  sumDisplay,
   type TxRow,
 } from "./stats-common";
 
@@ -31,7 +34,7 @@ export async function getDebtsStats(
     where: {
       userId: input.userId,
       isDeleted: false,
-      kind: { in: [TransactionKind.Loan, TransactionKind.Debt] },
+      kind: { in: [...DEBT_LEDGER_KINDS] },
     },
     include: {
       counterparty: true,
@@ -47,9 +50,15 @@ export async function getDebtsStats(
     input.displayCurrency,
   );
 
+  const forgivenAllTime = await sumDisplay(
+    rows.filter((row) => row.kind === TransactionKind.Forgive),
+    input.displayCurrency,
+  );
+
   return {
     displayCurrency: input.displayCurrency,
     medianSettleDays: netted.medianSettleDays,
+    forgivenAllTime: moneyOf(forgivenAllTime, input.displayCurrency),
     myDebts: netted.myDebts,
     debtsToMe: netted.debtsToMe,
   };
@@ -172,15 +181,13 @@ function collectSettleDurations(
 function partyRowsToEpisodeEvents(partyRows: TxRow[]): DebtEpisodeEvent[] {
   const events: DebtEpisodeEvent[] = [];
   for (const row of partyRows) {
-    if (
-      row.kind !== TransactionKind.Loan &&
-      row.kind !== TransactionKind.Debt
-    ) {
+    if (!isDebtLedgerKind(row.kind)) {
       continue;
     }
     events.push({
       occurredAt: row.occurredAt,
       kind: row.kind,
+      type: row.type,
       amountRub: row.amount.toString(),
     });
   }

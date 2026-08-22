@@ -1,11 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
 
+import { DEBT_LEDGER_KINDS, debtBalanceDelta } from "@/lib/debt-episodes";
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { classifySearchQuery } from "@/lib/search/query-classify";
 import { resolveTravelPhase } from "@/lib/travel-phase";
-import { TransactionKind } from "@/types/enums";
 
 import { toCategoryDtos } from "./category-service";
 import { convertRubToDisplay } from "./exchange-rate-service";
@@ -369,12 +369,13 @@ async function searchDebtsForCounterparties(
       isDeleted: false,
       counterpartyId: { in: ids },
       kind: {
-        in: [TransactionKind.Loan, TransactionKind.Debt],
+        in: [...DEBT_LEDGER_KINDS],
       },
     },
     select: {
       counterpartyId: true,
       kind: true,
+      type: true,
       amount: true,
       fxRateDate: true,
       counterparty: { select: { id: true, name: true } },
@@ -385,8 +386,7 @@ async function searchDebtsForCounterparties(
     string,
     {
       name: string;
-      lend: typeof rows;
-      borrow: typeof rows;
+      rows: typeof rows;
     }
   >();
 
@@ -396,22 +396,27 @@ async function searchDebtsForCounterparties(
     }
     const bucket = byParty.get(row.counterpartyId) ?? {
       name: row.counterparty.name,
-      lend: [],
-      borrow: [],
+      rows: [],
     };
-    if (row.kind === TransactionKind.Loan) {
-      bucket.lend.push(row);
-    } else if (row.kind === TransactionKind.Debt) {
-      bucket.borrow.push(row);
-    }
+    bucket.rows.push(row);
     byParty.set(row.counterpartyId, bucket);
   }
 
   const hits: SearchDebtHit[] = [];
   for (const [counterpartyId, bucket] of byParty) {
-    const owedToMe = await sumRubRows(bucket.lend, input.displayCurrency);
-    const iOwe = await sumRubRows(bucket.borrow, input.displayCurrency);
-    const net = owedToMe.minus(iOwe);
+    let net = toDecimal(0);
+    for (const row of bucket.rows) {
+      const sign = debtBalanceDelta(row.kind, row.type);
+      if (sign === 0) {
+        continue;
+      }
+      const display = await convertRubToDisplay(
+        row.amount.toString(),
+        input.displayCurrency,
+        row.fxRateDate,
+      );
+      net = net.plus(toDecimal(display.amount).times(sign));
+    }
     if (net.isZero()) {
       continue;
     }
@@ -645,22 +650,6 @@ function mergeTransactionHits(
   return [...byId.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
-}
-
-async function sumRubRows(
-  rows: Array<{ amount: { toString(): string }; fxRateDate: Date }>,
-  displayCurrency: string,
-) {
-  let total = toDecimal(0);
-  for (const row of rows) {
-    const converted = await convertRubToDisplay(
-      toDecimal(row.amount.toString()),
-      displayCurrency,
-      row.fxRateDate,
-    );
-    total = total.plus(toDecimal(converted.amount));
-  }
-  return total;
 }
 
 function textScore(haystack: string, needle: string): number {

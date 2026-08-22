@@ -19,6 +19,7 @@ import {
   includeRowInCashflow,
 } from "@/lib/cashflow-kinds";
 import { daysInRange, elapsedDaysInRange } from "@/lib/dates";
+import { debtBalanceDelta, isDebtLedgerKind } from "@/lib/debt-episodes";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import type { TimelineBucket } from "@/lib/timeline-bucket";
@@ -540,10 +541,7 @@ export function sortNamedAmountsDesc(items: NamedAmount[]): void {
 export function groupDebtRowsByCounterparty(rows: TxRow[]): Map<string, TxRow[]> {
   const byParty = new Map<string, TxRow[]>();
   for (const row of rows) {
-    if (
-      row.kind !== TransactionKind.Loan &&
-      row.kind !== TransactionKind.Debt
-    ) {
+    if (!isDebtLedgerKind(row.kind)) {
       continue;
     }
     const key = row.counterpartyId ?? "unknown";
@@ -559,15 +557,16 @@ export async function netDebtBalance(
   partyRows: TxRow[],
   displayCurrency: string,
 ): Promise<Decimal> {
-  const lendRows = partyRows.filter(
-    (row) => row.kind === TransactionKind.Loan,
-  );
-  const borrowRows = partyRows.filter(
-    (row) => row.kind === TransactionKind.Debt,
-  );
-  const owedToMe = await sumDisplay(lendRows, displayCurrency);
-  const iOwe = await sumDisplay(borrowRows, displayCurrency);
-  return owedToMe.minus(iOwe);
+  let net = toDecimal(0);
+  for (const row of partyRows) {
+    const sign = debtBalanceDelta(row.kind, row.type);
+    if (sign === 0) {
+      continue;
+    }
+    const display = await rowDisplayAmount(row, displayCurrency);
+    net = net.plus(display.times(sign));
+  }
+  return net;
 }
 
 export function inBounds(

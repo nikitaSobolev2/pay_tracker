@@ -37,9 +37,11 @@ export function PageBackButton({
   return (
     <Button
       type="button"
-      variant="ghost"
-      size="icon"
-      className={cn("mt-0.5 size-10 shrink-0 rounded-xl", className)}
+      variant="outline"
+      className={cn(
+        "inline-flex h-auto min-h-11 w-11 shrink-0 self-stretch items-center justify-center rounded-xl p-0",
+        className,
+      )}
       onClick={handleBack}
       aria-label={t("back")}
     >
@@ -59,7 +61,7 @@ export function PageTitleWithBack({
   readonly className?: string;
 }) {
   return (
-    <div className={cn("flex min-w-0 items-start gap-1.5 sm:gap-2", className)}>
+    <div className={cn("flex min-w-0 items-stretch gap-1.5 sm:gap-2", className)}>
       <PageBackButton fallbackHref={fallbackHref} />
       <div className="min-w-0 flex-1">{children}</div>
     </div>

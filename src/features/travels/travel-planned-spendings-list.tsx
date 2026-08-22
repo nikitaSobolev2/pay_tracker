@@ -10,8 +10,14 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import {
+  SwipeableList,
+  Type as SwipeType,
+} from "react-swipeable-list";
+import "react-swipeable-list/dist/styles.css";
 import { toast } from "sonner";
 
+import { ObjectSwipeRow, type ObjectSwipeInjectedProps } from "@/components/object-swipe-row";
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -254,7 +260,12 @@ export function TravelPlannedSpendingsList({
               ) : isCollapsed ? null : (
                 <div className="space-y-2 p-2 sm:p-3">
                   {isMobile ? (
-                    <div className="space-y-2">
+                    <SwipeableList
+                      type={SwipeType.IOS}
+                      fullSwipe={false}
+                      threshold={0.45}
+                      className="object-swipe-list"
+                    >
                       {group.spendings.map((item) => (
                         <MobileSpendingCard
                           key={item.id}
@@ -266,7 +277,7 @@ export function TravelPlannedSpendingsList({
                           }}
                         />
                       ))}
-                    </div>
+                    </SwipeableList>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -512,39 +523,41 @@ function MobileSpendingCard({
   onEdit,
   onDelete,
   onAmountCommit,
+  ...swipeProps
 }: {
   readonly item: TravelPlannedSpendingDto;
   readonly onEdit: () => void;
   readonly onDelete: () => void;
   readonly onAmountCommit: (amount: string) => Promise<void>;
-}) {
+} & ObjectSwipeInjectedProps) {
+  const [amountFocused, setAmountFocused] = useState(false);
+
   return (
-    <ObjectCard dashed>
-      <ReceiptRail />
-      <ObjectCardBody className="flex-col items-stretch gap-2 py-3">
-      <button
-        type="button"
-        className="min-h-11 w-full text-left text-sm font-semibold"
-        onClick={onEdit}
-      >
-        {item.title}
-      </button>
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <InlineAmount value={item.amount} onCommit={onAmountCommit} />
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-11 rounded-xl text-destructive"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-      </ObjectCardBody>
-    </ObjectCard>
+    <ObjectSwipeRow
+      onEdit={onEdit}
+      onDelete={onDelete}
+      blockSwipe={amountFocused}
+      {...swipeProps}
+    >
+      <ObjectCard dashed>
+        <ReceiptRail />
+        <ObjectCardBody className="flex-col items-stretch gap-2 py-3">
+          <button
+            type="button"
+            className="min-h-11 w-full text-left text-sm font-semibold"
+            onClick={onEdit}
+          >
+            {item.title}
+          </button>
+          <div
+            onFocusCapture={() => setAmountFocused(true)}
+            onBlurCapture={() => setAmountFocused(false)}
+          >
+            <InlineAmount value={item.amount} onCommit={onAmountCommit} />
+          </div>
+        </ObjectCardBody>
+      </ObjectCard>
+    </ObjectSwipeRow>
   );
 }
 

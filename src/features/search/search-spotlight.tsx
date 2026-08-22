@@ -33,6 +33,7 @@ import {
   type SearchResponse,
 } from "@/lib/api/search";
 import { formatMoney } from "@/lib/money";
+import { eventAppPath } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
 import { TransactionType } from "@/types/enums";
 
@@ -350,7 +351,7 @@ export function SearchSpotlight({
                   <CommandItem
                     key={item.id}
                     value={`event-${item.id}`}
-                    onSelect={() => closeAndGo(`/event/${item.id}`)}
+                    onSelect={() => closeAndGo(eventAppPath(item.id))}
                   >
                     <CalendarDays />
                     <span className="min-w-0 flex-1 truncate">

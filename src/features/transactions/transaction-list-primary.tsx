@@ -68,12 +68,12 @@ export function TransactionListPrimary({
             event.stopPropagation();
             onDateClick(item.occurredAt.slice(0, 10));
           }}
-          className="mt-0.5 text-xs text-muted-foreground/80 hover:underline"
+          className="mt-0.5 block w-full text-left text-xs text-muted-foreground/80 hover:underline"
         >
           {formatReadableDateTime(item.occurredAt)}
         </button>
       ) : (
-        <p className="mt-0.5 text-xs text-muted-foreground/80">
+        <p className="mt-0.5 block w-full text-left text-xs text-muted-foreground/80">
           {formatReadableDateTime(item.occurredAt)}
         </p>
       )}

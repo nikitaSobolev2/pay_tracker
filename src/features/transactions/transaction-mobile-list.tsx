@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, MoreVertical, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckSquare, Eye, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -15,16 +15,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  MobileRowActionSheet,
+  type MobileRowAction,
+} from "@/components/mobile-row-action-sheet";
+import { RowOverflowMenu } from "@/components/row-overflow-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   TransactionListAmount,
   TransactionListPrimary,
 } from "@/features/transactions/transaction-list-primary";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLongPress } from "@/hooks/use-long-press";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -40,9 +40,9 @@ type TransactionMobileListProps = {
   readonly items: TransactionDto[];
   readonly loading?: boolean;
   readonly loadingMore?: boolean;
-  readonly selected: string[];
-  readonly onToggleOne: (id: string) => void;
-  readonly onEnterSelection: (id: string) => void;
+  readonly selected?: string[];
+  readonly onToggleOne?: (id: string) => void;
+  readonly onEnterSelection?: (id: string) => void;
   readonly onEdit: (item: TransactionDto) => void;
   readonly onSoftDeleted?: (id: string) => void;
   readonly onRestored?: (id: string) => void;
@@ -64,7 +64,7 @@ export function TransactionMobileList({
   items,
   loading = false,
   loadingMore = false,
-  selected,
+  selected = [],
   onToggleOne,
   onEnterSelection,
   onEdit,
@@ -164,8 +164,8 @@ type TransactionMobileRowProps = {
   readonly item: TransactionDto;
   readonly selected: boolean;
   readonly selectionMode: boolean;
-  readonly onToggleOne: (id: string) => void;
-  readonly onEnterSelection: (id: string) => void;
+  readonly onToggleOne?: (id: string) => void;
+  readonly onEnterSelection?: (id: string) => void;
   readonly onEdit: (item: TransactionDto) => void;
   readonly onSoftDeleted?: (id: string) => void;
   readonly onRestored?: (id: string) => void;
@@ -195,9 +195,9 @@ function TransactionMobileRow({
 }: TransactionMobileRowProps) {
   const t = useTranslations("transaction");
   const tCommon = useTranslations("common");
-  const tHeader = useTranslations("header");
+  const isMobile = useIsMobile();
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [actionsRevealed, setActionsRevealed] = useState(false);
   const [softDeleted, setSoftDeleted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -247,9 +247,14 @@ function TransactionMobileRow({
     }
   }, [busy, item.id, onRestored]);
 
+  const useSheet = isMobile;
+
   const handleLongPress = useCallback(() => {
-    onEnterSelection(item.id);
-  }, [item.id, onEnterSelection]);
+    if (!useSheet) {
+      return;
+    }
+    setSheetOpen(true);
+  }, [useSheet]);
 
   const {
     onPointerDown,
@@ -259,7 +264,7 @@ function TransactionMobileRow({
     consumeLongPress,
   } = useLongPress({
     onLongPress: handleLongPress,
-    disabled: selectionMode || softDeleted || busy,
+    disabled: !useSheet || selectionMode || softDeleted || busy,
   });
 
   const trailingActions = softDeleted ? undefined : (
@@ -284,7 +289,40 @@ function TransactionMobileRow({
     </TrailingActions>
   );
 
+  const sheetActions: MobileRowAction[] = [
+    {
+      id: "view",
+      label: t("viewTransaction"),
+      icon: Eye,
+      onSelect: () => router.push(`/transactions/${item.id}`),
+    },
+    {
+      id: "edit",
+      label: tCommon("edit"),
+      icon: Pencil,
+      onSelect: () => onEdit(item),
+    },
+    ...(onEnterSelection
+      ? [
+          {
+            id: "select",
+            label: tCommon("select"),
+            icon: CheckSquare,
+            onSelect: () => onEnterSelection(item.id),
+          } satisfies MobileRowAction,
+        ]
+      : []),
+    {
+      id: "delete",
+      label: tCommon("delete"),
+      icon: Trash2,
+      onSelect: () => void performSoftDelete(),
+      destructive: true,
+    },
+  ];
+
   return (
+    <>
     <SwipeableListItem
       id={id}
       resetState={resetState}
@@ -294,7 +332,7 @@ function TransactionMobileRow({
       optOutMouseEvents={optOutMouseEvents}
       scrollStartThreshold={scrollStartThreshold}
       swipeStartThreshold={swipeStartThreshold}
-      blockSwipe={selectionMode || busy || softDeleted}
+      blockSwipe={!isMobile || selectionMode || busy || softDeleted}
       fullSwipe={actionsRevealed}
       threshold={0.45}
       listType={listType}
@@ -325,7 +363,7 @@ function TransactionMobileRow({
           setActionsRevealed(false);
         }
         if (selectionMode) {
-          onToggleOne(item.id);
+          onToggleOne?.(item.id);
         }
       }}
     >
@@ -372,62 +410,21 @@ function TransactionMobileRow({
             {t("restore")}
           </Button>
         ) : !selectionMode ? (
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-11 shrink-0"
-                  aria-label={tHeader("menu")}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                />
-              }
-            >
-              <MoreVertical className="size-5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44 p-1.5">
-              <DropdownMenuItem
-                className="min-h-12 gap-2.5 px-3 text-base"
-                onClick={() => {
-                  setMenuOpen(false);
-                  router.push(`/transactions/${item.id}`);
-                }}
-              >
-                <Eye className="size-4" />
-                {t("viewTransaction")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="min-h-12 gap-2.5 px-3 text-base"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onEdit(item);
-                }}
-              >
-                <Pencil className="size-4" />
-                {tCommon("edit")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                className="min-h-12 gap-2.5 px-3 text-base"
-                disabled={busy}
-                onClick={() => {
-                  setMenuOpen(false);
-                  void performSoftDelete();
-                }}
-              >
-                <Trash2 className="size-4" />
-                {tCommon("delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowOverflowMenu
+            className="hidden md:flex"
+            actions={sheetActions}
+          />
         ) : null}
       </div>
     </SwipeableListItem>
+    {useSheet ? (
+      <MobileRowActionSheet
+        open={sheetOpen}
+        actions={sheetActions}
+        onOpenChange={setSheetOpen}
+      />
+    ) : null}
+    </>
   );
 }
 

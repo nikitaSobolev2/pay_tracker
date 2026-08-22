@@ -3,13 +3,6 @@
 import { Backpack, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import {
-  SwipeableList,
-  SwipeableListItem,
-  SwipeAction,
-  TrailingActions,
-  Type as SwipeType,
-} from "react-swipeable-list";
 import "react-swipeable-list/dist/styles.css";
 import { toast } from "sonner";
 
@@ -29,6 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { ObjectActionList, ObjectSwipeRow, type ObjectSwipeInjectedProps } from "@/components/object-swipe-row";
+import { RowOverflowMenu } from "@/components/row-overflow-menu";
 import {
   LuggageQtyRail,
   ObjectCard,
@@ -74,6 +69,7 @@ export function TravelThingsToGrabList({
 }: TravelThingsToGrabListProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
+  const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TravelThingToGrabDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TravelThingToGrabDto | null>(
@@ -149,15 +145,11 @@ export function TravelThingsToGrabList({
           {items.length === 0 ? (
             <TravelSectionEmpty icon={Backpack} text={t("grabsEmpty")} />
           ) : (
-            <SwipeableList
-              type={SwipeType.IOS}
-              fullSwipe={false}
-              threshold={0.45}
-              className="object-swipe-list"
-            >
+            <ObjectActionList swipe={isMobile}>
               {items.map((item) => (
                 <GrabRow
                   key={item.id}
+                  swipe={isMobile}
                   item={item}
                   toggling={togglingId === item.id}
                   onToggle={() => void toggleChecked(item)}
@@ -165,7 +157,7 @@ export function TravelThingsToGrabList({
                   onDelete={() => setDeleteTarget(item)}
                 />
               ))}
-            </SwipeableList>
+            </ObjectActionList>
           )}
         </CardContent>
       </Card>
@@ -218,26 +210,13 @@ export function TravelThingsToGrabList({
   );
 }
 
-type SwipeableListInjectedProps = {
-  readonly fullSwipe?: boolean;
-  readonly listType?: SwipeType;
-  readonly threshold?: number;
-  readonly actionDelay?: number;
-  readonly destructiveCallbackDelay?: number;
-  readonly optOutMouseEvents?: boolean;
-  readonly scrollStartThreshold?: number;
-  readonly swipeStartThreshold?: number;
-  readonly clickedCallback?: (id: string) => void;
-  readonly id?: string;
-  readonly resetState?: (close: () => void) => void;
-};
-
 function GrabRow({
   item,
   toggling,
   onToggle,
   onEdit,
   onDelete,
+  swipe = false,
   ...swipeProps
 }: {
   readonly item: TravelThingToGrabDto;
@@ -245,68 +224,50 @@ function GrabRow({
   readonly onToggle: () => void;
   readonly onEdit: () => void;
   readonly onDelete: () => void;
-} & SwipeableListInjectedProps) {
+  readonly swipe?: boolean;
+} & ObjectSwipeInjectedProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
-  const isMobile = useIsMobile();
-
+  const card = (
+    <ObjectCard faded={item.isChecked}>
+      <LuggageQtyRail quantity={item.amount} />
+      <ObjectCardBody>
+        <Checkbox
+          className="size-5"
+          checked={item.isChecked}
+          disabled={toggling}
+          onCheckedChange={onToggle}
+          aria-label={t("grabToggleChecked")}
+        />
+        <ObjectCardCopy title={item.title} struck={item.isChecked} />
+        <RowOverflowMenu
+          className="hidden md:flex"
+          actions={[
+            {
+              id: "edit",
+              label: tCommon("edit"),
+              icon: Pencil,
+              onSelect: onEdit,
+            },
+            {
+              id: "delete",
+              label: tCommon("delete"),
+              icon: Trash2,
+              onSelect: onDelete,
+              destructive: true,
+            },
+          ]}
+        />
+      </ObjectCardBody>
+    </ObjectCard>
+  );
+  if (!swipe) {
+    return card;
+  }
   return (
-    <SwipeableListItem
-      {...swipeProps}
-      blockSwipe={!isMobile}
-      trailingActions={
-        <TrailingActions>
-          <SwipeAction onClick={onEdit}>
-            <div className="object-swipe-action bg-muted text-foreground">
-              <Pencil className="size-4" />
-              <span>{tCommon("edit")}</span>
-            </div>
-          </SwipeAction>
-          <SwipeAction onClick={onDelete}>
-            <div className="object-swipe-action bg-destructive text-destructive-foreground">
-              <Trash2 className="size-4" />
-              <span>{tCommon("delete")}</span>
-            </div>
-          </SwipeAction>
-        </TrailingActions>
-      }
-    >
-      <ObjectCard faded={item.isChecked}>
-        <LuggageQtyRail quantity={item.amount} />
-        <ObjectCardBody>
-          <Checkbox
-            className="size-5"
-            checked={item.isChecked}
-            disabled={toggling}
-            onCheckedChange={onToggle}
-            aria-label={t("grabToggleChecked")}
-          />
-          <ObjectCardCopy title={item.title} struck={item.isChecked} />
-          <div className="hidden shrink-0 items-center gap-0.5 md:flex">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 rounded-xl"
-              aria-label={tCommon("edit")}
-              onClick={onEdit}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 rounded-xl text-destructive"
-              aria-label={t("grabDelete")}
-              onClick={onDelete}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </ObjectCardBody>
-      </ObjectCard>
-    </SwipeableListItem>
+    <ObjectSwipeRow onEdit={onEdit} onDelete={onDelete} {...swipeProps}>
+      {card}
+    </ObjectSwipeRow>
   );
 }
 

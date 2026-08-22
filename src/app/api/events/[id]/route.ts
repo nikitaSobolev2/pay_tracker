@@ -13,7 +13,11 @@ import {
   getEventDetail,
   updateEvent,
 } from "@/server/services/event-service";
-import { EventGuestPermission, EventPublicity } from "@/types/enums";
+import {
+  EventGuestPermission,
+  EventPhase,
+  EventPublicity,
+} from "@/types/enums";
 
 const positiveMoney = z
   .string()
@@ -32,6 +36,8 @@ const updateBodySchema = z.object({
   guestPermission: zodEnumFromConst(EventGuestPermission).optional(),
   ownerDisplayName: z.string().max(60).nullish(),
   manualPerPersonAmount: positiveMoney.nullish(),
+  phaseOverride: zodEnumFromConst(EventPhase).nullish(),
+  clearPhaseOverride: z.boolean().optional(),
 });
 
 type RouteContext = {
@@ -71,6 +77,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       guestPermission: body.guestPermission,
       ownerDisplayName: body.ownerDisplayName,
       manualPerPersonAmount: body.manualPerPersonAmount,
+      phaseOverride: body.phaseOverride,
+      clearPhaseOverride: body.clearPhaseOverride,
     });
     const detail = await getEventDetail(await requireEventAccess(id));
     return jsonOk(detail);
@@ -113,7 +121,9 @@ function assertCanApplyPatch(
     body.endsAt !== undefined ||
     body.address !== undefined ||
     body.latitude !== undefined ||
-    body.longitude !== undefined;
+    body.longitude !== undefined ||
+    body.phaseOverride !== undefined ||
+    body.clearPhaseOverride !== undefined;
   if (touchesOwnerOnlyFields) {
     requireOwner();
     return;

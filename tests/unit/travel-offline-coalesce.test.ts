@@ -109,4 +109,69 @@ describe("coalesceTravelQueueItems", () => {
     }
     assert.deepEqual(result[0]?.baseline, { amount: "100" });
   });
+
+  it("merges ticket update bodies and keeps the first baseline", () => {
+    const first = item({
+      localId: "a",
+      travelId: "t1",
+      op: {
+        kind: "updateTicket",
+        entityId: "tk1",
+        body: { title: "Flight BCN", origin: "BCN" },
+      },
+      baseline: { title: "Boarding pass", origin: null, seat: "12A" },
+    });
+    const queued = coalesceTravelQueueItems([], first, new Set());
+    const second = item({
+      localId: "b",
+      travelId: "t1",
+      op: {
+        kind: "updateTicket",
+        entityId: "tk1",
+        body: { seat: "7C" },
+      },
+      baseline: { title: "Flight BCN", origin: "BCN", seat: "12A" },
+    });
+    const result = coalesceTravelQueueItems(queued, second, new Set());
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.op.kind, "updateTicket");
+    if (result[0]?.op.kind === "updateTicket") {
+      assert.equal(result[0].op.body.title, "Flight BCN");
+      assert.equal(result[0].op.body.origin, "BCN");
+      assert.equal(result[0].op.body.seat, "7C");
+    }
+    assert.deepEqual(result[0]?.baseline, {
+      title: "Boarding pass",
+      origin: null,
+      seat: "12A",
+    });
+  });
+
+  it("drops ticket update when fields revert to baseline", () => {
+    const first = item({
+      localId: "a",
+      travelId: "t1",
+      op: {
+        kind: "updateTicket",
+        entityId: "tk1",
+        body: { origin: "LIS", destination: "OPO" },
+      },
+      baseline: { origin: null, destination: null },
+    });
+    const queued = coalesceTravelQueueItems([], first, new Set());
+    const revert = item({
+      localId: "b",
+      travelId: "t1",
+      op: {
+        kind: "updateTicket",
+        entityId: "tk1",
+        body: { origin: null, destination: null },
+      },
+      baseline: { origin: "LIS", destination: "OPO" },
+    });
+    assert.equal(
+      coalesceTravelQueueItems(queued, revert, new Set()).length,
+      0,
+    );
+  });
 });

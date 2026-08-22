@@ -58,6 +58,7 @@ import {
 import { matchCategoriesByTitle } from "@/lib/category-title-match";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { reconcileTravelTransactionCache } from "@/lib/travel-transaction-cache";
 import { cn } from "@/lib/utils";
 import { enqueueOfflineTransactionCreate } from "@/stores/transaction-offline-queue.store";
 import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
@@ -114,14 +115,35 @@ function earningKinds(): TransactionKind[] {
 }
 
 function kindNeedsCounterparty(kind: TransactionKind): boolean {
-  return kind === TransactionKind.Loan || kind === TransactionKind.Debt;
+  return (
+    kind === TransactionKind.Loan ||
+    kind === TransactionKind.Debt ||
+    kind === TransactionKind.Forgive
+  );
+}
+
+function counterpartyFieldLabel(
+  kind: TransactionKind,
+  t: (key: "borrower" | "lender" | "counterparties") => string,
+): string {
+  if (kind === TransactionKind.Loan) {
+    return t("borrower");
+  }
+  if (kind === TransactionKind.Debt) {
+    return t("lender");
+  }
+  return t("counterparties");
 }
 
 function resolveCounterpartyLoadKind(
   formMode: TransactionFormMode,
   editing: TransactionDto | null,
 ): TransactionKind {
-  if (editing != null && kindNeedsCounterparty(editing.kind)) {
+  if (
+    editing != null &&
+    kindNeedsCounterparty(editing.kind) &&
+    editing.kind !== TransactionKind.Forgive
+  ) {
     return editing.kind;
   }
   if (formMode === TransactionFormMode.Spending) {
@@ -198,6 +220,10 @@ export function TransactionFormModal() {
     transactionFormMode === TransactionFormMode.Spending
       ? spendingKinds()
       : earningKinds();
+  const kindSelectOptions =
+    isEditing && editingTransaction?.kind === TransactionKind.Forgive
+      ? [...kindOptions, TransactionKind.Forgive]
+      : kindOptions;
 
   useEffect(() => {
     if (!transactionModalOpen) {
@@ -486,6 +512,16 @@ export function TransactionFormModal() {
       };
 
       if (payload.travelId) {
+        const previousTravelId = editingTransaction?.travelId ?? null;
+        const targets = reconcileTravelTransactionCache({
+          previousTravelId,
+          nextTravelId: payload.travelId,
+        });
+        if (targets.removeFrom && editingTransaction) {
+          useTravelCacheStore
+            .getState()
+            .removeTransaction(targets.removeFrom, editingTransaction.id);
+        }
         saveTravelLinkedTransaction(payload);
         toast.success(t("saved"));
         if (editingTransaction) {
@@ -498,7 +534,22 @@ export function TransactionFormModal() {
       }
 
       if (editingTransaction) {
-        await updateTransaction(editingTransaction.id, payload);
+        const previousTravelId = editingTransaction.travelId;
+        if (previousTravelId) {
+          useTravelCacheStore
+            .getState()
+            .removeTransaction(previousTravelId, editingTransaction.id);
+          enqueueTravelOp({
+            travelId: previousTravelId,
+            op: {
+              kind: "updateTransaction",
+              entityId: editingTransaction.id,
+              body: payload,
+            },
+          });
+        } else {
+          await updateTransaction(editingTransaction.id, payload);
+        }
         toast.success(t("saved"));
         closeTransactionModal();
       } else {
@@ -632,6 +683,9 @@ export function TransactionFormModal() {
     }
     if (kind === TransactionKind.Transfer) {
       return t("kindTransfer");
+    }
+    if (kind === TransactionKind.Forgive) {
+      return t("kindForgive");
     }
     return t("kindDefault");
   }
@@ -783,7 +837,7 @@ export function TransactionFormModal() {
                     <SelectValue>{kindLabel(form.kind)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {kindOptions.map((kind) => (
+                    {kindSelectOptions.map((kind) => (
                       <SelectItem
                         key={kind}
                         value={kind}
@@ -807,19 +861,20 @@ export function TransactionFormModal() {
                 <div className="min-h-0 overflow-hidden">
                   <FormField
                     className="pb-1"
-                    label={
-                      form.kind === TransactionKind.Loan
-                        ? t("borrower")
-                        : t("lender")
-                    }
+                    label={counterpartyFieldLabel(form.kind, t)}
                     required
                   >
                     <CounterpartyAutocomplete
-                      kind={form.kind}
+                      kind={
+                        form.kind === TransactionKind.Forgive
+                          ? counterpartyLoadKind
+                          : form.kind
+                      }
                       value={form.counterpartyName}
                       inactive={!kindNeedsCounterparty(form.kind)}
                       chips={
-                        form.kind === counterpartyLoadKind
+                        form.kind === counterpartyLoadKind ||
+                        form.kind === TransactionKind.Forgive
                           ? counterparties
                           : undefined
                       }

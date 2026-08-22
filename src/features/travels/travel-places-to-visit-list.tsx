@@ -3,6 +3,7 @@
 import { ExternalLink, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import "react-swipeable-list/dist/styles.css";
 import { toast } from "sonner";
 
 import {
@@ -21,11 +22,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { ObjectActionList, ObjectSwipeRow, type ObjectSwipeInjectedProps } from "@/components/object-swipe-row";
+import { RowOverflowMenu } from "@/components/row-overflow-menu";
 import {
   ObjectCard,
   ObjectCardBody,
   ObjectCardCopy,
-  OBJECT_STACK_CLASS,
   PlaceStampRail,
 } from "@/components/ui/object-card";
 import {
@@ -40,6 +42,7 @@ import {
   removePlaceFromCache,
   upsertPlaceInCache,
 } from "@/stores/travel-cache.store";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
 import type { TravelPlaceToVisitDto } from "@/server/services/travel-service.types";
@@ -68,6 +71,7 @@ export function TravelPlacesToVisitList({
 }: TravelPlacesToVisitListProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
+  const isMobile = useIsMobile();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TravelPlaceToVisitDto | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TravelPlaceToVisitDto | null>(
@@ -143,10 +147,11 @@ export function TravelPlacesToVisitList({
           {items.length === 0 ? (
             <TravelSectionEmpty icon={MapPin} text={t("placesEmpty")} />
           ) : (
-            <ul className={OBJECT_STACK_CLASS}>
+            <ObjectActionList swipe={isMobile}>
               {items.map((item) => (
                 <PlaceRow
                   key={item.id}
+                  swipe={isMobile}
                   item={item}
                   toggling={togglingId === item.id}
                   onToggle={() => void toggleChecked(item)}
@@ -154,7 +159,7 @@ export function TravelPlacesToVisitList({
                   onDelete={() => setDeleteTarget(item)}
                 />
               ))}
-            </ul>
+            </ObjectActionList>
           )}
         </CardContent>
       </Card>
@@ -213,80 +218,84 @@ function PlaceRow({
   onToggle,
   onEdit,
   onDelete,
+  swipe = false,
+  ...swipeProps
 }: {
   readonly item: TravelPlaceToVisitDto;
   readonly toggling: boolean;
   readonly onToggle: () => void;
   readonly onEdit: () => void;
   readonly onDelete: () => void;
-}) {
+  readonly swipe?: boolean;
+} & ObjectSwipeInjectedProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
-
+  const card = (
+    <ObjectCard faded={item.isChecked}>
+      <PlaceStampRail>
+        <Checkbox
+          className="size-5"
+          checked={item.isChecked}
+          disabled={toggling}
+          onCheckedChange={onToggle}
+          aria-label={t("placeToggleChecked")}
+        />
+      </PlaceStampRail>
+      <ObjectCardBody>
+        <ObjectCardCopy
+          title={item.title}
+          struck={item.isChecked}
+          meta={
+            <>
+              {item.address ? (
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-3 shrink-0 opacity-70" />
+                  <span className="truncate">{item.address}</span>
+                </span>
+              ) : null}
+              {item.link ? (
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-0.5 flex max-w-full items-center gap-1 text-sky-600 hover:underline dark:text-sky-400"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <ExternalLink className="size-3 shrink-0" />
+                  <span className="truncate">{displayLink(item.link)}</span>
+                </a>
+              ) : null}
+            </>
+          }
+        />
+        <RowOverflowMenu
+          className="hidden md:flex"
+          actions={[
+            {
+              id: "edit",
+              label: tCommon("edit"),
+              icon: Pencil,
+              onSelect: onEdit,
+            },
+            {
+              id: "delete",
+              label: tCommon("delete"),
+              icon: Trash2,
+              onSelect: onDelete,
+              destructive: true,
+            },
+          ]}
+        />
+      </ObjectCardBody>
+    </ObjectCard>
+  );
+  if (!swipe) {
+    return card;
+  }
   return (
-    <li>
-      <ObjectCard faded={item.isChecked}>
-        <PlaceStampRail>
-          <Checkbox
-            className="size-5"
-            checked={item.isChecked}
-            disabled={toggling}
-            onCheckedChange={onToggle}
-            aria-label={t("placeToggleChecked")}
-          />
-        </PlaceStampRail>
-        <ObjectCardBody>
-          <ObjectCardCopy
-            title={item.title}
-            struck={item.isChecked}
-            meta={
-              <>
-                {item.address ? (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="size-3 shrink-0 opacity-70" />
-                    <span className="truncate">{item.address}</span>
-                  </span>
-                ) : null}
-                {item.link ? (
-                  <a
-                    href={item.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-0.5 flex max-w-full items-center gap-1 text-sky-600 hover:underline dark:text-sky-400"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <ExternalLink className="size-3 shrink-0" />
-                    <span className="truncate">{displayLink(item.link)}</span>
-                  </a>
-                ) : null}
-              </>
-            }
-          />
-          <div className="flex shrink-0 items-center gap-0.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 rounded-xl"
-              aria-label={tCommon("edit")}
-              onClick={onEdit}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 rounded-xl text-destructive"
-              aria-label={t("placeDelete")}
-              onClick={onDelete}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </ObjectCardBody>
-      </ObjectCard>
-    </li>
+    <ObjectSwipeRow onEdit={onEdit} onDelete={onDelete} {...swipeProps}>
+      {card}
+    </ObjectSwipeRow>
   );
 }
 

@@ -2,12 +2,17 @@ import { addMonths, format, startOfMonth, subMonths } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import Decimal from "decimal.js";
 
-import { medianSettleDaysFromEvents } from "@/lib/debt-episodes";
+import {
+  DEBT_LEDGER_KINDS,
+  debtBalanceDelta,
+  isDebtLedgerKind,
+  medianSettleDaysFromEvents,
+} from "@/lib/debt-episodes";
 import { AppServiceError } from "@/lib/errors";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
-import { TransactionKind, TransactionType } from "@/types/enums";
+import { CASHFLOW_EXCLUDED_KINDS, TransactionKind, TransactionType } from "@/types/enums";
 
 import { toCategoryDtos } from "./category-service";
 import type {
@@ -101,7 +106,7 @@ export async function getCategoryDetailStats(input: {
       userId: input.userId,
       isDeleted: false,
       type: category.type,
-      kind: { not: TransactionKind.Transfer },
+      kind: { notIn: [...CASHFLOW_EXCLUDED_KINDS] },
       occurredAt: { gte: start, lte: end },
       categories: {
         some: {
@@ -326,7 +331,7 @@ export async function getDebtDetailStats(input: {
     displayCurrency: input.displayCurrency,
     timezone: input.timezone,
     counterpartyIds: [input.counterpartyId],
-    kinds: [TransactionKind.Loan, TransactionKind.Debt],
+    kinds: [...DEBT_LEDGER_KINDS],
     page: 1,
     pageSize: 100,
   });
@@ -337,13 +342,14 @@ export async function getDebtDetailStats(input: {
       isDeleted: false,
       counterpartyId: input.counterpartyId,
       kind: {
-        in: [TransactionKind.Loan, TransactionKind.Debt],
+        in: [...DEBT_LEDGER_KINDS],
       },
     },
     orderBy: { occurredAt: "asc" },
     select: {
       id: true,
       kind: true,
+      type: true,
       amount: true,
       originalAmount: true,
       inputCurrency: true,
@@ -356,16 +362,17 @@ export async function getDebtDetailStats(input: {
   let running = toDecimal(0);
   const runningBalance: DebtDetailStats["runningBalance"] = [];
   const settledProgress: DebtDetailStats["settledProgress"] = [];
+  let forgivenAllTime = toDecimal(0);
   for (const row of rows) {
     const display = await toDisplay(
       toDecimal(row.amount.toString()),
       input.displayCurrency,
       row.fxRateDate,
     );
-    if (row.kind === TransactionKind.Loan) {
-      running = running.plus(display);
-    } else {
-      running = running.minus(display);
+    const sign = debtBalanceDelta(row.kind, row.type);
+    running = running.plus(display.times(sign));
+    if (row.kind === TransactionKind.Forgive) {
+      forgivenAllTime = forgivenAllTime.plus(display);
     }
     runningBalance.push({
       date: row.occurredAt.toISOString(),
@@ -389,9 +396,10 @@ export async function getDebtDetailStats(input: {
       input.displayCurrency,
       row.fxRateDate,
     );
-    if (row.kind === TransactionKind.Loan) {
+    const sign = debtBalanceDelta(row.kind, row.type);
+    if (sign > 0) {
       bucket.lend = bucket.lend.plus(display);
-    } else {
+    } else if (sign < 0) {
       bucket.borrow = bucket.borrow.plus(display);
     }
     monthBuckets.set(key, bucket);
@@ -458,10 +466,9 @@ export async function getDebtDetailStats(input: {
       input.displayCurrency,
       row.fxRateDate,
     );
-    monthNet =
-      row.kind === TransactionKind.Loan
-        ? monthNet.plus(display)
-        : monthNet.minus(display);
+    monthNet = monthNet.plus(
+      display.times(debtBalanceDelta(row.kind, row.type)),
+    );
   }
 
   const absNet = net.abs();
@@ -498,12 +505,12 @@ export async function getDebtDetailStats(input: {
         : null,
     medianSettleDays: medianSettleDaysFromEvents(
       rows.flatMap((row) =>
-        row.kind === TransactionKind.Loan ||
-        row.kind === TransactionKind.Debt
+        isDebtLedgerKind(row.kind)
           ? [
               {
                 occurredAt: row.occurredAt,
                 kind: row.kind,
+                type: row.type,
                 amountRub: row.amount.toString(),
               },
             ]
@@ -511,6 +518,7 @@ export async function getDebtDetailStats(input: {
       ),
     ),
     eventCount: rows.length,
+    forgivenAllTime: moneyOf(forgivenAllTime, input.displayCurrency),
     runningBalance,
     monthlyLendBorrow,
     eventGapsDays,

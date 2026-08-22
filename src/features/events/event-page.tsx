@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   useCallback,
@@ -11,6 +12,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { PageTitleWithBack } from "@/components/layout/page-back-button";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -19,6 +22,9 @@ import {
   updateEvent,
   type UpdateEventBody,
 } from "@/lib/api/events";
+import { cn } from "@/lib/utils";
+import type { EventChatMessageDto } from "@/server/services/event-chat-service";
+import type { EventPresenceViewerDto } from "@/server/services/event-live-service";
 import type {
   EventDetailResponse,
   EventSettlementResponse,
@@ -32,17 +38,33 @@ import { EventChatRail } from "./event-chat-rail";
 import { EventProvider } from "./event-context";
 import { EventFormDialog, type EventFormValues } from "./event-form-dialog";
 import { EventGuestClaimDialog } from "./event-guest-claim-dialog";
-import { EventHero } from "./event-hero";
+import {
+  EventAppHeroCover,
+  EventAppHeroDetails,
+  EventHero,
+} from "./event-hero";
+import { EventMobileChatSheet } from "./event-mobile-chat-sheet";
 import { EventMobileHeaderIsland } from "./event-mobile-header-island";
 import { EventMobileNavIsland } from "./event-mobile-nav-island";
 import { EventMobileTabs } from "./event-mobile-tabs";
 import { EventTopBar } from "./event-top-bar";
+import { useEventAppMobileChrome } from "./use-event-app-mobile-chrome";
 import { useEventLive } from "./use-event-live";
 
 const CHAT_OPEN_STORAGE_KEY = "pt_event_chat_open";
+const APP_CHAT_INSET_CLASS = "top-14";
 
-export function EventPage({ eventId }: { readonly eventId: string }) {
+export type EventPageChrome = "app" | "public";
+
+export function EventPage({
+  eventId,
+  chrome = "public",
+}: {
+  readonly eventId: string;
+  readonly chrome?: EventPageChrome;
+}) {
   const t = useTranslations("events");
+  const isAppChrome = chrome === "app";
   const isMobile = useIsMobile();
   const [detail, setDetail] = useState<EventDetailResponse | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -81,7 +103,6 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
     };
   }, [eventId]);
 
-  // Guests (and other tabs) pick up spendings, people, charts, hero, etc.
   useEffect(() => {
     const revision = live.contentRevision;
     if (!revision) {
@@ -119,13 +140,30 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
     [detail],
   );
 
-  function setChatVisible(next: boolean) {
-    setChatOpen(next);
-    window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, String(next));
-    if (next) {
-      setSeenMessageCount(live.messages.length);
-    }
-  }
+  const unreadCount = chatOpen
+    ? 0
+    : Math.max(live.messages.length - seenMessageCount, 0);
+
+  const setChatVisible = useCallback(
+    (next: boolean) => {
+      setChatOpen(next);
+      window.localStorage.setItem(CHAT_OPEN_STORAGE_KEY, String(next));
+      if (next) {
+        setSeenMessageCount(live.messages.length);
+      }
+    },
+    [live.messages.length],
+  );
+
+  const openChat = useCallback(() => {
+    setChatVisible(true);
+  }, [setChatVisible]);
+
+  useEventAppMobileChrome({
+    enabled: isAppChrome && !loadFailed,
+    unreadCount,
+    onOpenChat: openChat,
+  });
 
   async function submitEdit(values: EventFormValues) {
     setSaving(true);
@@ -143,7 +181,12 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
 
   if (loadFailed) {
     return (
-      <p className="mx-auto max-w-2xl px-4 py-16 text-center text-sm text-muted-foreground">
+      <p
+        className={cn(
+          "mx-auto max-w-2xl text-center text-sm text-muted-foreground",
+          isAppChrome ? "pb-10" : "px-4 py-16",
+        )}
+      >
         {t("unavailable")}
       </p>
     );
@@ -151,7 +194,12 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
 
   if (!detail || !editValues) {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-4 p-4">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-6xl space-y-4",
+          isAppChrome ? "pb-10" : "p-4",
+        )}
+      >
         <Skeleton className="h-56 w-full rounded-2xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
@@ -169,7 +217,71 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
       }}
     >
       <EventGuestClaimDialog />
-      {/* Desktop chat rail gutter: data-event-chat-gutter rule in globals.css */}
+      <EventLoadedView
+        isAppChrome={isAppChrome}
+        isMobile={isMobile}
+        canEdit={detail.viewer.canEdit}
+        isOwner={detail.viewer.role === EventAuthorRole.Owner}
+        chatOpen={chatOpen}
+        unreadCount={unreadCount}
+        viewers={live.viewers}
+        messages={live.messages}
+        editOpen={editOpen}
+        editValues={editValues}
+        saving={saving}
+        eventId={eventId}
+        onEdit={() => setEditOpen(true)}
+        onEditOpenChange={setEditOpen}
+        onSubmitEdit={submitEdit}
+        onChatOpenChange={setChatVisible}
+        onPoll={live.poll}
+        onDeleted={live.removeMessage}
+      />
+    </EventProvider>
+  );
+}
+
+function EventLoadedView({
+  isAppChrome,
+  isMobile,
+  canEdit,
+  isOwner,
+  chatOpen,
+  unreadCount,
+  viewers,
+  messages,
+  editOpen,
+  editValues,
+  saving,
+  eventId,
+  onEdit,
+  onEditOpenChange,
+  onSubmitEdit,
+  onChatOpenChange,
+  onPoll,
+  onDeleted,
+}: {
+  readonly isAppChrome: boolean;
+  readonly isMobile: boolean;
+  readonly canEdit: boolean;
+  readonly isOwner: boolean;
+  readonly chatOpen: boolean;
+  readonly unreadCount: number;
+  readonly viewers: readonly EventPresenceViewerDto[];
+  readonly messages: readonly EventChatMessageDto[];
+  readonly editOpen: boolean;
+  readonly editValues: EventFormValues;
+  readonly saving: boolean;
+  readonly eventId: string;
+  readonly onEdit: () => void;
+  readonly onEditOpenChange: (open: boolean) => void;
+  readonly onSubmitEdit: (values: EventFormValues) => Promise<void>;
+  readonly onChatOpenChange: (open: boolean) => void;
+  readonly onPoll: () => Promise<void>;
+  readonly onDeleted: (messageId: string) => void;
+}) {
+  return (
+    <>
       <div
         data-event-chat-gutter
         className="min-w-0 overflow-x-clip transition-[margin-right] duration-200 ease-out"
@@ -179,25 +291,33 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
           } as CSSProperties
         }
       >
-        <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:pb-16">
-          {isMobile ? (
-            <EventMobileHeaderIsland
-              viewers={live.viewers}
-              onRenamed={async () => {
-                await live.poll();
-              }}
+        <div
+          className={cn(
+            "mx-auto w-full max-w-6xl",
+            isAppChrome
+              ? "space-y-5 pb-10"
+              : "space-y-4 p-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:pb-16",
+          )}
+        >
+          {isAppChrome ? (
+            <EventAppPageHeader canEdit={canEdit} onEdit={onEdit} />
+          ) : (
+            <EventPublicPageHeader
+              isMobile={isMobile}
+              viewers={viewers}
+              onRenamed={onPoll}
             />
-          ) : null}
+          )}
 
-          <EventTopBar />
-
-          <EventHero
-            viewers={live.viewers}
-            onEdit={() => setEditOpen(true)}
-            onRenamed={async () => {
-              await live.poll();
-            }}
-          />
+          {isAppChrome ? (
+            <EventAppHeroDetails viewers={viewers} onRenamed={onPoll} />
+          ) : (
+            <EventHero
+              viewers={viewers}
+              onEdit={onEdit}
+              onRenamed={onPoll}
+            />
+          )}
 
           {isMobile ? (
             <EventMobileTabs mapEnabled={!editOpen} />
@@ -207,34 +327,16 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
         </div>
       </div>
 
-      {isMobile ? (
-        <EventMobileNavIsland
-          messages={live.messages}
-          unreadCount={
-            chatOpen ? 0 : Math.max(live.messages.length - seenMessageCount, 0)
-          }
-          onChatOpenChange={setChatVisible}
-          onPosted={live.poll}
-          onDeleted={live.removeMessage}
-        />
-      ) : (
-        <>
-          <EventChatRail
-            open={chatOpen}
-            unreadCount={
-              chatOpen ? 0 : Math.max(live.messages.length - seenMessageCount, 0)
-            }
-            onToggle={() => setChatVisible(!chatOpen)}
-          />
-          <EventChatDrawer
-            open={chatOpen}
-            messages={live.messages}
-            onClose={() => setChatVisible(false)}
-            onPosted={live.poll}
-            onDeleted={live.removeMessage}
-          />
-        </>
-      )}
+      <EventPageChatChrome
+        isAppChrome={isAppChrome}
+        isMobile={isMobile}
+        chatOpen={chatOpen}
+        unreadCount={unreadCount}
+        messages={messages}
+        onChatOpenChange={onChatOpenChange}
+        onPosted={onPoll}
+        onDeleted={onDeleted}
+      />
 
       <EventFormDialog
         open={editOpen}
@@ -242,14 +344,140 @@ export function EventPage({ eventId }: { readonly eventId: string }) {
         initialValues={editValues}
         saving={saving}
         eventId={eventId}
-        canManageSharing={detail.viewer.role === EventAuthorRole.Owner}
-        canManageScheduleAndLocation={
-          detail.viewer.role === EventAuthorRole.Owner
-        }
-        onOpenChange={setEditOpen}
-        onSubmit={submitEdit}
+        canManageSharing={isOwner}
+        canManageScheduleAndLocation={isOwner}
+        onOpenChange={onEditOpenChange}
+        onSubmit={onSubmitEdit}
       />
-    </EventProvider>
+    </>
+  );
+}
+
+function EventAppPageHeader({
+  canEdit,
+  onEdit,
+}: {
+  readonly canEdit: boolean;
+  readonly onEdit: () => void;
+}) {
+  const t = useTranslations("events");
+
+  return (
+    <header className="space-y-4">
+      <div className="space-y-3">
+        <PageTitleWithBack fallbackHref="/events">
+          <div className="flex min-w-0 items-stretch gap-1.5 sm:gap-2">
+            <div className="min-w-0 flex-1">
+              <EventAppHeroCover />
+            </div>
+            {canEdit ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden h-auto min-h-11 w-11 shrink-0 self-stretch items-center justify-center rounded-xl p-0 md:inline-flex"
+                onClick={onEdit}
+                aria-label={t("edit")}
+                title={t("edit")}
+              >
+                <Pencil className="size-5" />
+              </Button>
+            ) : null}
+          </div>
+        </PageTitleWithBack>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full gap-1.5 rounded-xl md:hidden"
+            onClick={onEdit}
+          >
+            <Pencil className="size-4" />
+            {t("edit")}
+          </Button>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+function EventPublicPageHeader({
+  isMobile,
+  viewers,
+  onRenamed,
+}: {
+  readonly isMobile: boolean;
+  readonly viewers: readonly EventPresenceViewerDto[];
+  readonly onRenamed: () => Promise<void>;
+}) {
+  return (
+    <>
+      {isMobile ? (
+        <EventMobileHeaderIsland viewers={viewers} onRenamed={onRenamed} />
+      ) : null}
+      <EventTopBar />
+    </>
+  );
+}
+
+function EventPageChatChrome({
+  isAppChrome,
+  isMobile,
+  chatOpen,
+  unreadCount,
+  messages,
+  onChatOpenChange,
+  onPosted,
+  onDeleted,
+}: {
+  readonly isAppChrome: boolean;
+  readonly isMobile: boolean;
+  readonly chatOpen: boolean;
+  readonly unreadCount: number;
+  readonly messages: readonly EventChatMessageDto[];
+  readonly onChatOpenChange: (open: boolean) => void;
+  readonly onPosted: () => Promise<void>;
+  readonly onDeleted: (messageId: string) => void;
+}) {
+  if (isMobile && isAppChrome) {
+    return (
+      <EventMobileChatSheet
+        open={chatOpen}
+        onOpenChange={onChatOpenChange}
+        messages={messages}
+        onPosted={onPosted}
+        onDeleted={onDeleted}
+      />
+    );
+  }
+  if (isMobile) {
+    return (
+      <EventMobileNavIsland
+        messages={messages}
+        unreadCount={unreadCount}
+        onChatOpenChange={onChatOpenChange}
+        onPosted={onPosted}
+        onDeleted={onDeleted}
+      />
+    );
+  }
+  const insetClass = isAppChrome ? APP_CHAT_INSET_CLASS : undefined;
+  return (
+    <>
+      <EventChatRail
+        open={chatOpen}
+        unreadCount={unreadCount}
+        onToggle={() => onChatOpenChange(!chatOpen)}
+        className={insetClass}
+      />
+      <EventChatDrawer
+        open={chatOpen}
+        messages={messages}
+        onClose={() => onChatOpenChange(false)}
+        onPosted={onPosted}
+        onDeleted={onDeleted}
+        className={insetClass}
+      />
+    </>
   );
 }
 

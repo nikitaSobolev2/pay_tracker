@@ -17,6 +17,7 @@ enum TransactionKind {
   DEBT
   REFUND
   TRANSFER
+  FORGIVE
 }
 
 enum AuthApprovalStatus {
@@ -67,6 +68,13 @@ enum EventPollStatus {
 enum EventPollSelectionMode {
   SINGLE
   MULTIPLE
+}
+
+enum EventPhase {
+  PENDING
+  IN_PROGRESS
+  FINISHED
+  CANCELED
 }
 
 enum TravelPhase {
@@ -313,6 +321,8 @@ model Event {
   ownerDisplayName String?
   /// Last owner heartbeat, so guests see the owner in the presence bar.
   ownerLastSeenAt  DateTime?
+  /// Null = auto from occursAt/endsAt.
+  phaseOverride    EventPhase?
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
@@ -511,8 +521,8 @@ model EventGuestPresence {
   attendee EventAttendee? @relation(fields: [attendeeId], references: [id], onDelete: SetNull)
 
   @@unique([eventId, guestUserId])
-  @@unique([eventId, attendeeId])
   @@index([eventId, lastSeenAt])
+  @@index([eventId, attendeeId])
   @@index([attendeeId])
 }
 

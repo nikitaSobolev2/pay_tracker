@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/object-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CloseDebtDialog,
+  SettleDebtDialog,
   type DebtCloseTone,
+  type SettleDebtTarget,
 } from "@/features/debts/close-debt-dialog";
 import { Link } from "@/i18n/navigation";
 import { fetchDebtsStats } from "@/lib/api/stats";
@@ -30,10 +31,9 @@ export function DebtsPage() {
   const t = useTranslations("debts");
   const [stats, setStats] = useState<DebtsStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [closeTarget, setCloseTarget] = useState<{
-    tone: DebtCloseTone;
-    person: DebtCounterpartyStats;
-  } | null>(null);
+  const [settleTarget, setSettleTarget] = useState<SettleDebtTarget | null>(
+    null,
+  );
 
   const loadStats = useCallback(async () => {
     const result = await fetchDebtsStats();
@@ -111,6 +111,16 @@ export function DebtsPage() {
         />
       </div>
 
+      <section className="rounded-xl border border-border/60 bg-card/50 px-5 py-4">
+        <p className="text-sm text-muted-foreground">{t("forgivenAllTime")}</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
+          {formatMoney(
+            stats.forgivenAllTime.amount,
+            stats.forgivenAllTime.currency,
+          )}
+        </p>
+      </section>
+
       <DebtPeopleSection
         tone="owe"
         title={t("myDebts")}
@@ -123,7 +133,13 @@ export function DebtsPage() {
         medianSettleLabel={t("medianSettle")}
         eventsLabel={t("events")}
         closeLabel={t("closeDebt")}
-        onCloseDebt={(person) => setCloseTarget({ tone: "owe", person })}
+        forgiveLabel={t("forgiveDebt")}
+        onCloseDebt={(person) =>
+          setSettleTarget({ mode: "close", tone: "owe", person })
+        }
+        onForgiveDebt={(person) =>
+          setSettleTarget({ mode: "forgive", tone: "owe", person })
+        }
       />
 
       <DebtPeopleSection
@@ -138,18 +154,24 @@ export function DebtsPage() {
         medianSettleLabel={t("medianSettle")}
         eventsLabel={t("events")}
         closeLabel={t("closeDebt")}
-        onCloseDebt={(person) => setCloseTarget({ tone: "owed", person })}
+        forgiveLabel={t("forgiveDebt")}
+        onCloseDebt={(person) =>
+          setSettleTarget({ mode: "close", tone: "owed", person })
+        }
+        onForgiveDebt={(person) =>
+          setSettleTarget({ mode: "forgive", tone: "owed", person })
+        }
       />
 
-      <CloseDebtDialog
-        target={closeTarget}
-        open={Boolean(closeTarget)}
+      <SettleDebtDialog
+        target={settleTarget}
+        open={Boolean(settleTarget)}
         onOpenChange={(open) => {
           if (!open) {
-            setCloseTarget(null);
+            setSettleTarget(null);
           }
         }}
-        onClosed={() => {
+        onSettled={() => {
           void loadStats();
         }}
       />
@@ -357,7 +379,9 @@ function DebtPeopleSection({
   medianSettleLabel,
   eventsLabel,
   closeLabel,
+  forgiveLabel,
   onCloseDebt,
+  onForgiveDebt,
 }: {
   readonly tone: DebtCloseTone;
   readonly title: string;
@@ -370,7 +394,9 @@ function DebtPeopleSection({
   readonly medianSettleLabel: string;
   readonly eventsLabel: string;
   readonly closeLabel: string;
+  readonly forgiveLabel: string;
   readonly onCloseDebt: (person: DebtCounterpartyStats) => void;
+  readonly onForgiveDebt: (person: DebtCounterpartyStats) => void;
 }) {
   return (
     <section className="space-y-4">
@@ -462,14 +488,24 @@ function DebtPeopleSection({
                   </div>
                 </dl>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4 h-10 w-full cursor-pointer rounded-xl"
-                  onClick={() => onCloseDebt(person)}
-                >
-                  {closeLabel}
-                </Button>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 cursor-pointer rounded-xl"
+                    onClick={() => onCloseDebt(person)}
+                  >
+                    {closeLabel}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 cursor-pointer rounded-xl"
+                    onClick={() => onForgiveDebt(person)}
+                  >
+                    {forgiveLabel}
+                  </Button>
+                </div>
               </div>
             </ObjectCard>
           ))}

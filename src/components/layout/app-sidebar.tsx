@@ -39,9 +39,10 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { EventTimingBadge } from "@/features/events/event-timing-badge";
+import { EventPhaseBadge } from "@/features/events/event-timing-badge";
 import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { authClient } from "@/lib/auth-client";
+import { eventAppPath } from "@/lib/event-routes";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
 import { useUpcomingEventStore } from "@/stores/upcoming-event.store";
 import { AppTheme } from "@/types/enums";
@@ -197,7 +198,7 @@ export function AppSidebar({
             <SidebarGroupContent className="space-y-2">
               {upcomingEvent ? (
                 <Link
-                  href={`/event/${upcomingEvent.id}`}
+                  href={eventAppPath(upcomingEvent.id)}
                   onClick={handleNavigate}
                   className="flex items-center gap-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2.5"
                   title={`${tHeader("upcomingEvent")}: ${upcomingEvent.title}`}
@@ -206,7 +207,7 @@ export function AppSidebar({
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">
                     {upcomingEvent.title}
                   </span>
-                  <EventTimingBadge timing={upcomingEvent.timing} />
+                  <EventPhaseBadge phase={upcomingEvent.phase} />
                 </Link>
               ) : null}
               {activeTravel ? (

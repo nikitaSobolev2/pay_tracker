@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, Ticket } from "lucide-react";
+import { Eye, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
+import "react-swipeable-list/dist/styles.css";
 import { toast } from "sonner";
 
 import {
@@ -17,9 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ObjectActionList, ObjectSwipeRow, type ObjectSwipeInjectedProps } from "@/components/object-swipe-row";
+import { RowOverflowMenu } from "@/components/row-overflow-menu";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
 import {
   ResponsiveDialogBody,
   ResponsiveDialogContent,
@@ -27,6 +28,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogHeaderInner,
 } from "@/components/ui/responsive-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { storeFileForOffline } from "@/lib/offline/travel-offline-files";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
@@ -51,6 +53,12 @@ import { TravelTicketAiReviewDialog } from "./travel-ticket-ai-review-dialog";
 import { TravelTicketPass } from "./travel-ticket-pass";
 import { TravelTicketPreviewDialog } from "./travel-ticket-preview-dialog";
 import {
+  draftToSegment,
+  ticketToDraft,
+  TicketSegmentEditor,
+  type TicketSegmentDraft,
+} from "./travel-ticket-segment-editor";
+import {
   canAnalyzeTicketFile,
   emptyTicketMeta,
   segmentToTicketBody,
@@ -70,6 +78,7 @@ export function TravelTicketsList({
 }: TravelTicketsListProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
+  const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<TravelTicketDto | null>(null);
@@ -227,17 +236,18 @@ export function TravelTicketsList({
           {items.length === 0 ? (
             <TravelSectionEmpty icon={Ticket} text={t("ticketsEmpty")} />
           ) : (
-            <div className="flex flex-col gap-3">
+            <ObjectActionList swipe={isMobile} variant="pass">
               {items.map((ticket) => (
-                <TravelTicketPass
+                <TicketPassRow
                   key={ticket.id}
+                  swipe={isMobile}
                   ticket={ticket}
                   onOpen={() => setPreview(ticket)}
                   onEdit={() => setEditing(ticket)}
                   onDelete={() => setDeleteTarget(ticket)}
                 />
               ))}
-            </div>
+            </ObjectActionList>
           )}
         </CardContent>
       </Card>
@@ -310,7 +320,7 @@ export function TravelTicketsList({
         onSkip={() => void handleReviewSkip()}
       />
 
-      <TicketTitleDialog
+      <TicketEditDialog
         open={editing != null}
         ticket={editing}
         travelId={travelId}
@@ -434,7 +444,76 @@ async function enqueueTicketRows(
   }
 }
 
-function TicketTitleDialog({
+function TicketPassRow({
+  ticket,
+  onOpen,
+  onEdit,
+  onDelete,
+  swipe = false,
+  ...swipeProps
+}: {
+  readonly ticket: TravelTicketDto;
+  readonly onOpen: () => void;
+  readonly onEdit: () => void;
+  readonly onDelete: () => void;
+  readonly swipe?: boolean;
+} & ObjectSwipeInjectedProps) {
+  const t = useTranslations("travels");
+  const tCommon = useTranslations("common");
+  const pass = (
+    <TravelTicketPass
+      ticket={ticket}
+      onOpen={onOpen}
+      menu={
+        <RowOverflowMenu
+          actions={[
+            {
+              id: "open",
+              label: t("ticketOpen"),
+              icon: Eye,
+              onSelect: onOpen,
+            },
+            {
+              id: "edit",
+              label: tCommon("edit"),
+              icon: Pencil,
+              onSelect: onEdit,
+            },
+            {
+              id: "delete",
+              label: tCommon("delete"),
+              icon: Trash2,
+              onSelect: onDelete,
+              destructive: true,
+            },
+          ]}
+        />
+      }
+    />
+  );
+  if (!swipe) {
+    return pass;
+  }
+  return (
+    <ObjectSwipeRow
+      onEdit={onEdit}
+      onDelete={onDelete}
+      extraActions={[
+        {
+          id: "open",
+          label: t("ticketOpen"),
+          icon: Eye,
+          onSelect: onOpen,
+        },
+      ]}
+      {...swipeProps}
+    >
+      {pass}
+    </ObjectSwipeRow>
+  );
+}
+
+function TicketEditDialog({
   open,
   ticket,
   travelId,
@@ -449,7 +528,7 @@ function TicketTitleDialog({
 }) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
-  const [title, setTitle] = useState(ticket?.title ?? "");
+  const [draft, setDraft] = useState<TicketSegmentDraft | null>(null);
   const [loaded, setLoaded] = useState(ticket);
   const [syncedOpen, setSyncedOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -457,29 +536,37 @@ function TicketTitleDialog({
   if (open && !syncedOpen) {
     setSyncedOpen(true);
     setLoaded(ticket);
-    setTitle(ticket?.title ?? "");
+    setDraft(ticket ? ticketToDraft(ticket) : null);
   }
   if (!open && syncedOpen) {
     setSyncedOpen(false);
   }
   if (open && ticket !== loaded) {
     setLoaded(ticket);
-    setTitle(ticket?.title ?? "");
+    setDraft(ticket ? ticketToDraft(ticket) : null);
   }
 
   async function handleSave() {
-    if (!ticket) {
+    if (!ticket || !draft) {
       return;
     }
-    const nextTitle = title.trim();
-    if (!nextTitle) {
+    const segment = draftToSegment(draft);
+    if (!segment.title) {
       toast.error(t("ticketTitleRequired"));
       return;
     }
     setSaving(true);
     upsertTicketInCache(travelId, {
       ...ticket,
-      title: nextTitle,
+      title: segment.title,
+      origin: segment.origin,
+      destination: segment.destination,
+      departsAt: segment.departsAt,
+      arrivesAt: segment.arrivesAt,
+      ticketNumber: segment.ticketNumber,
+      flightNumber: segment.flightNumber,
+      bookingCode: segment.bookingCode,
+      seat: segment.seat,
       updatedAt: new Date().toISOString(),
     });
     enqueueTravelOp({
@@ -487,9 +574,12 @@ function TicketTitleDialog({
       op: {
         kind: "updateTicket",
         entityId: ticket.id,
-        title: nextTitle,
+        body: {
+          title: segment.title,
+          ...segmentToTicketBody(segment),
+        },
       },
-      baseline: { title: ticket.title },
+      baseline: ticketEditBaseline(ticket),
     });
     await onSaved();
     setSaving(false);
@@ -504,18 +594,14 @@ function TicketTitleDialog({
           </ResponsiveDialogHeaderInner>
         </ResponsiveDialogHeader>
         <ResponsiveDialogBody>
-          <FormField
-            label={t("ticketTitle")}
-            htmlFor="travel-ticket-title"
-            required
-          >
-            <Input
-              id="travel-ticket-title"
-              value={title}
-              required
-              onChange={(event) => setTitle(event.target.value)}
+          {draft ? (
+            <TicketSegmentEditor
+              draft={draft}
+              showHeader={false}
+              canRemove={false}
+              onChange={setDraft}
             />
-          </FormField>
+          ) : null}
         </ResponsiveDialogBody>
         <ResponsiveDialogFooter>
           <Button
@@ -530,7 +616,7 @@ function TicketTitleDialog({
           <Button
             type="button"
             className="h-11 rounded-xl"
-            disabled={saving || !title.trim()}
+            disabled={saving || !draft?.title.trim()}
             onClick={() => void handleSave()}
           >
             {tCommon("save")}
@@ -539,4 +625,18 @@ function TicketTitleDialog({
       </ResponsiveDialogContent>
     </Dialog>
   );
+}
+
+function ticketEditBaseline(ticket: TravelTicketDto) {
+  return {
+    title: ticket.title,
+    origin: ticket.origin,
+    destination: ticket.destination,
+    departsAt: ticket.departsAt,
+    arrivesAt: ticket.arrivesAt,
+    ticketNumber: ticket.ticketNumber,
+    flightNumber: ticket.flightNumber,
+    bookingCode: ticket.bookingCode,
+    seat: ticket.seat,
+  };
 }

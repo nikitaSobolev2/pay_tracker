@@ -24,13 +24,19 @@ export const TransactionKind = {
   Debt: "DEBT",
   Refund: "REFUND",
   Transfer: "TRANSFER",
+  Forgive: "FORGIVE",
 } as const;
 export type TransactionKind =
   (typeof TransactionKind)[keyof typeof TransactionKind];
 
-/** Own-account moves (e.g. credit-card bill pay) — visible in lists, excluded from cashflow charts. */
+export const CASHFLOW_EXCLUDED_KINDS: readonly TransactionKind[] = [
+  TransactionKind.Transfer,
+  TransactionKind.Forgive,
+];
+
+/** Transfers and write-offs — visible in lists, excluded from cashflow charts. */
 export function isCashflowExcludedKind(kind: TransactionKind): boolean {
-  return kind === TransactionKind.Transfer;
+  return CASHFLOW_EXCLUDED_KINDS.includes(kind);
 }
 
 export const DateRangeType = {
@@ -85,6 +91,14 @@ export const EventGuestPermission = {
 } as const;
 export type EventGuestPermission =
   (typeof EventGuestPermission)[keyof typeof EventGuestPermission];
+
+export const EventPhase = {
+  Pending: "PENDING",
+  InProgress: "IN_PROGRESS",
+  Finished: "FINISHED",
+  Canceled: "CANCELED",
+} as const;
+export type EventPhase = (typeof EventPhase)[keyof typeof EventPhase];
 
 export const EventLinkType = {
   Location: "LOCATION",

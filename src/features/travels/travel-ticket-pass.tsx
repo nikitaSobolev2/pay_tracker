@@ -1,10 +1,10 @@
 "use client";
 
-import { File, FileText, Pencil, Plane, Ticket, Trash2 } from "lucide-react";
+import { File, FileText, Plane, Ticket } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
+import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
 import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 import type { TravelTicketDto } from "@/server/services/travel-service.types";
@@ -25,18 +25,15 @@ import {
 type TravelTicketPassProps = {
   readonly ticket: TravelTicketDto;
   readonly onOpen: () => void;
-  readonly onEdit: () => void;
-  readonly onDelete: () => void;
+  readonly menu?: ReactNode;
 };
 
 export function TravelTicketPass({
   ticket,
   onOpen,
-  onEdit,
-  onDelete,
+  menu,
 }: TravelTicketPassProps) {
   const t = useTranslations("travels");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
   const kind = ticketPreviewKind(ticket.contentType);
   const itinerary = hasTicketItinerary(ticket);
@@ -44,42 +41,31 @@ export function TravelTicketPass({
 
   return (
     <div className="relative flex w-full overflow-visible rounded-2xl shadow-[0_6px_20px_oklch(0_0_0/0.07)]">
-      <button
-        type="button"
-        onClick={onOpen}
+      <div
         className={cn(
-          "flex min-w-0 flex-1 cursor-pointer rounded-l-2xl border border-r-0 border-border/70 bg-card text-left",
-          "transition-colors duration-200 hover:bg-muted/30",
-          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
+          "flex min-w-0 flex-1 items-stretch rounded-l-2xl border border-r-0 border-border/70 bg-card",
         )}
       >
-        {itinerary ? (
-          <ItineraryBody ticket={ticket} locale={locale} />
-        ) : (
-          <FileBody ticket={ticket} kind={kind} />
-        )}
-      </button>
-      <div className="flex shrink-0 flex-col items-center justify-center gap-0.5 border-y border-border/70 bg-card py-2 pr-1.5">
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-xl"
-          aria-label={tCommon("edit")}
-          onClick={onEdit}
+          onClick={onOpen}
+          className={cn(
+            "flex min-w-0 flex-1 cursor-pointer text-left",
+            "transition-colors duration-200 hover:bg-muted/30",
+            "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40",
+          )}
         >
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 rounded-xl text-destructive"
-          aria-label={t("ticketDelete")}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
+          {itinerary ? (
+            <ItineraryBody ticket={ticket} locale={locale} />
+          ) : (
+            <FileBody ticket={ticket} kind={kind} />
+          )}
+        </button>
+        {menu ? (
+          <div className="hidden shrink-0 items-center self-stretch pr-0.5 md:flex">
+            {menu}
+          </div>
+        ) : null}
       </div>
 
       <button

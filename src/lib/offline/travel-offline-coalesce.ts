@@ -126,7 +126,12 @@ function mergeUpdateIntoCreate(
     createOp.kind === "createTicket" &&
     updateOp.kind === "updateTicket"
   ) {
-    return { ...createOp, title: updateOp.title };
+    const { title, ...segmentPatch } = updateOp.body;
+    return {
+      ...createOp,
+      title: title ?? createOp.title,
+      segment: mergeDefined(createOp.segment ?? {}, segmentPatch),
+    };
   }
   if (
     createOp.kind === "createTransaction" &&
@@ -193,7 +198,10 @@ function mergeUpdateOps(
     existing.kind === "updateTicket" &&
     incoming.kind === "updateTicket"
   ) {
-    return incoming;
+    return {
+      ...existing,
+      body: mergeDefined(existing.body, incoming.body),
+    };
   }
   if (
     existing.kind === "upsertCategoryBudget" &&
@@ -211,9 +219,6 @@ function updateBodyIsEmpty(op: TravelOfflineOp): boolean {
   if (!isUpdateKind(op.kind)) {
     return false;
   }
-  if (op.kind === "updateTicket") {
-    return op.title.trim() === "";
-  }
   if (op.kind === "updateTravel") {
     return Object.values(op.body).every((value) => value === undefined);
   }
@@ -221,7 +226,8 @@ function updateBodyIsEmpty(op: TravelOfflineOp): boolean {
     op.kind === "updatePlace" ||
     op.kind === "updateThing" ||
     op.kind === "updatePlanned" ||
-    op.kind === "updateTransaction"
+    op.kind === "updateTransaction" ||
+    op.kind === "updateTicket"
   ) {
     return Object.values(op.body).every((value) => value === undefined);
   }
@@ -270,12 +276,6 @@ export function travelOpMatchesBaseline(
   if (!baseline) {
     return false;
   }
-  if (op.kind === "updateTicket") {
-    return (
-      Object.prototype.hasOwnProperty.call(baseline, "title") &&
-      fieldValuesEqual(op.title, baseline.title)
-    );
-  }
   if (op.kind === "upsertCategoryBudget") {
     return (
       Object.prototype.hasOwnProperty.call(baseline, "amount") &&
@@ -287,7 +287,8 @@ export function travelOpMatchesBaseline(
     op.kind === "updateThing" ||
     op.kind === "updatePlanned" ||
     op.kind === "updateTravel" ||
-    op.kind === "updateTransaction"
+    op.kind === "updateTransaction" ||
+    op.kind === "updateTicket"
   ) {
     const entries = Object.entries(op.body).filter(
       ([, value]) => value !== undefined,

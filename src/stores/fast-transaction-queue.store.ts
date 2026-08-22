@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { travelIdForFastEnter } from "@/lib/fast-enter-travel";
 import { scheduleFastQueueFlush } from "@/lib/offline/offline-flush";
 import { createTransaction } from "@/lib/api/transactions";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
@@ -133,8 +134,7 @@ export function enqueueFastTransaction(input: {
   const activeTravelId =
     input.type === TransactionType.Spending
       ? (input.travelId ??
-        useActiveTravelStore.getState().travel?.id ??
-        null)
+        travelIdForFastEnter(useActiveTravelStore.getState().travel))
       : null;
   const store = useFastTransactionQueueStore.getState();
   store.enqueue({ ...input, travelId: activeTravelId });

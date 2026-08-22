@@ -42,6 +42,7 @@ export type DebtDetailStats = {
   readonly frequencyDays: number | null;
   readonly medianSettleDays: number | null;
   readonly eventCount: number;
+  readonly forgivenAllTime: MoneyAmount;
   readonly runningBalance: Array<{ date: string; balance: string }>;
   readonly monthlyLendBorrow: Array<{
     bucket: string;

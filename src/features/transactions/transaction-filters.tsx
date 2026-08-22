@@ -74,6 +74,7 @@ const KIND_FILTER_OPTIONS = [
   TransactionKind.Debt,
   TransactionKind.Refund,
   TransactionKind.Transfer,
+  TransactionKind.Forgive,
 ] as const;
 
 type TransactionFiltersProps = {
@@ -699,6 +700,9 @@ function kindOptionLabel(
   }
   if (kind === TransactionKind.Transfer) {
     return t("kindTransfer");
+  }
+  if (kind === TransactionKind.Forgive) {
+    return t("kindForgive");
   }
   return t("kindRefund");
 }

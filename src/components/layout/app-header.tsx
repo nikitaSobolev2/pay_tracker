@@ -29,12 +29,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { EventTimingBadge } from "@/features/events/event-timing-badge";
+import { EventPhaseBadge } from "@/features/events/event-timing-badge";
 import { TravelPhaseBadge } from "@/features/travels/travel-phase-badge";
 import { ConnectivityHeaderChip } from "@/features/offline/connectivity-chip";
 import { useAppUser } from "@/hooks/use-app-user";
 import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { eventAppPath } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
 import { useUiStore } from "@/stores/ui.store";
@@ -106,34 +107,28 @@ export function AppHeader() {
         <ConnectivityHeaderChip />
         {upcomingEvent ? (
           <Link
-            href={`/event/${upcomingEvent.id}`}
-            className="mr-0.5 hidden items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2 py-1.5 text-xs lg:flex min-[1700px]:mr-1 min-[1700px]:max-w-[14rem] min-[1700px]:gap-2 min-[1700px]:px-2.5"
+            href={eventAppPath(upcomingEvent.id)}
+            className="mr-1 flex max-w-[14rem] items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-xs"
             title={`${t("upcomingEvent")}: ${upcomingEvent.title}`}
           >
             <CalendarDays className="size-3.5 shrink-0 text-violet-600 dark:text-violet-300" />
-            <span className="hidden truncate font-medium min-[1700px]:inline">
+            <span className="min-w-0 truncate font-medium">
               {upcomingEvent.title}
             </span>
-            <EventTimingBadge
-              timing={upcomingEvent.timing}
-              className="max-[1499px]:hidden"
-            />
+            <EventPhaseBadge phase={upcomingEvent.phase} />
           </Link>
         ) : null}
         {activeTravel ? (
           <Link
             href={`/travels/${activeTravel.id}`}
-            className="mr-0.5 hidden items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2 py-1.5 text-xs lg:flex min-[1700px]:mr-1 min-[1700px]:max-w-[12rem] min-[1700px]:gap-2 min-[1700px]:px-2.5"
+            className="mr-1 flex max-w-[12rem] items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs"
             title={`${t("activeTravel")}: ${activeTravel.title}`}
           >
             <Plane className="size-3.5 shrink-0 text-sky-600" />
-            <span className="hidden truncate font-medium min-[1700px]:inline">
+            <span className="min-w-0 truncate font-medium">
               {activeTravel.title}
             </span>
-            <TravelPhaseBadge
-              phase={activeTravel.phase}
-              className="max-[1499px]:hidden"
-            />
+            <TravelPhaseBadge phase={activeTravel.phase} />
           </Link>
         ) : null}
         <div className="flex shrink-0 overflow-hidden rounded-xl border border-border/70">

@@ -1,8 +1,9 @@
-export type EventTiming = "upcoming" | "inProgress" | "finished";
+import { EventPhase } from "@/types/enums";
 
-export type EventTimingInput = {
+export type EventPhaseInput = {
   readonly occursAt: Date | string;
   readonly endsAt?: Date | string | null;
+  readonly phaseOverride?: EventPhase | null;
   readonly now?: Date;
 };
 
@@ -11,36 +12,49 @@ function toDate(value: Date | string): Date {
 }
 
 /** End of relevance: endsAt when set, otherwise occursAt. */
-export function eventRelevanceEnd(input: EventTimingInput): Date {
+export function eventRelevanceEnd(input: EventPhaseInput): Date {
   if (input.endsAt) {
     return toDate(input.endsAt);
   }
   return toDate(input.occursAt);
 }
 
-export function resolveEventTiming(input: EventTimingInput): EventTiming {
-  const now = (input.now ?? new Date()).getTime();
-  const start = toDate(input.occursAt).getTime();
-  const end = eventRelevanceEnd(input).getTime();
-  if (now > end) {
-    return "finished";
+export function resolveAutoEventPhase(
+  occursAt: Date | string,
+  endsAt: Date | string | null | undefined,
+  now: Date = new Date(),
+): EventPhase {
+  const current = now.getTime();
+  const start = toDate(occursAt).getTime();
+  const end = eventRelevanceEnd({ occursAt, endsAt }).getTime();
+  if (current < start) {
+    return EventPhase.Pending;
   }
-  if (now >= start) {
-    return "inProgress";
+  if (current > end) {
+    return EventPhase.Finished;
   }
-  return "upcoming";
+  return EventPhase.InProgress;
 }
 
-/** Still shown in header: upcoming or currently happening. */
-export function isEventHeaderRelevant(input: EventTimingInput): boolean {
-  return resolveEventTiming(input) !== "finished";
+/** Effective phase: override wins, else auto from date range. */
+export function resolveEventPhase(input: EventPhaseInput): EventPhase {
+  if (input.phaseOverride) {
+    return input.phaseOverride;
+  }
+  return resolveAutoEventPhase(input.occursAt, input.endsAt, input.now);
+}
+
+/** Shown in header: pending or currently happening. */
+export function isEventHeaderRelevant(input: EventPhaseInput): boolean {
+  const phase = resolveEventPhase(input);
+  return phase === EventPhase.Pending || phase === EventPhase.InProgress;
 }
 
 /**
- * Prefer in-progress, else soonest start among non-finished events.
+ * Prefer in-progress, else soonest start among header-relevant events.
  * Returns null when nothing is relevant.
  */
-export function pickNearestUpcomingEvent<T extends EventTimingInput>(
+export function pickNearestUpcomingEvent<T extends EventPhaseInput>(
   events: readonly T[],
   now: Date = new Date(),
 ): T | null {
@@ -52,7 +66,8 @@ export function pickNearestUpcomingEvent<T extends EventTimingInput>(
   }
 
   const inProgress = relevant.find(
-    (event) => resolveEventTiming({ ...event, now }) === "inProgress",
+    (event) =>
+      resolveEventPhase({ ...event, now }) === EventPhase.InProgress,
   );
   if (inProgress) {
     return inProgress;

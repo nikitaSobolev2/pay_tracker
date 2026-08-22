@@ -46,6 +46,7 @@ type TransactionRecord = Prisma.TransactionGetPayload<{
 const DEBT_KINDS: TransactionKind[] = [
   TransactionKind.Loan,
   TransactionKind.Debt,
+  TransactionKind.Forgive,
 ];
 
 export async function createTransaction(
@@ -540,13 +541,13 @@ async function validateTransactionWrite(input: {
   if (!requiresCounterparty(kind) && counterpartyName) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Counterparty is only allowed for loan or debt",
+      "Counterparty is only allowed for loan, debt, or forgive",
     );
   }
   if (requiresCounterparty(kind) && !counterpartyName) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Counterparty is required for loan or debt",
+      "Counterparty is required for loan, debt, or forgive",
     );
   }
 
@@ -587,25 +588,29 @@ function validateKindForType(
   }
   if (
     type === TransactionType.Spending &&
-    (kind === TransactionKind.Loan || kind === TransactionKind.Transfer)
+    (kind === TransactionKind.Loan ||
+      kind === TransactionKind.Transfer ||
+      kind === TransactionKind.Forgive)
   ) {
     return;
   }
   if (
     type === TransactionType.Earning &&
-    (kind === TransactionKind.Debt || kind === TransactionKind.Refund)
+    (kind === TransactionKind.Debt ||
+      kind === TransactionKind.Refund ||
+      kind === TransactionKind.Forgive)
   ) {
     return;
   }
   if (type === TransactionType.Spending) {
     throw new AppServiceError(
       ApiErrorCode.Validation,
-      "Spending transactions may only use DEFAULT, LOAN, or TRANSFER kind",
+      "Spending transactions may only use DEFAULT, LOAN, TRANSFER, or FORGIVE kind",
     );
   }
   throw new AppServiceError(
     ApiErrorCode.Validation,
-    "Earning transactions may only use DEFAULT, DEBT, or REFUND kind",
+    "Earning transactions may only use DEFAULT, DEBT, REFUND, or FORGIVE kind",
   );
 }
 

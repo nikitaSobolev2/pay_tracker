@@ -18,6 +18,7 @@ import {
   updateEvent,
   type UpdateEventBody,
 } from "@/lib/api/events";
+import { eventAppPath } from "@/lib/event-routes";
 import { formatMoney } from "@/lib/money";
 import type {
   EventDetailResponse,
@@ -31,6 +32,7 @@ import {
   emptyEventFormValues,
   type EventFormValues,
 } from "./event-form-dialog";
+import { EventPhaseBadge } from "./event-timing-badge";
 import { useEventScheduleLabel } from "./use-event-schedule-label";
 
 export function EventsPage() {
@@ -105,7 +107,7 @@ export function EventsPage() {
         counterpartyIds: [...values.counterpartyIds],
       });
       setCreateOpen(false);
-      router.push(`/event/${result.eventId}`);
+      router.push(eventAppPath(result.eventId));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("createFailed"));
     } finally {
@@ -233,7 +235,7 @@ function EventCard({
     <ObjectCard className="min-h-0">
       <CalendarDateRail iso={event.occursAt} />
       <Link
-        href={`/event/${event.id}`}
+        href={eventAppPath(event.id)}
         className="flex min-w-0 flex-1 gap-0 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {event.imageUrl ? (
@@ -251,6 +253,7 @@ function EventCard({
             <h2 className="min-w-0 text-lg font-semibold tracking-tight">
               {event.title}
             </h2>
+            <EventPhaseBadge phase={event.phase} />
             <Badge variant="outline" className="rounded-full text-xs">
               {event.publicity === EventPublicity.Public
                 ? t("publicityPublic")

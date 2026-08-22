@@ -7,8 +7,9 @@ import {
 } from "../../src/types/enums";
 
 describe("isCashflowExcludedKind", () => {
-  it("excludes only TRANSFER from cashflow charts", () => {
+  it("excludes TRANSFER and FORGIVE from cashflow charts", () => {
     assert.equal(isCashflowExcludedKind(TransactionKind.Transfer), true);
+    assert.equal(isCashflowExcludedKind(TransactionKind.Forgive), true);
     assert.equal(isCashflowExcludedKind(TransactionKind.Default), false);
     assert.equal(isCashflowExcludedKind(TransactionKind.Loan), false);
     assert.equal(isCashflowExcludedKind(TransactionKind.Debt), false);

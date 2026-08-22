@@ -6,7 +6,7 @@ import {
   TransactionType,
 } from "@/types/enums";
 
-/** Default cashflow: exclude own-account transfers only. */
+/** Default cashflow: exclude transfers and forgive write-offs. */
 export function includeRowInDefaultCashflow(kind: TransactionKind): boolean {
   return !isCashflowExcludedKind(kind);
 }

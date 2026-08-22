@@ -16,6 +16,8 @@ export type EventChatRailProps = {
   readonly open: boolean;
   readonly unreadCount: number;
   readonly onToggle: () => void;
+  /** e.g. `top-14` so the rail sits below the in-app header. */
+  readonly className?: string;
 };
 
 /** Full-height edge strip on desktop: the only entry point to the chat drawer. */
@@ -23,6 +25,7 @@ export function EventChatRail({
   open,
   unreadCount,
   onToggle,
+  className,
 }: EventChatRailProps) {
   const t = useTranslations("events");
 
@@ -37,8 +40,9 @@ export function EventChatRail({
             onClick={onToggle}
             style={{ width: EVENT_CHAT_RAIL_WIDTH_PX, zIndex: 1150 }}
             className={cn(
-              "event-chat-rail fixed top-0 right-0 bottom-0 flex cursor-pointer flex-col items-center justify-center gap-2 border-l border-border/60 bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset max-md:hidden",
+              "event-chat-rail fixed right-0 bottom-0 flex cursor-pointer flex-col items-center justify-center gap-2 border-l border-border/60 bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset max-md:hidden",
               open && "bg-accent text-foreground",
+              className ?? "top-0",
             )}
           />
         }

@@ -36,21 +36,17 @@ export function TravelClock({
   return (
     <div
       className={cn(
-        "travel-clock flex h-full flex-col items-center gap-4 rounded-xl px-4 py-6",
+        "travel-clock col-span-1 row-span-4 grid grid-rows-subgrid justify-items-center rounded-xl px-4 py-6",
         tone === "destination" ? "travel-clock--destination" : "travel-clock--you",
         className,
       )}
     >
-      <div className="space-y-0.5 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {title}
-        </p>
-        {placeLabel ? (
-          <p className="max-w-[12rem] truncate text-sm font-medium text-foreground">
-            {placeLabel}
-          </p>
-        ) : null}
-      </div>
+      <p className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </p>
+      <p className="max-w-[12rem] truncate text-center text-sm font-medium text-foreground">
+        {placeLabel ?? "\u00a0"}
+      </p>
 
       <div className="travel-clock__face relative">
         <svg
@@ -149,7 +145,7 @@ export function TravelClock({
         </svg>
       </div>
 
-      <div className="space-y-1.5 text-center">
+      <div className="space-y-1.5 self-start justify-self-center text-center">
         <p className="text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-foreground sm:text-3xl">
           {parts.digital}
         </p>

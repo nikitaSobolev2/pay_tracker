@@ -1,0 +1,3 @@
+CREATE TYPE "EventPhase" AS ENUM ('PENDING', 'IN_PROGRESS', 'FINISHED', 'CANCELED');
+
+ALTER TABLE "Event" ADD COLUMN "phaseOverride" "EventPhase";

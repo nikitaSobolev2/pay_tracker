@@ -3,6 +3,7 @@ import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { routing } from "@/i18n/routing";
+import { rewritePublicEventPathToApp } from "@/lib/event-routes";
 import { isAppLocale } from "@/lib/locales";
 import { LOCALE_COOKIE_NAME } from "@/lib/locale-preference";
 import { AppLocale } from "@/types/enums";
@@ -84,6 +85,18 @@ export default async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}`;
     return NextResponse.redirect(url);
+  }
+
+  if (sessionCookie) {
+    const appEventPath = rewritePublicEventPathToApp(
+      pathname,
+      pathWithoutLocale,
+    );
+    if (appEventPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = appEventPath;
+      return NextResponse.redirect(url);
+    }
   }
 
   return intlMiddleware(request);

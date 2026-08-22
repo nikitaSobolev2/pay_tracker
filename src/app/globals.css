@@ -272,12 +272,19 @@
 }
 
 .object-swipe-list .swipeable-list-item {
+  width: 100%;
   overflow: hidden;
   border-radius: 1rem;
 }
 
 .object-swipe-list .swipeable-list-item__content {
+  width: 100%;
   background: transparent;
+}
+
+.object-swipe-list--pass .swipeable-list-item {
+  overflow: visible;
+  border-radius: 0;
 }
 
 .object-swipe-list .swipeable-list-item__trailing-actions {

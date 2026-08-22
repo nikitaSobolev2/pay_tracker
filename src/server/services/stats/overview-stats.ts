@@ -12,9 +12,9 @@ import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
   DateRangeType,
-  TransactionKind,
   TransactionType,
 } from "@/types/enums";
+import { DEBT_LEDGER_KINDS, debtBalanceDelta } from "@/lib/debt-episodes";
 
 import { convertRubToDisplay } from "../exchange-rate-service";
 import type {
@@ -176,11 +176,11 @@ async function aggregateNettedDebtSnapshots(
   debtsOwedToMe: { total: MoneyAmount; breakdown: NamedAmount[] };
 }> {
   const groups = await prisma.transaction.groupBy({
-    by: ["counterpartyId", "kind", "fxRateDate"],
+    by: ["counterpartyId", "kind", "type", "fxRateDate"],
     where: {
       userId,
       isDeleted: false,
-      kind: { in: [TransactionKind.Loan, TransactionKind.Debt] },
+      kind: { in: [...DEBT_LEDGER_KINDS] },
     },
     _sum: { amount: true },
   });
@@ -196,10 +196,11 @@ async function aggregateNettedDebtSnapshots(
       displayCurrency,
       group.fxRateDate,
     );
-    const signed =
-      group.kind === TransactionKind.Loan
-        ? toDecimal(display.amount)
-        : toDecimal(display.amount).neg();
+    const sign = debtBalanceDelta(group.kind, group.type);
+    if (sign === 0) {
+      continue;
+    }
+    const signed = toDecimal(display.amount).times(sign);
     netByParty.set(key, (netByParty.get(key) ?? toDecimal(0)).plus(signed));
   }
 

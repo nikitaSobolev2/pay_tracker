@@ -352,8 +352,9 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 pb-10">
       <header className="space-y-4">
+        <div className="space-y-3">
         <PageTitleWithBack fallbackHref="/travels">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-stretch gap-1.5 sm:gap-2">
             <div className="min-w-0 flex-1 space-y-3">
               {travel.imageUrl ? (
                 <div className="relative overflow-hidden rounded-xl ring-1 ring-border/50">
@@ -405,14 +406,25 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
             <Button
               type="button"
               variant="outline"
-              className="h-10 gap-1.5 rounded-xl"
+              className="hidden h-auto min-h-11 w-11 shrink-0 self-stretch items-center justify-center rounded-xl p-0 md:inline-flex"
               onClick={() => setEditOpen(true)}
+              aria-label={t("edit")}
+              title={t("edit")}
             >
-              <Pencil className="size-4" />
-              {t("edit")}
+              <Pencil className="size-5" />
             </Button>
           </div>
         </PageTitleWithBack>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full gap-1.5 rounded-xl md:hidden"
+          onClick={() => setEditOpen(true)}
+        >
+          <Pencil className="size-4" />
+          {t("edit")}
+        </Button>
+        </div>
 
         <TravelClocksCard
           placeCity={travel.placeCity}

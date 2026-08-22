@@ -72,6 +72,10 @@ export type TravelTicketBody = TravelTicketSegmentBody & {
   contentType: string;
 };
 
+export type UpdateTravelTicketBody = TravelTicketSegmentBody & {
+  title?: string;
+};
+
 export function listTravels() {
   return apiFetch<{ travels: TravelListItemDto[] }>("/api/travels");
 }
@@ -208,7 +212,7 @@ export function createTravelTicket(travelId: string, body: TravelTicketBody) {
 export function updateTravelTicket(
   travelId: string,
   ticketId: string,
-  body: { title: string },
+  body: UpdateTravelTicketBody,
 ) {
   return apiFetch<{ ticket: TravelTicketDto }>(
     `/api/travels/${travelId}/tickets/${ticketId}`,

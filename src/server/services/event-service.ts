@@ -3,11 +3,11 @@ import { AppServiceError } from "@/lib/errors";
 import { resolveAuthor } from "@/lib/event-author";
 import {
   pickNearestUpcomingEvent,
-  resolveEventTiming,
+  resolveEventPhase,
 } from "@/lib/event-timing";
 import { prisma } from "@/lib/prisma";
 import { ApiErrorCode } from "@/types/api";
-import { EventLinkType } from "@/types/enums";
+import { EventLinkType, EventPhase } from "@/types/enums";
 import { findOrCreateCounterparty } from "./counterparty-service";
 import { assertCanRemoveAttendee } from "./attendee-auth";
 import { bumpEventContent } from "./event-content-revision";
@@ -82,6 +82,7 @@ export async function listEvents(userId: string): Promise<EventListItemDto[]> {
     currency: event.currency,
     attendeeCount: event.attendees.length,
     total: sumSpendings(event.spendings),
+    ...toPhaseFields(event),
   }));
 }
 
@@ -93,7 +94,29 @@ export async function getNearestUpcomingEvent(
   const events = await prisma.event.findMany({
     where: {
       userId,
-      OR: [{ endsAt: { gte: now } }, { endsAt: null, occursAt: { gte: now } }],
+      AND: [
+        {
+          OR: [
+            { phaseOverride: null },
+            {
+              phaseOverride: {
+                notIn: [EventPhase.Finished, EventPhase.Canceled],
+              },
+            },
+          ],
+        },
+        {
+          OR: [
+            { endsAt: { gte: now } },
+            { endsAt: null, occursAt: { gte: now } },
+            {
+              phaseOverride: {
+                in: [EventPhase.Pending, EventPhase.InProgress],
+              },
+            },
+          ],
+        },
+      ],
     },
     orderBy: { occursAt: "asc" },
     take: 30,
@@ -102,6 +125,7 @@ export async function getNearestUpcomingEvent(
       title: true,
       occursAt: true,
       endsAt: true,
+      phaseOverride: true,
     },
   });
 
@@ -111,6 +135,7 @@ export async function getNearestUpcomingEvent(
       title: event.title,
       occursAt: event.occursAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,
+      phaseOverride: event.phaseOverride,
     })),
     now,
   );
@@ -118,8 +143,8 @@ export async function getNearestUpcomingEvent(
     return null;
   }
 
-  const timing = resolveEventTiming({ ...picked, now });
-  if (timing === "finished") {
+  const phase = resolveEventPhase({ ...picked, now });
+  if (phase !== EventPhase.Pending && phase !== EventPhase.InProgress) {
     return null;
   }
 
@@ -128,7 +153,7 @@ export async function getNearestUpcomingEvent(
     title: picked.title,
     occursAt: picked.occursAt,
     endsAt: picked.endsAt,
-    timing,
+    phase,
   };
 }
 
@@ -185,6 +210,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<void> {
         input.manualPerPersonAmount === undefined
           ? undefined
           : input.manualPerPersonAmount,
+      phaseOverride: nextPhaseOverride(input),
     },
   });
   if (input.manualPerPersonAmount !== undefined) {
@@ -267,6 +293,7 @@ export async function getEventDetail(
       publicity: event.publicity,
       guestPermission: event.guestPermission,
       currency: event.currency,
+      ...toPhaseFields(event),
       ownerName: access.viewer.displayName,
       manualPerPersonAmount: event.manualPerPersonAmount?.toString() ?? null,
       links: event.links.map(toLinkDto),
@@ -604,6 +631,26 @@ function requireName(name: string | undefined): string {
 
 function toNumberOrNull(value: { toString(): string } | null): number | null {
   return value === null ? null : Number(value.toString());
+}
+
+function toPhaseFields(event: {
+  occursAt: Date;
+  endsAt: Date | null;
+  phaseOverride: EventPhase | null;
+}): { phase: EventPhase; phaseOverride: EventPhase | null } {
+  return {
+    phase: resolveEventPhase(event),
+    phaseOverride: event.phaseOverride,
+  };
+}
+
+function nextPhaseOverride(
+  input: UpdateEventInput,
+): EventPhase | null | undefined {
+  if (input.clearPhaseOverride) {
+    return null;
+  }
+  return input.phaseOverride;
 }
 
 function emptyToNull(value: string | null | undefined): string | null {

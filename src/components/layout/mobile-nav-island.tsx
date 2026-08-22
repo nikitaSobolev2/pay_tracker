@@ -10,6 +10,7 @@ import {
 import {
   ArrowLeft,
   Menu,
+  MessageSquare,
   Plane,
   Plus,
   Search,
@@ -26,6 +27,7 @@ import { useActiveTravelStore } from "@/stores/active-travel.store";
 import {
   useMobilePageChromeStore,
   type MobilePageChrome,
+  type MobilePageChromeAction,
 } from "@/stores/mobile-page-chrome.store";
 import { useUiStore } from "@/stores/ui.store";
 import { TransactionFormMode } from "@/types/enums";
@@ -248,18 +250,24 @@ function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
             onClick={chrome.action.onClick}
             aria-label={chrome.action.label}
           >
-            {chrome.action.kind === "filters" ? (
-              <SlidersHorizontal className="size-5" />
-            ) : chrome.action.kind === "back" ? (
-              <ArrowLeft className="size-5" />
-            ) : (
-              <Plus className="size-5" />
-            )}
+            <PageChromeActionIcon action={chrome.action} />
             {chrome.action.kind === "filters" && chrome.action.active ? (
               <span
                 aria-hidden
                 className="absolute top-2.5 right-2.5 size-2 rounded-full bg-foreground"
               />
+            ) : null}
+            {chrome.action.kind === "chat" && chrome.action.unreadCount > 0 ? (
+              <span
+                className={cn(
+                  "absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+                  "bg-primary text-[10px] font-semibold leading-none text-primary-foreground",
+                )}
+              >
+                {chrome.action.unreadCount > 9
+                  ? "9+"
+                  : chrome.action.unreadCount}
+              </span>
             ) : null}
           </Button>
         </div>
@@ -315,6 +323,23 @@ function SegmentFilterSwitcher({
       </TabsList>
     </Tabs>
   );
+}
+
+function PageChromeActionIcon({
+  action,
+}: {
+  readonly action: MobilePageChromeAction;
+}) {
+  if (action.kind === "filters") {
+    return <SlidersHorizontal className="size-5" />;
+  }
+  if (action.kind === "back") {
+    return <ArrowLeft className="size-5" />;
+  }
+  if (action.kind === "chat") {
+    return <MessageSquare className="size-5" />;
+  }
+  return <Plus className="size-5" />;
 }
 
 function IslandIconButton({

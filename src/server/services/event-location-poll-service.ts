@@ -445,6 +445,7 @@ export async function getLocationPollForEvent(
   return finished ? loadPollDto(finished.id, viewer) : null;
 }
 
+/** Identify this guest as a person on the list. The same person may be claimed by more than one guest. */
 export async function claimEventAttendee(input: {
   readonly eventId: string;
   readonly guestUserId: string;
@@ -457,21 +458,6 @@ export async function claimEventAttendee(input: {
   });
   if (!attendee) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Attendee not found");
-  }
-
-  const taken = await prisma.eventGuestPresence.findFirst({
-    where: {
-      eventId: input.eventId,
-      attendeeId: input.attendeeId,
-      NOT: { guestUserId: input.guestUserId },
-    },
-    select: { id: true },
-  });
-  if (taken) {
-    throw new AppServiceError(
-      ApiErrorCode.Conflict,
-      "This person is already claimed",
-    );
   }
 
   const guest = await renameGuestUser({

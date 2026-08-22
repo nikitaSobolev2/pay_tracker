@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import { RowOverflowMenu } from "@/components/row-overflow-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -259,6 +260,9 @@ export function TransactionTable({
                             {item.kind === TransactionKind.Transfer
                               ? t("kindTransfer")
                               : null}
+                            {item.kind === TransactionKind.Forgive
+                              ? `${t("kindForgive")}: ${item.counterpartyName ?? "—"}`
+                              : null}
                           </div>
                         </Link>
                       </TableCell>
@@ -306,25 +310,24 @@ export function TransactionTable({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-1.5"
-                            onClick={() => openEditTransactionModal(item)}
-                          >
-                            <Pencil className="size-4" />
-                            {tCommon("edit")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="gap-1.5"
-                            onClick={() => requestDelete([item.id])}
-                          >
-                            <Trash2 className="size-4" />
-                            {tCommon("delete")}
-                          </Button>
+                        <div className="flex justify-end">
+                          <RowOverflowMenu
+                            actions={[
+                              {
+                                id: "edit",
+                                label: tCommon("edit"),
+                                icon: Pencil,
+                                onSelect: () => openEditTransactionModal(item),
+                              },
+                              {
+                                id: "delete",
+                                label: tCommon("delete"),
+                                icon: Trash2,
+                                onSelect: () => requestDelete([item.id]),
+                                destructive: true,
+                              },
+                            ]}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

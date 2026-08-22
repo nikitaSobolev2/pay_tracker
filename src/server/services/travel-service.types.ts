@@ -251,7 +251,7 @@ export type CreateTravelTicketInput = TravelTicketSegmentFields & {
   readonly contentType: string;
 };
 
-export type UpdateTravelTicketInput = {
+export type UpdateTravelTicketInput = TravelTicketSegmentFields & {
   readonly userId: string;
   readonly travelId: string;
   readonly ticketId: string;

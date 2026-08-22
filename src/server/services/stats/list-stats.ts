@@ -9,8 +9,8 @@ import {
 import { toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
+  CASHFLOW_EXCLUDED_KINDS,
   DateRangeType,
-  TransactionKind,
   TransactionType,
 } from "@/types/enums";
 
@@ -73,7 +73,10 @@ export async function getListPageStats(
   const cashflowPreviousWhere = kindScoped
     ? previousWhere
     : {
-        AND: [previousWhere, { kind: { not: TransactionKind.Transfer } }],
+        AND: [
+          previousWhere,
+          { kind: { notIn: [...CASHFLOW_EXCLUDED_KINDS] } },
+        ],
       };
 
   const [rows, previousTotal, previousCount, multiCurrency] =

@@ -6,18 +6,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { EventChatMessageDto } from "@/server/services/event-chat-service";
 import { EventTab } from "@/types/enums";
 
-import { EventChatPanel } from "./event-chat-panel";
+import { EventMobileChatSheet } from "./event-mobile-chat-sheet";
 import { useEventTab } from "./use-event-tab";
 
 export type EventMobileNavIslandProps = {
@@ -130,26 +124,13 @@ export function EventMobileNavIsland({
       */}
       {mounted ? createPortal(island, document.body) : null}
 
-      <Sheet open={chatOpen} onOpenChange={setChatVisible}>
-        <SheetContent
-          side="bottom"
-          className={cn(
-            "flex flex-col gap-0 rounded-none border-0 p-0 shadow-none",
-            "data-[side=bottom]:inset-0 data-[side=bottom]:h-[100vh] data-[side=bottom]:w-[100vw]",
-            "data-[side=bottom]:max-h-[100vh] data-[side=bottom]:max-w-[100vw]",
-          )}
-        >
-          <SheetHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-12">
-            <SheetTitle>{t("chat")}</SheetTitle>
-          </SheetHeader>
-          <EventChatPanel
-            className="min-h-0 flex-1 pb-[env(safe-area-inset-bottom)]"
-            messages={messages}
-            onPosted={onPosted}
-            onDeleted={onDeleted}
-          />
-        </SheetContent>
-      </Sheet>
+      <EventMobileChatSheet
+        open={chatOpen}
+        onOpenChange={setChatVisible}
+        messages={messages}
+        onPosted={onPosted}
+        onDeleted={onDeleted}
+      />
     </>
   );
 }
