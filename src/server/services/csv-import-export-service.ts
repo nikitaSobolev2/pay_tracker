@@ -65,7 +65,9 @@ export async function exportCsv(userId: string): Promise<CsvExportResult> {
       name: row.name,
       createdAt: row.createdAt.toISOString(),
     })),
-    transactions: transactions.map((row) => ({
+    transactions: transactions
+      .filter((row) => row.sourceTransactionId == null)
+      .map((row) => ({
       id: row.id,
       type: row.type,
       amount: row.amount.toString(),

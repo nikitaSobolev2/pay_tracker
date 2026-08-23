@@ -49,6 +49,15 @@ export function toIntegerAmountString(value: string): string {
   return toDecimal(trimmed).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toFixed(0);
 }
 
+/** Whole units rounded toward +∞ (`33.1` → `34`). */
+export function toCeilIntegerAmountString(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return toDecimal(trimmed).toDecimalPlaces(0, Decimal.ROUND_CEIL).toFixed(0);
+}
+
 export function decimalToString(value: Decimal): string {
   return value.toFixed(4);
 }

@@ -18,6 +18,17 @@ describe("cashflow kind helpers", () => {
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Forgive), false);
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Refund), true);
     assert.equal(includeRowInDefaultCashflow(TransactionKind.Loan), true);
+    assert.equal(
+      includeRowInDefaultCashflow(TransactionKind.Loan, "parent-id"),
+      false,
+    );
+  });
+
+  it("excludes split-share loans even under a Loan-only filter", () => {
+    assert.equal(
+      includeRowInCashflow(TransactionKind.Loan, [TransactionKind.Loan], "src"),
+      false,
+    );
   });
 
   it("includes FORGIVE when kind-scoped to forgive", () => {

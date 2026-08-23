@@ -8,6 +8,7 @@ import {
 import { AppServiceError } from "@/lib/errors";
 import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { shouldIncludeSplitSharesInList } from "@/lib/split-share-visibility";
 import { ApiErrorCode } from "@/types/api";
 import {
   SortDirection,
@@ -15,7 +16,10 @@ import {
   TransactionSortBy,
   TransactionType,
 } from "@/types/enums";
-import type { TransactionDto } from "@/types/transaction";
+import type {
+  TransactionDto,
+  TransactionSplitShareDto,
+} from "@/types/transaction";
 
 import {
   assertCategoriesMatchType,
@@ -36,11 +40,18 @@ import type {
   UpdateTransactionInput,
 } from "./transaction-service.types";
 
+const transactionInclude = {
+  counterparty: true,
+  categories: { include: { category: true } },
+  splitShares: {
+    where: { isDeleted: false },
+    include: { counterparty: true },
+    orderBy: { createdAt: "asc" as const },
+  },
+} satisfies Prisma.TransactionInclude;
+
 type TransactionRecord = Prisma.TransactionGetPayload<{
-  include: {
-    counterparty: true;
-    categories: { include: { category: true } };
-  };
+  include: typeof transactionInclude;
 }>;
 
 const DEBT_KINDS: TransactionKind[] = [
@@ -177,6 +188,7 @@ export async function suggestTransactionsByTitle(
       userId: input.userId,
       isDeleted: false,
       title: { contains: query, mode: "insensitive" },
+      sourceTransactionId: null,
       ...(input.type ? { type: input.type } : {}),
     },
     include: transactionInclude,
@@ -241,6 +253,14 @@ export async function updateTransaction(
     counterpartyName = null;
   }
 
+  assertSplitEditLocks({
+    existing,
+    nextType,
+    nextKind,
+    nextInputCurrency,
+    nextOriginalAmount,
+  });
+
   const validated = await validateTransactionWrite({
     userId: input.userId,
     type: nextType,
@@ -298,14 +318,8 @@ export async function deleteTransaction(
   userId: string,
   transactionId: string,
 ): Promise<void> {
-  const result = await prisma.transaction.updateMany({
-    where: { id: transactionId, userId, isDeleted: false },
-    data: {
-      isDeleted: true,
-      idempotencyKey: deletedIdempotencyKey(transactionId),
-    },
-  });
-  if (result.count === 0) {
+  const deletedCount = await softDeleteWithSplitShares(userId, [transactionId]);
+  if (deletedCount === 0) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Transaction not found");
   }
 }
@@ -321,6 +335,14 @@ export async function restoreTransaction(
   if (result.count === 0) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Transaction not found");
   }
+  await prisma.transaction.updateMany({
+    where: {
+      sourceTransactionId: transactionId,
+      userId,
+      isDeleted: true,
+    },
+    data: { isDeleted: false },
+  });
 }
 
 export async function bulkDeleteTransactions(
@@ -330,24 +352,8 @@ export async function bulkDeleteTransactions(
   if (ids.length === 0) {
     return { deletedCount: 0 };
   }
-  const result = await prisma.$transaction(
-    ids.map((id) =>
-      prisma.transaction.updateMany({
-        where: {
-          userId: input.userId,
-          id,
-          isDeleted: false,
-        },
-        data: {
-          isDeleted: true,
-          idempotencyKey: deletedIdempotencyKey(id),
-        },
-      }),
-    ),
-  );
-  return {
-    deletedCount: result.reduce((sum, item) => sum + item.count, 0),
-  };
+  const deletedCount = await softDeleteWithSplitShares(input.userId, ids);
+  return { deletedCount };
 }
 
 const CLEAR_TRANSACTIONS_CHUNK_SIZE = 100;
@@ -474,6 +480,9 @@ export function buildTransactionWhere(
       ? { counterpartyId: { in: input.counterpartyIds } }
       : {}),
     ...(input.travelId ? { travelId: input.travelId } : {}),
+    ...(shouldIncludeSplitSharesInList(input)
+      ? {}
+      : { sourceTransactionId: null }),
     ...categoryFilter,
     ...(bounds.start || bounds.end
       ? {
@@ -647,6 +656,143 @@ function titleMatchScore(title: string | null, query: string): number {
   return 1;
 }
 
+function assertSplitEditLocks(input: {
+  readonly existing: TransactionRecord;
+  readonly nextType: TransactionType;
+  readonly nextKind: TransactionKind;
+  readonly nextInputCurrency: string;
+  readonly nextOriginalAmount: string;
+}): void {
+  if (input.existing.sourceTransactionId) {
+    assertChildKindAndTypeLocked(input);
+    return;
+  }
+  if (input.existing.splitShares.length === 0) {
+    return;
+  }
+  if (
+    input.nextType !== input.existing.type ||
+    input.nextKind !== input.existing.kind
+  ) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Cannot change type or kind while the transaction is divided",
+    );
+  }
+  if (input.nextInputCurrency !== input.existing.inputCurrency) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Cannot change currency while the transaction is divided",
+    );
+  }
+  const shareSum = input.existing.splitShares.reduce(
+    (sum, share) => sum.plus(toDecimal(share.originalAmount.toString())),
+    toDecimal(0),
+  );
+  if (toDecimal(input.nextOriginalAmount).lt(shareSum)) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Amount is below the current split total. Re-divide first",
+    );
+  }
+}
+
+function assertChildKindAndTypeLocked(input: {
+  readonly existing: TransactionRecord;
+  readonly nextType: TransactionType;
+  readonly nextKind: TransactionKind;
+}): void {
+  if (
+    input.nextType !== input.existing.type ||
+    input.nextKind !== input.existing.kind
+  ) {
+    throw new AppServiceError(
+      ApiErrorCode.Validation,
+      "Split share kind and type cannot be changed",
+    );
+  }
+}
+
+async function softDeleteWithSplitShares(
+  userId: string,
+  ids: readonly string[],
+): Promise<number> {
+  const uniqueIds = [...new Set(ids)];
+  const children = await prisma.transaction.findMany({
+    where: {
+      userId,
+      sourceTransactionId: { in: uniqueIds },
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+  const allIds = [
+    ...new Set([...uniqueIds, ...children.map((row) => row.id)]),
+  ];
+  const results = await prisma.$transaction(
+    allIds.map((id) =>
+      prisma.transaction.updateMany({
+        where: { id, userId, isDeleted: false },
+        data: {
+          isDeleted: true,
+          idempotencyKey: deletedIdempotencyKey(id),
+        },
+      }),
+    ),
+  );
+  return results.reduce((sum, item) => sum + item.count, 0);
+}
+
+async function mapSplitShareDtos(
+  shares: TransactionRecord["splitShares"],
+  displayCurrency: string,
+): Promise<TransactionSplitShareDto[]> {
+  return Promise.all(
+    shares.map(async (share) => {
+      const display = await convertRubToDisplay(
+        share.amount.toString(),
+        displayCurrency,
+        share.fxRateDate,
+      );
+      return {
+        id: share.id,
+        counterpartyId: share.counterpartyId,
+        counterpartyName: share.counterparty?.name ?? null,
+        originalAmount: decimalToString(
+          toDecimal(share.originalAmount.toString()),
+        ),
+        inputCurrency: share.inputCurrency,
+        displayAmount: display.amount,
+        displayCurrency: display.currency,
+      };
+    }),
+  );
+}
+
+async function parentHasLaterDebtEvents(
+  userId: string,
+  shares: TransactionRecord["splitShares"],
+): Promise<boolean> {
+  const withParty = shares.filter((share) => share.counterpartyId);
+  if (withParty.length === 0) {
+    return false;
+  }
+  const later = await prisma.transaction.findFirst({
+    where: {
+      userId,
+      isDeleted: false,
+      kind: { in: DEBT_KINDS },
+      id: { notIn: withParty.map((share) => share.id) },
+      OR: withParty.map((share) => ({
+        counterpartyId: share.counterpartyId,
+        occurredAt: { gt: share.occurredAt },
+      })),
+    },
+    select: { id: true },
+  });
+  return later != null;
+}
+
 async function resolveCanonicalMoney(
   inputCurrency: string,
   originalAmount: string,
@@ -697,6 +843,12 @@ async function mapTransactionDto(
     counterpartyId: row.counterpartyId,
     counterpartyName: row.counterparty?.name ?? null,
     travelId: row.travelId,
+    sourceTransactionId: row.sourceTransactionId,
+    splitShares: await mapSplitShareDtos(row.splitShares, displayCurrency),
+    splitHasLaterDebtEvents: await parentHasLaterDebtEvents(
+      row.userId,
+      row.splitShares,
+    ),
     categories,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -723,11 +875,6 @@ async function resolveTravelIdForWrite(input: {
   }
   return travel.id;
 }
-
-const transactionInclude = {
-  counterparty: true,
-  categories: { include: { category: true } },
-} satisfies Prisma.TransactionInclude;
 
 async function findActiveByIdempotencyKey(
   userId: string,

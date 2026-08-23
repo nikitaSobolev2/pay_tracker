@@ -173,6 +173,7 @@ export type DebtCounterpartyStats = {
   /** Median days from open→settle across completed balance episodes. */
   medianSettleDays: number | null;
   eventCount: number;
+  recentAmounts: string[];
 };
 
 export type DebtsStats = {

@@ -22,6 +22,7 @@ import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { Link, useRouter } from "@/i18n/navigation";
 import { fetchDebtDetailStats } from "@/lib/api/stats";
 import { deleteTransaction } from "@/lib/api/transactions";
+import { uniqueRecentAmounts } from "@/lib/unique-recent-amounts";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { DebtDetailStats } from "@/server/services/detail-stats-service.types";
@@ -130,6 +131,9 @@ export function DebtDetailPage({
     frequencyDays: stats.frequencyDays,
     medianSettleDays: stats.medianSettleDays,
     eventCount: stats.eventCount,
+    recentAmounts: uniqueRecentAmounts(
+      stats.transactions.map((item) => item.displayAmount),
+    ),
   };
 
   function openSettle(mode: SettleDebtTarget["mode"]) {
@@ -350,6 +354,7 @@ export function DebtDetailPage({
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         count={1}
+        splitShareCount={deleteTarget?.splitShares?.length ?? 0}
         loading={deleting}
         onOpenChange={(open) => {
           if (!open) {

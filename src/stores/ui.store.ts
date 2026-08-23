@@ -11,12 +11,15 @@ type UiStore = {
   transactionModalOpen: boolean;
   transactionFormMode: TransactionFormMode;
   editingTransaction: TransactionDto | null;
+  dividingTransaction: TransactionDto | null;
   preferredTravelId: string | null;
   openTransactionModal: (
     mode: TransactionFormMode,
     options?: OpenTransactionModalOptions,
   ) => void;
   openEditTransactionModal: (transaction: TransactionDto) => void;
+  openDivideTransactionModal: (transaction: TransactionDto) => void;
+  closeDivideTransactionModal: () => void;
   closeTransactionModal: () => void;
   setTransactionFormMode: (mode: TransactionFormMode) => void;
 };
@@ -25,6 +28,7 @@ export const useUiStore = create<UiStore>((set) => ({
   transactionModalOpen: false,
   transactionFormMode: TransactionFormMode.Spending,
   editingTransaction: null,
+  dividingTransaction: null,
   preferredTravelId: null,
   openTransactionModal: (mode, options) =>
     set({
@@ -43,6 +47,9 @@ export const useUiStore = create<UiStore>((set) => ({
       editingTransaction: transaction,
       preferredTravelId: transaction.travelId,
     }),
+  openDivideTransactionModal: (transaction) =>
+    set({ dividingTransaction: transaction }),
+  closeDivideTransactionModal: () => set({ dividingTransaction: null }),
   closeTransactionModal: () =>
     set({
       transactionModalOpen: false,

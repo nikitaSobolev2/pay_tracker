@@ -103,6 +103,7 @@
     "close": "Закрыть",
     "back": "Назад",
     "select": "Выбрать",
+    "accept": "Принять",
     "rowActions": "Действия",
     "required": "Обязательно",
     "optional": "Необязательно"
@@ -188,7 +189,19 @@
     "lastNYears": "Последние {n} лет",
     "viewTransaction": "Открыть транзакцию",
     "restore": "Восстановить",
-    "deleted": "Удалено"
+    "deleted": "Удалено",
+    "divide": "Разделить",
+    "people": "Люди",
+    "peoplePlaceholder": "Новый человек",
+    "createPerson": "Создать {name}",
+    "divideSuccess": "Транзакция разделена",
+    "divideFailed": "Не удалось разделить транзакцию",
+    "divideOffline": "Для разделения нужен интернет",
+    "remaining": "Остаток {amount}",
+    "redivideWarning": "У некоторых людей уже есть более поздние события по долгу. Замена долей не отменит погашения.",
+    "redivideConfirm": "Заменить доли",
+    "deleteConfirmWithSplits": "Также будут удалены {count, plural, one {# разделённый долг} few {# разделённых долга} many {# разделённых долгов} other {# разделённых долга}}.",
+    "moreShares": "+{count}"
   },
   "home": {
     "fastInputPlaceholder": "Сумма (123 расход, +123 доход)",
@@ -834,7 +847,8 @@
     "forgiveDebtSuccess": "Долг прощён",
     "forgiveDebtFailed": "Не удалось простить долг",
     "forgivenAllTime": "Прощено за всё время",
-    "settleAmountInvalid": "Введите сумму больше 0 и не больше {amount}."
+    "settleAmountInvalid": "Введите сумму больше 0 и не больше {amount}.",
+    "recentAmounts": "Недавние суммы"
   },
   "devices": {
     "title": "Устройства",
@@ -918,6 +932,7 @@
     "type": "Тип",
     "categories": "Категории",
     "counterparty": "Человек",
+    "division": "Разделение",
     "related": "Похожие в категории",
     "edit": "Изменить",
     "delete": "Удалить",

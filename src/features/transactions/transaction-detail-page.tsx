@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NamedAmountBars } from "@/features/charts/named-amount-bars";
 import { TimelineChart } from "@/features/charts/timeline-chart";
+import { SplitShareChips } from "@/features/transactions/split-share-chips";
 import { ConfirmDeleteDialog } from "@/features/transactions/confirm-delete-dialog";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -209,6 +210,22 @@ export function TransactionDetailPage({
               )}
             </div>
           </div>
+          {transaction.splitShares?.length ? (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <p className="text-sm text-muted-foreground">{t("division")}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <SplitShareChips shares={transaction.splitShares} />
+                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  {transaction.splitShares.map((share) => (
+                    <li key={share.id} className="tabular-nums">
+                      {share.counterpartyName ?? "—"}{" "}
+                      {formatMoney(share.displayAmount, share.displayCurrency)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : null}
           {transaction.counterpartyName ? (
             <div>
               <p className="text-sm text-muted-foreground">
@@ -335,6 +352,7 @@ export function TransactionDetailPage({
         open={deleteOpen}
         loading={deleting}
         count={1}
+        splitShareCount={transaction.splitShares?.length ?? 0}
         onOpenChange={setDeleteOpen}
         onConfirm={() => void handleDelete()}
       />

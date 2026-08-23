@@ -8,6 +8,7 @@ import { MobileNavIsland } from "@/components/layout/mobile-nav-island";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ShareChartModal } from "@/features/share/share-chart-modal";
 import { SearchSpotlight } from "@/features/search/search-spotlight";
+import { DivideTransactionDialog } from "@/features/transactions/divide-transaction-dialog";
 import { TransactionFormModal } from "@/features/transactions/transaction-form-modal";
 import { useHasHydrated } from "@/hooks/use-has-hydrated";
 import { usePathname } from "@/i18n/navigation";
@@ -58,6 +59,7 @@ export function AppShell({ children }: AppShellProps) {
             onOpenChange={setSearchOpen}
           />
           <TransactionFormModal />
+          <DivideTransactionDialog />
           <TransactionFormLookupWarmup />
           <ShareChartModal />
         </>

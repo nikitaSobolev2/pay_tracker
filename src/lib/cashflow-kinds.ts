@@ -6,23 +6,40 @@ import {
   TransactionType,
 } from "@/types/enums";
 
-/** Default cashflow: exclude transfers and forgive write-offs. */
-export function includeRowInDefaultCashflow(kind: TransactionKind): boolean {
+export function isSplitShareRow(
+  sourceTransactionId?: string | null,
+): boolean {
+  return Boolean(sourceTransactionId);
+}
+
+/** Default cashflow: exclude transfers, forgive write-offs, and split IOUs. */
+export function includeRowInDefaultCashflow(
+  kind: TransactionKind,
+  sourceTransactionId?: string | null,
+): boolean {
+  if (isSplitShareRow(sourceTransactionId)) {
+    return false;
+  }
   return !isCashflowExcludedKind(kind);
 }
 
 /**
  * When the UI filters to a single kind, include that kind even if it is
  * normally excluded from cashflow (e.g. TRANSFER-only filter).
+ * Split-share rows stay excluded — they are IOUs, not a second cash move.
  */
 export function includeRowInCashflow(
   kind: TransactionKind,
   kindsFilter?: readonly TransactionKind[],
+  sourceTransactionId?: string | null,
 ): boolean {
+  if (isSplitShareRow(sourceTransactionId)) {
+    return false;
+  }
   if (kindsFilter?.length === 1 && kindsFilter[0] === kind) {
     return true;
   }
-  return includeRowInDefaultCashflow(kind);
+  return includeRowInDefaultCashflow(kind, sourceTransactionId);
 }
 
 /** Category charts follow the transaction's own type. */

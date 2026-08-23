@@ -23,6 +23,8 @@ import {
 import { DateTimePicker } from "@/features/transactions/date-time-picker";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { normalizeAmountRaw } from "@/lib/amount-input";
+import { uniqueRecentAmounts } from "@/lib/unique-recent-amounts";
+import { cn } from "@/lib/utils";
 import { createTransaction } from "@/lib/api/transactions";
 import { formatMoney, decimalToString, toDecimal } from "@/lib/money";
 import { TransactionKind, TransactionType } from "@/types/enums";
@@ -150,6 +152,9 @@ export function SettleDebtDialog({
         target.person.totalAllTime.currency,
       )
     : "";
+  const recentAmountChips = target
+    ? uniqueRecentAmounts(target.person.recentAmounts ?? [])
+    : [];
 
   return (
     <Dialog
@@ -187,6 +192,37 @@ export function SettleDebtDialog({
                 value={amount}
                 onValueChange={setAmount}
               />
+              {recentAmountChips.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+                    {t("recentAmounts")}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {recentAmountChips.map((recent) => {
+                      const selected = normalizeAmountRaw(amount) === recent;
+                      return (
+                        <button
+                          key={recent}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setAmount(recent)}
+                          className={cn(
+                            "inline-flex h-11 cursor-pointer items-center justify-center rounded-full border px-4 text-sm font-medium tabular-nums transition-colors",
+                            selected
+                              ? "border-amber-400 bg-amber-500/45 text-amber-50"
+                              : "border-amber-400/35 bg-amber-500/12 text-amber-100/80 hover:bg-amber-500/25",
+                          )}
+                        >
+                          {formatMoney(
+                            recent,
+                            target.person.totalAllTime.currency,
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </FormField>
 
             <FormField label={tTransaction("date")} required>

@@ -371,6 +371,9 @@ export function RecentTransactionsList({
       <ConfirmDeleteDialog
         open={confirmOpen}
         count={pendingIds.length}
+        splitShareCount={items
+          .filter((item) => pendingIds.includes(item.id))
+          .reduce((sum, item) => sum + (item.splitShares?.length ?? 0), 0)}
         loading={deleting}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void confirmDelete()}

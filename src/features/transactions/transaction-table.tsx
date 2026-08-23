@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Pencil, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Split, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -18,7 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDeleteDialog } from "@/features/transactions/confirm-delete-dialog";
+import { SplitShareChips } from "@/features/transactions/split-share-chips";
 import { TransactionMobileList } from "@/features/transactions/transaction-mobile-list";
+import { canDivideTransaction } from "@/lib/can-divide-transaction";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
 import { Link } from "@/i18n/navigation";
@@ -75,6 +77,9 @@ export function TransactionTable({
   const formatReadableDateTime = useReadableDateTime();
   const openEditTransactionModal = useUiStore(
     (state) => state.openEditTransactionModal,
+  );
+  const openDivideTransactionModal = useUiStore(
+    (state) => state.openDivideTransactionModal,
   );
   const [selected, setSelected] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -208,6 +213,7 @@ export function TransactionTable({
                   onClear={() => onSortChange?.(null)}
                   clearLabel={t("clearTableSort")}
                 />
+                <TableHead>{t("counterparties")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -221,7 +227,7 @@ export function TransactionTable({
               {!loading && items.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="h-24 text-center text-muted-foreground"
                   >
                     —
@@ -309,10 +315,24 @@ export function TransactionTable({
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <SplitShareChips shares={item.splitShares ?? []} />
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end">
                           <RowOverflowMenu
                             actions={[
+                              ...(canDivideTransaction(item)
+                                ? [
+                                    {
+                                      id: "divide",
+                                      label: t("divide"),
+                                      icon: Split,
+                                      onSelect: () =>
+                                        openDivideTransactionModal(item),
+                                    },
+                                  ]
+                                : []),
                               {
                                 id: "edit",
                                 label: tCommon("edit"),
@@ -347,6 +367,9 @@ export function TransactionTable({
       <ConfirmDeleteDialog
         open={confirmOpen}
         count={pendingIds.length}
+        splitShareCount={items
+          .filter((item) => pendingIds.includes(item.id))
+          .reduce((sum, item) => sum + (item.splitShares?.length ?? 0), 0)}
         loading={deleting}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void confirmDelete()}
@@ -435,6 +458,9 @@ function TransactionSkeletonRow() {
           <Skeleton className="h-5 w-14 rounded-md" />
           <Skeleton className="hidden h-5 w-16 rounded-md sm:block" />
         </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-6 w-16 rounded-full" />
       </TableCell>
       <TableCell>
         <div className="flex justify-end gap-1">

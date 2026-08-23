@@ -109,6 +109,19 @@ export function deleteTransaction(id: string) {
   });
 }
 
+export function divideTransaction(
+  id: string,
+  shares: readonly { counterpartyName: string; amount: string }[],
+) {
+  return apiFetch<{ transaction: TransactionDto }>(
+    `/api/transactions/${id}/divide`,
+    {
+      method: "POST",
+      body: { shares },
+    },
+  );
+}
+
 export function restoreTransaction(id: string) {
   return apiFetch<{ ok: true }>(`/api/transactions/${id}/restore`, {
     method: "POST",

@@ -17,6 +17,7 @@ import {
 type ConfirmDeleteDialogProps = {
   open: boolean;
   count: number;
+  splitShareCount?: number;
   loading?: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -25,6 +26,7 @@ type ConfirmDeleteDialogProps = {
 export function ConfirmDeleteDialog({
   open,
   count,
+  splitShareCount = 0,
   loading = false,
   onOpenChange,
   onConfirm,
@@ -39,6 +41,9 @@ export function ConfirmDeleteDialog({
           <AlertDialogTitle>{tCommon("confirm")}</AlertDialogTitle>
           <AlertDialogDescription>
             {t("deleteConfirm")} ({count})
+            {splitShareCount > 0
+              ? ` ${t("deleteConfirmWithSplits", { count: splitShareCount })}`
+              : null}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

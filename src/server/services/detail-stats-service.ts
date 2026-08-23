@@ -107,6 +107,7 @@ export async function getCategoryDetailStats(input: {
       isDeleted: false,
       type: category.type,
       kind: { notIn: [...CASHFLOW_EXCLUDED_KINDS] },
+      sourceTransactionId: null,
       occurredAt: { gte: start, lte: end },
       categories: {
         some: {
@@ -119,6 +120,10 @@ export async function getCategoryDetailStats(input: {
     include: {
       counterparty: true,
       categories: { include: { category: true } },
+      splitShares: {
+        where: { isDeleted: false },
+        include: { counterparty: true },
+      },
     },
     orderBy: { occurredAt: "asc" },
   });
@@ -266,27 +271,49 @@ export async function getCategoryDetailStats(input: {
         thisMonthAmt.minus(lastMonthAmt).div(lastMonthAmt).mul(100).toFixed(2),
       );
 
-  const byParty = new Map<string, { name: string; rows: typeof inCategory }>();
+  const byParty = new Map<string, { name: string; amount: Decimal }>();
   for (const row of inCategory) {
+    if (row.splitShares.length > 0) {
+      for (const share of row.splitShares) {
+        if (!share.counterparty) {
+          continue;
+        }
+        const shareAmount = await toDisplay(
+          toDecimal(share.amount.toString()),
+          input.displayCurrency,
+          share.fxRateDate,
+        );
+        const current = byParty.get(share.counterparty.id) ?? {
+          name: share.counterparty.name,
+          amount: toDecimal(0),
+        };
+        current.amount = current.amount.plus(shareAmount);
+        byParty.set(share.counterparty.id, current);
+      }
+      continue;
+    }
     if (!row.counterparty) {
       continue;
     }
-    const bucket = byParty.get(row.counterparty.id) ?? {
+    const rowAmount = await toDisplay(
+      toDecimal(row.amount.toString()),
+      input.displayCurrency,
+      row.fxRateDate,
+    );
+    const current = byParty.get(row.counterparty.id) ?? {
       name: row.counterparty.name,
-      rows: [],
+      amount: toDecimal(0),
     };
-    bucket.rows.push(row);
-    byParty.set(row.counterparty.id, bucket);
+    current.amount = current.amount.plus(rowAmount);
+    byParty.set(row.counterparty.id, current);
   }
-  const topCounterparties: NamedAmount[] = [];
-  for (const [id, bucket] of byParty) {
-    const total = await sumRows(bucket.rows, input.displayCurrency);
-    topCounterparties.push({
+  const topCounterparties: NamedAmount[] = [...byParty.entries()].map(
+    ([id, bucket]) => ({
       id,
       name: bucket.name,
-      amount: decimalToString(total),
-    });
-  }
+      amount: decimalToString(bucket.amount),
+    }),
+  );
   topCounterparties.sort((a, b) =>
     toDecimal(b.amount).cmp(toDecimal(a.amount)),
   );

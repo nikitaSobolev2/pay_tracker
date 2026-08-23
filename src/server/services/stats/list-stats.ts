@@ -70,14 +70,19 @@ export async function getListPageStats(
       ...(previousBounds.end ? { lte: previousBounds.end } : {}),
     };
   }
-  const cashflowPreviousWhere = kindScoped
-    ? previousWhere
-    : {
-        AND: [
-          previousWhere,
-          { kind: { notIn: [...CASHFLOW_EXCLUDED_KINDS] } },
-        ],
-      };
+  const cashflowPreviousWhere = {
+    AND: [
+      kindScoped
+        ? previousWhere
+        : {
+            AND: [
+              previousWhere,
+              { kind: { notIn: [...CASHFLOW_EXCLUDED_KINDS] } },
+            ],
+          },
+      { sourceTransactionId: null },
+    ],
+  };
 
   const [rows, previousTotal, previousCount, multiCurrency] =
     await Promise.all([
@@ -98,7 +103,7 @@ export async function getListPageStats(
     ]);
 
   const cashflowRows = rows.filter((row) =>
-    includeRowInCashflow(row.kind, kindsFilter),
+    includeRowInCashflow(row.kind, kindsFilter, row.sourceTransactionId),
   );
 
   const spendingTotal = kindScoped
@@ -110,7 +115,7 @@ export async function getListPageStats(
         rows.filter(
           (row) =>
             row.type === TransactionType.Spending &&
-            includeRowInCashflow(row.kind),
+            includeRowInCashflow(row.kind, undefined, row.sourceTransactionId),
         ),
         input.displayCurrency,
       );
@@ -124,7 +129,7 @@ export async function getListPageStats(
         rows.filter(
           (row) =>
             row.type === TransactionType.Earning &&
-            includeRowInCashflow(row.kind),
+            includeRowInCashflow(row.kind, undefined, row.sourceTransactionId),
         ),
         input.displayCurrency,
       );

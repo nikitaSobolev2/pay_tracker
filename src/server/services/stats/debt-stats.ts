@@ -7,8 +7,9 @@ import {
   medianDays,
   type DebtEpisodeEvent,
 } from "@/lib/debt-episodes";
+import { uniqueRecentAmounts } from "@/lib/unique-recent-amounts";
 import { getDateRangeBounds } from "@/lib/dates";
-import { toDecimal } from "@/lib/money";
+import { decimalToString, toDecimal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { DateRangeType, TransactionKind } from "@/types/enums";
 
@@ -23,6 +24,7 @@ import {
   meanIntervalDays,
   moneyOf,
   netDebtBalance,
+  rowDisplayAmount,
   sumDisplay,
   type TxRow,
 } from "./stats-common";
@@ -119,6 +121,7 @@ async function buildNettedDebtSections(
       frequencyDays: meanIntervalDays(partyRows.map((row) => row.occurredAt)),
       medianSettleDays: partyMedianSettleDays,
       eventCount: partyRows.length,
+      recentAmounts: await recentAmountsForRows(partyRows, displayCurrency),
     };
 
     if (allTimeNet.gt(0)) {
@@ -176,6 +179,21 @@ function collectSettleDurations(
     }
   }
   return medianDays(episodes.map((episode) => episode.durationDays));
+}
+
+async function recentAmountsForRows(
+  partyRows: TxRow[],
+  displayCurrency: string,
+): Promise<string[]> {
+  const newestFirst = [...partyRows].sort(
+    (left, right) => right.occurredAt.getTime() - left.occurredAt.getTime(),
+  );
+  const amounts: string[] = [];
+  for (const row of newestFirst) {
+    const display = await rowDisplayAmount(row, displayCurrency);
+    amounts.push(decimalToString(display));
+  }
+  return uniqueRecentAmounts(amounts);
 }
 
 function partyRowsToEpisodeEvents(partyRows: TxRow[]): DebtEpisodeEvent[] {

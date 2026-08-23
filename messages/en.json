@@ -103,6 +103,7 @@
     "close": "Close",
     "back": "Back",
     "select": "Select",
+    "accept": "Accept",
     "rowActions": "Actions",
     "required": "Required",
     "optional": "Optional"
@@ -188,7 +189,19 @@
     "lastNYears": "Last {n} years",
     "viewTransaction": "View transaction",
     "restore": "Restore",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "divide": "Divide",
+    "people": "People",
+    "peoplePlaceholder": "New person",
+    "createPerson": "Create {name}",
+    "divideSuccess": "Transaction divided",
+    "divideFailed": "Could not divide transaction",
+    "divideOffline": "Divide needs a network connection",
+    "remaining": "Remaining {amount}",
+    "redivideWarning": "Some people already have later debt events. Replacing shares will not undo repayments.",
+    "redivideConfirm": "Replace shares",
+    "deleteConfirmWithSplits": "This will also remove {count, plural, one {# split debt} other {# split debts}}.",
+    "moreShares": "+{count}"
   },
   "home": {
     "fastInputPlaceholder": "Amount (123 spending, +123 earning)",
@@ -834,7 +847,8 @@
     "forgiveDebtSuccess": "Debt forgiven",
     "forgiveDebtFailed": "Failed to forgive debt",
     "forgivenAllTime": "Forgiven all time",
-    "settleAmountInvalid": "Enter an amount greater than 0 and at most {amount}."
+    "settleAmountInvalid": "Enter an amount greater than 0 and at most {amount}.",
+    "recentAmounts": "Recent amounts"
   },
   "devices": {
     "title": "Devices",
@@ -918,6 +932,7 @@
     "type": "Type",
     "categories": "Categories",
     "counterparty": "Person",
+    "division": "Division",
     "related": "Related in category",
     "edit": "Edit",
     "delete": "Delete",

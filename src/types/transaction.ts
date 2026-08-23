@@ -9,6 +9,16 @@ export type TransactionCategoryDto = {
   keywords: string[];
 };
 
+export type TransactionSplitShareDto = {
+  id: string;
+  counterpartyId: string | null;
+  counterpartyName: string | null;
+  originalAmount: string;
+  inputCurrency: string;
+  displayAmount: string;
+  displayCurrency: string;
+};
+
 export type TransactionDto = {
   id: string;
   type: TransactionType;
@@ -25,6 +35,9 @@ export type TransactionDto = {
   counterpartyId: string | null;
   counterpartyName: string | null;
   travelId: string | null;
+  sourceTransactionId: string | null;
+  splitShares: TransactionSplitShareDto[];
+  splitHasLaterDebtEvents: boolean;
   categories: TransactionCategoryDto[];
   createdAt: string;
   updatedAt: string;

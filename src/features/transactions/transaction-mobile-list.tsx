@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckSquare, Eye, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import {
+  CheckSquare,
+  Eye,
+  Pencil,
+  RotateCcw,
+  Split,
+  Trash2,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -27,10 +34,12 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLongPress } from "@/hooks/use-long-press";
 import { useRouter } from "@/i18n/navigation";
+import { canDivideTransaction } from "@/lib/can-divide-transaction";
 import {
   deleteTransaction,
   restoreTransaction,
 } from "@/lib/api/transactions";
+import { useUiStore } from "@/stores/ui.store";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { cn } from "@/lib/utils";
 import { useTravelCacheStore } from "@/stores/travel-cache.store";
@@ -197,6 +206,9 @@ function TransactionMobileRow({
   const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const router = useRouter();
+  const openDivideTransactionModal = useUiStore(
+    (state) => state.openDivideTransactionModal,
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [actionsRevealed, setActionsRevealed] = useState(false);
   const [softDeleted, setSoftDeleted] = useState(false);
@@ -296,6 +308,16 @@ function TransactionMobileRow({
       icon: Eye,
       onSelect: () => router.push(`/transactions/${item.id}`),
     },
+    ...(canDivideTransaction(item)
+      ? [
+          {
+            id: "divide",
+            label: t("divide"),
+            icon: Split,
+            onSelect: () => openDivideTransactionModal(item),
+          } satisfies MobileRowAction,
+        ]
+      : []),
     {
       id: "edit",
       label: tCommon("edit"),

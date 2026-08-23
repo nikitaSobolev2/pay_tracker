@@ -46,7 +46,11 @@ export async function getOverviewStats(
   const [periodRows, recentRows, debtSnapshot] = await Promise.all([
     fetchRows(input.userId, start, end),
     prisma.transaction.findMany({
-      where: { userId: input.userId, isDeleted: false },
+      where: {
+        userId: input.userId,
+        isDeleted: false,
+        sourceTransactionId: null,
+      },
       include: {
         counterparty: true,
         categories: { include: { category: true } },
@@ -62,12 +66,12 @@ export async function getOverviewStats(
   const spendingRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Spending &&
-      includeRowInDefaultCashflow(row.kind),
+      includeRowInDefaultCashflow(row.kind, row.sourceTransactionId),
   );
   const earningRows = periodRows.filter(
     (row) =>
       row.type === TransactionType.Earning &&
-      includeRowInDefaultCashflow(row.kind),
+      includeRowInDefaultCashflow(row.kind, row.sourceTransactionId),
   );
 
   const spendingTotal = await sumDisplay(spendingRows, input.displayCurrency);
@@ -298,7 +302,7 @@ async function loadPreviousPeriodTotals(input: {
     previousRows.filter(
       (row) =>
         row.type === TransactionType.Spending &&
-        includeRowInDefaultCashflow(row.kind),
+        includeRowInDefaultCashflow(row.kind, row.sourceTransactionId),
     ),
     input.displayCurrency,
   );
@@ -306,7 +310,7 @@ async function loadPreviousPeriodTotals(input: {
     previousRows.filter(
       (row) =>
         row.type === TransactionType.Earning &&
-        includeRowInDefaultCashflow(row.kind),
+        includeRowInDefaultCashflow(row.kind, row.sourceTransactionId),
     ),
     input.displayCurrency,
   );

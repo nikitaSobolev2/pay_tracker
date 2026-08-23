@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatChartMoney, formatMoney } from "../../src/lib/money";
+import {
+  formatChartMoney,
+  formatMoney,
+  toCeilIntegerAmountString,
+} from "../../src/lib/money";
 
 describe("formatChartMoney", () => {
   it("rounds half-up to whole currency units", () => {
@@ -22,5 +26,12 @@ describe("formatMoney", () => {
   it("keeps two fraction digits by default", () => {
     const formatted = formatMoney("10.5", "USD");
     assert.match(formatted, /10[.,]50/);
+  });
+});
+
+describe("toCeilIntegerAmountString", () => {
+  it("ceils a fractional amount to the next whole unit", () => {
+    assert.equal(toCeilIntegerAmountString("33.1"), "34");
+    assert.equal(toCeilIntegerAmountString("33.0000"), "33");
   });
 });

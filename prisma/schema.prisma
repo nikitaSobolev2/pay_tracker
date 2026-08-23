@@ -244,15 +244,18 @@ model Transaction {
   occurredAt     DateTime
   kind           TransactionKind       @default(DEFAULT)
   counterpartyId String?
-  travelId       String?
-  idempotencyKey String
-  isDeleted      Boolean               @default(false)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  counterparty   UserCounterparty?     @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
-  travel         Travel?               @relation(fields: [travelId], references: [id], onDelete: SetNull)
-  categories     TransactionCategory[]
+  travelId             String?
+  sourceTransactionId  String?
+  idempotencyKey       String
+  isDeleted            Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counterparty         UserCounterparty?     @relation(fields: [counterpartyId], references: [id], onDelete: SetNull)
+  travel               Travel?               @relation(fields: [travelId], references: [id], onDelete: SetNull)
+  sourceTransaction    Transaction?          @relation("TransactionSplits", fields: [sourceTransactionId], references: [id], onDelete: SetNull)
+  splitShares          Transaction[]         @relation("TransactionSplits")
+  categories           TransactionCategory[]
 
   @@unique([userId, idempotencyKey])
   @@index([userId, occurredAt])
@@ -260,6 +263,7 @@ model Transaction {
   @@index([userId, kind, counterpartyId])
   @@index([userId, isDeleted, occurredAt])
   @@index([userId, travelId])
+  @@index([sourceTransactionId])
 }
 
 model ExchangeRate {

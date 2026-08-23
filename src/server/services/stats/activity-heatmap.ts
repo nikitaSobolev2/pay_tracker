@@ -63,6 +63,7 @@ export async function getActivityHeatmap(
       occurredAt: true,
       type: true,
       kind: true,
+      sourceTransactionId: true,
       amount: true,
       fxRateDate: true,
     },
@@ -82,7 +83,9 @@ export async function getActivityHeatmap(
   let maxEarning = toDecimal(0);
   let maxSpending = toDecimal(0);
   for (const row of rows) {
-    if (!includeRowInCashflow(row.kind, input.kinds)) {
+    if (
+      !includeRowInCashflow(row.kind, input.kinds, row.sourceTransactionId)
+    ) {
       continue;
     }
     const key = format(

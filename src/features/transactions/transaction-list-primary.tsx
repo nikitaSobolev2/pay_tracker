@@ -8,6 +8,7 @@ import {
   formatLeafCategoryLabel,
   leafCategoriesOnly,
 } from "@/lib/category-selection";
+import { SplitShareChips } from "@/features/transactions/split-share-chips";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { TransactionType } from "@/types/enums";
@@ -44,6 +45,11 @@ export function TransactionListPrimary({
       <p className="truncate text-[15px] font-medium leading-snug text-foreground">
         {title}
       </p>
+      {item.splitShares?.length ? (
+        <div className="mt-0.5">
+          <SplitShareChips shares={item.splitShares} compact />
+        </div>
+      ) : null}
       {categories.length ? (
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {categories.map((category, index) => (

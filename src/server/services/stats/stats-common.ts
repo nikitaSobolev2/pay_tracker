@@ -64,6 +64,7 @@ export type TxRow = {
   title: string | null;
   occurredAt: Date;
   kind: TransactionKind;
+  sourceTransactionId: string | null;
   counterpartyId: string | null;
   counterparty: { id: string; name: string } | null;
   categories: Array<{
@@ -225,7 +226,7 @@ export async function buildCategoryActivity(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
-    if (!includeRowInCashflow(row.kind, kindsFilter)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter, row.sourceTransactionId)) {
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
@@ -295,7 +296,7 @@ export async function buildCategorySlices(
   const totalByType = new Map<TransactionType, Decimal>();
 
   for (const row of rows) {
-    if (!includeRowInCashflow(row.kind, kindsFilter)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter, row.sourceTransactionId)) {
       continue;
     }
     const display = await rowDisplayAmount(row, displayCurrency);
@@ -401,7 +402,7 @@ export async function buildTimeline(
   }
 
   for (const row of rows) {
-    if (!includeRowInCashflow(row.kind, kindsFilter)) {
+    if (!includeRowInCashflow(row.kind, kindsFilter, row.sourceTransactionId)) {
       continue;
     }
     const key = formatBucketKey(row.occurredAt, bucket, timezone);
@@ -516,7 +517,10 @@ function formatBucketKey(
 export function buildCurrencyBreakdown(rows: TxRow[]) {
   const map = new Map<string, { amount: Decimal; count: number }>();
   for (const row of rows) {
-    if (isCashflowExcludedKind(row.kind)) {
+    if (
+      isCashflowExcludedKind(row.kind) ||
+      Boolean(row.sourceTransactionId)
+    ) {
       continue;
     }
     const key = row.inputCurrency.toUpperCase();
