@@ -153,7 +153,10 @@ export function SettleDebtDialog({
       )
     : "";
   const recentAmountChips = target
-    ? uniqueRecentAmounts(target.person.recentAmounts ?? [])
+    ? uniqueRecentAmounts([
+        target.person.totalAllTime.amount,
+        ...(target.person.recentAmounts ?? []),
+      ])
     : [];
 
   return (

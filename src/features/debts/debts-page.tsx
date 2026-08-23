@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Users } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, FileText, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
@@ -17,6 +17,7 @@ import {
   type DebtCloseTone,
   type SettleDebtTarget,
 } from "@/features/debts/close-debt-dialog";
+import { DebtReportDialog } from "@/features/debts/debt-report-dialog";
 import { Link } from "@/i18n/navigation";
 import { fetchDebtsStats } from "@/lib/api/stats";
 import { formatMoney } from "@/lib/money";
@@ -26,6 +27,7 @@ import type {
   DebtsStats,
   MoneyAmount,
 } from "@/server/services/stats-service.types";
+import { useMobilePageChromeStore } from "@/stores/mobile-page-chrome.store";
 
 export function DebtsPage() {
   const t = useTranslations("debts");
@@ -33,6 +35,10 @@ export function DebtsPage() {
   const [loading, setLoading] = useState(true);
   const [settleTarget, setSettleTarget] = useState<SettleDebtTarget | null>(
     null,
+  );
+  const [reportOpen, setReportOpen] = useState(false);
+  const setMobilePageChrome = useMobilePageChromeStore(
+    (state) => state.setChrome,
   );
 
   const loadStats = useCallback(async () => {
@@ -59,6 +65,17 @@ export function DebtsPage() {
     };
   }, [loadStats]);
 
+  useEffect(() => {
+    setMobilePageChrome({
+      action: {
+        kind: "report",
+        onClick: () => setReportOpen(true),
+        label: t("report"),
+      },
+    });
+    return () => setMobilePageChrome(null);
+  }, [setMobilePageChrome, t]);
+
   if (loading && !stats) {
     return <DebtsPageSkeleton />;
   }
@@ -69,13 +86,21 @@ export function DebtsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleWithBack fallbackHref="/">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             {t("subtitle")}
           </p>
         </PageTitleWithBack>
+        <Button
+          type="button"
+          className="h-11 shrink-0 gap-1.5 rounded-xl max-md:hidden"
+          onClick={() => setReportOpen(true)}
+        >
+          <FileText className="size-4" />
+          {t("report")}
+        </Button>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -174,6 +199,12 @@ export function DebtsPage() {
         onSettled={() => {
           void loadStats();
         }}
+      />
+
+      <DebtReportDialog
+        stats={stats}
+        open={reportOpen}
+        onOpenChange={setReportOpen}
       />
     </div>
   );

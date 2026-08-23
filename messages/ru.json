@@ -848,7 +848,17 @@
     "forgiveDebtFailed": "Не удалось простить долг",
     "forgivenAllTime": "Прощено за всё время",
     "settleAmountInvalid": "Введите сумму больше 0 и не больше {amount}.",
-    "recentAmounts": "Недавние суммы"
+    "recentAmounts": "Недавние суммы",
+    "report": "Отчёт",
+    "reportPeople": "Люди",
+    "reportText": "Текст",
+    "reportImage": "Картинка",
+    "reportCopy": "Копировать",
+    "reportCopied": "Скопировано",
+    "reportCopyFailed": "Не удалось скопировать",
+    "reportDownload": "Скачать",
+    "reportDownloadFailed": "Не удалось скачать",
+    "reportEmpty": "Выберите хотя бы одного человека"
   },
   "devices": {
     "title": "Устройства",

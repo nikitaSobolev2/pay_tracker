@@ -848,7 +848,17 @@
     "forgiveDebtFailed": "Failed to forgive debt",
     "forgivenAllTime": "Forgiven all time",
     "settleAmountInvalid": "Enter an amount greater than 0 and at most {amount}.",
-    "recentAmounts": "Recent amounts"
+    "recentAmounts": "Recent amounts",
+    "report": "Report",
+    "reportPeople": "People",
+    "reportText": "Text",
+    "reportImage": "Image",
+    "reportCopy": "Copy",
+    "reportCopied": "Copied",
+    "reportCopyFailed": "Could not copy",
+    "reportDownload": "Download",
+    "reportDownloadFailed": "Could not download",
+    "reportEmpty": "Select at least one person"
   },
   "devices": {
     "title": "Devices",

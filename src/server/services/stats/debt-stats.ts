@@ -2,11 +2,13 @@ import Decimal from "decimal.js";
 
 import {
   DEBT_LEDGER_KINDS,
+  debtBalanceDelta,
   detectCompletedDebtEpisodes,
   isDebtLedgerKind,
   medianDays,
   type DebtEpisodeEvent,
 } from "@/lib/debt-episodes";
+import { openEpisodeOrientedAmounts } from "@/lib/debt-amount-history";
 import { uniqueRecentAmounts } from "@/lib/unique-recent-amounts";
 import { getDateRangeBounds } from "@/lib/dates";
 import { decimalToString, toDecimal } from "@/lib/money";
@@ -98,6 +100,7 @@ async function buildNettedDebtSections(
     if (allTimeNet.isZero()) {
       continue;
     }
+    const netSign = allTimeNet.gt(0) ? 1 : -1;
 
     const monthRows = partyRows.filter((row) =>
       inBounds(row.occurredAt, monthBounds.start, monthBounds.end),
@@ -122,6 +125,11 @@ async function buildNettedDebtSections(
       medianSettleDays: partyMedianSettleDays,
       eventCount: partyRows.length,
       recentAmounts: await recentAmountsForRows(partyRows, displayCurrency),
+      amountHistory: await amountHistoryForRows(
+        partyRows,
+        displayCurrency,
+        netSign,
+      ),
     };
 
     if (allTimeNet.gt(0)) {
@@ -179,6 +187,26 @@ function collectSettleDurations(
     }
   }
   return medianDays(episodes.map((episode) => episode.durationDays));
+}
+
+async function amountHistoryForRows(
+  partyRows: TxRow[],
+  displayCurrency: string,
+  netSign: 1 | -1,
+): Promise<string[]> {
+  const chronological = [...partyRows].sort(
+    (left, right) => left.occurredAt.getTime() - right.occurredAt.getTime(),
+  );
+  const events = [];
+  for (const row of chronological) {
+    const sign = debtBalanceDelta(row.kind, row.type);
+    if (sign === 0) {
+      continue;
+    }
+    const display = await rowDisplayAmount(row, displayCurrency);
+    events.push({ signedAmount: decimalToString(display.times(sign)) });
+  }
+  return openEpisodeOrientedAmounts(events, netSign);
 }
 
 async function recentAmountsForRows(

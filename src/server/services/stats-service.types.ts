@@ -174,6 +174,8 @@ export type DebtCounterpartyStats = {
   medianSettleDays: number | null;
   eventCount: number;
   recentAmounts: string[];
+  /** Signed parts of the current open episode, + increases the shown net. */
+  amountHistory: string[];
 };
 
 export type DebtsStats = {

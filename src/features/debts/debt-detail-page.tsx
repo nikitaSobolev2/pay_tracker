@@ -134,6 +134,7 @@ export function DebtDetailPage({
     recentAmounts: uniqueRecentAmounts(
       stats.transactions.map((item) => item.displayAmount),
     ),
+    amountHistory: [],
   };
 
   function openSettle(mode: SettleDebtTarget["mode"]) {

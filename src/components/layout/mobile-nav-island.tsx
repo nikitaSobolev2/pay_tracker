@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  FileText,
   Menu,
   MessageSquare,
   Plane,
@@ -190,9 +191,9 @@ function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
   const hasFilter =
     chrome.typeFilter != null || chrome.segmentFilter != null;
 
-  // Events / travels / categories lists: only an add CTA → full-width labeled button.
+  // Events / travels / categories / debts: only a CTA → full-width labeled button.
   if (
-    chrome.action?.kind === "add" &&
+    (chrome.action?.kind === "add" || chrome.action?.kind === "report") &&
     !hasBack &&
     !hasFilter
   ) {
@@ -204,7 +205,11 @@ function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
         onClick={chrome.action.onClick}
         aria-label={chrome.action.label}
       >
-        <Plus className="size-4 shrink-0" />
+        {chrome.action.kind === "report" ? (
+          <FileText className="size-4 shrink-0" />
+        ) : (
+          <Plus className="size-4 shrink-0" />
+        )}
         <span className="truncate text-sm font-medium">
           {chrome.action.label}
         </span>
@@ -338,6 +343,9 @@ function PageChromeActionIcon({
   }
   if (action.kind === "chat") {
     return <MessageSquare className="size-5" />;
+  }
+  if (action.kind === "report") {
+    return <FileText className="size-5" />;
   }
   return <Plus className="size-5" />;
 }

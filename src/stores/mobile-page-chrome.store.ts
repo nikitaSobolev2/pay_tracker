@@ -29,6 +29,11 @@ export type MobilePageChromeAction =
       readonly onClick: () => void;
       readonly label: string;
       readonly unreadCount: number;
+    }
+  | {
+      readonly kind: "report";
+      readonly onClick: () => void;
+      readonly label: string;
     };
 
 /** Page-specific tools merged into the mobile bottom island. */

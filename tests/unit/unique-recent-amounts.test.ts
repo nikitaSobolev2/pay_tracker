@@ -15,4 +15,11 @@ describe("uniqueRecentAmounts", () => {
   it("caps the list", () => {
     assert.equal(uniqueRecentAmounts(["1", "2", "3"], 2).length, 2);
   });
+
+  it("keeps the full amount first and drops a matching recent", () => {
+    assert.deepEqual(
+      uniqueRecentAmounts(["100.0000", "40", "100", "25.50"]),
+      ["100", "40", "25.5"],
+    );
+  });
 });
