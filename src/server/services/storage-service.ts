@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
 import { AppServiceError } from "@/lib/errors";
@@ -244,19 +244,55 @@ async function readObjectBytes(fullPath: string): Promise<Buffer> {
 }
 
 async function readMinioDirectoryObject(objectDir: string): Promise<Buffer> {
-  try {
-    return await readFile(join(objectDir, "part.1"));
-  } catch (error) {
-    if (!isNodeNotFound(error)) {
-      throw error;
+  const directPart = await readExistingFile(join(objectDir, "part.1"));
+  if (directPart) {
+    return directPart;
+  }
+
+  const entries = await readdir(objectDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === "xl.meta" || entry.name.startsWith(".")) {
+      continue;
+    }
+    const childPath = join(objectDir, entry.name);
+    if (entry.isDirectory()) {
+      const nestedPart = await readExistingFile(join(childPath, "part.1"));
+      if (nestedPart) {
+        return nestedPart;
+      }
+      continue;
+    }
+    const body = await readFile(childPath);
+    const embedded = extractEmbeddedObject(body);
+    if (embedded) {
+      return embedded;
+    }
+    if (body.length > 0) {
+      return body;
     }
   }
-  const xlMeta = await readFile(join(objectDir, "xl.meta"));
-  const embedded = extractEmbeddedObject(xlMeta);
-  if (!embedded) {
-    throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+
+  const xlMeta = await readExistingFile(join(objectDir, "xl.meta"));
+  const fromMeta = xlMeta ? extractEmbeddedObject(xlMeta) : undefined;
+  if (fromMeta) {
+    return fromMeta;
   }
-  return embedded;
+  throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+}
+
+async function readExistingFile(fullPath: string): Promise<Buffer | undefined> {
+  try {
+    const info = await stat(fullPath);
+    if (!info.isFile()) {
+      return undefined;
+    }
+    return await readFile(fullPath);
+  } catch (error) {
+    if (isNodeNotFound(error)) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 async function deleteObject(key: string): Promise<void> {

@@ -58,6 +58,33 @@ describe("filesystem storage", () => {
     assert.equal(stored.body.toString(), "cover-from-minio");
   });
 
+  it("reads MinIO XL nested data-uuid/part.1", async () => {
+    const key =
+      "travels/covers/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.png";
+    const objectDir = path.join(storageDir, key);
+    await mkdir(path.join(objectDir, "5390a4b2-ddb8-4310-8717-7c85e61d5faa"), {
+      recursive: true,
+    });
+    await writeFile(path.join(objectDir, "xl.meta"), "minio-meta");
+    await writeFile(
+      path.join(objectDir, "5390a4b2-ddb8-4310-8717-7c85e61d5faa", "part.1"),
+      "nested-cover",
+    );
+    const stored = await downloadPublicObject(key);
+    assert.equal(stored.body.toString(), "nested-cover");
+  });
+
+  it("reads a leftover file inside a MinIO object directory", async () => {
+    const key =
+      "travels/covers/cccccccc-cccc-cccc-cccc-cccccccccccc.jpg";
+    const objectDir = path.join(storageDir, key);
+    await mkdir(objectDir, { recursive: true });
+    await writeFile(path.join(objectDir, "xl.meta"), "minio-meta");
+    await writeFile(path.join(objectDir, "payload-uuid"), "promoted-cover");
+    const stored = await downloadPublicObject(key);
+    assert.equal(stored.body.toString(), "promoted-cover");
+  });
+
   it("reads a PNG inlined in xl.meta when part.1 is missing", async () => {
     const png = Buffer.concat([
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
