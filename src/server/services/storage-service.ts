@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, resolve, sep } from "node:path";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
 
 import { AppServiceError } from "@/lib/errors";
 import {
@@ -211,7 +211,7 @@ async function writeObject(key: string, body: Buffer): Promise<void> {
 async function readStoredFile(key: string): Promise<StoredFile> {
   const fullPath = resolveObjectPath(key);
   try {
-    const body = await readFile(fullPath);
+    const body = await readObjectBytes(fullPath);
     return {
       body,
       contentType: contentTypeForFileName(key.split("/").pop() ?? ""),
@@ -224,16 +224,18 @@ async function readStoredFile(key: string): Promise<StoredFile> {
   }
 }
 
+/** MinIO XL stores each object as a directory with part.1, not a flat file. */
+async function readObjectBytes(fullPath: string): Promise<Buffer> {
+  const info = await stat(fullPath);
+  if (info.isDirectory()) {
+    return readFile(join(fullPath, "part.1"));
+  }
+  return readFile(fullPath);
+}
+
 async function deleteObject(key: string): Promise<void> {
   const fullPath = resolveObjectPath(key);
-  try {
-    await unlink(fullPath);
-  } catch (error) {
-    if (isNodeNotFound(error)) {
-      return;
-    }
-    throw error;
-  }
+  await rm(fullPath, { recursive: true, force: true });
 }
 
 function resolveObjectPath(key: string): string {

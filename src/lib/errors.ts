@@ -11,5 +11,14 @@ export class AppServiceError extends Error {
 }
 
 export function isAppServiceError(error: unknown): error is AppServiceError {
-  return error instanceof AppServiceError;
+  if (error instanceof AppServiceError) {
+    return true;
+  }
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "name" in error &&
+    error.name === "AppServiceError" &&
+    "code" in error
+  );
 }

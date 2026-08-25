@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -44,6 +44,18 @@ describe("filesystem storage", () => {
     assert.equal(stored.body.toString(), "cover-bytes");
     const onDisk = await readFile(path.join(storageDir, key));
     assert.equal(onDisk.toString(), "cover-bytes");
+  });
+
+  it("reads a MinIO XL object directory via part.1", async () => {
+    const key =
+      "travels/covers/3c6d0e06-ace0-4461-987d-4e66c641e803.png";
+    const objectDir = path.join(storageDir, key);
+    await mkdir(objectDir, { recursive: true });
+    await writeFile(path.join(objectDir, "xl.meta"), "minio-meta");
+    await writeFile(path.join(objectDir, "part.1"), "cover-from-minio");
+    const stored = await downloadPublicObject(key);
+    assert.equal(stored.contentType, "image/png");
+    assert.equal(stored.body.toString(), "cover-from-minio");
   });
 
   it("rejects ticket keys on the public download path", async () => {
