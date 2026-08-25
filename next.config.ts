@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/files/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         // Hashed build assets — safe to cache forever (overrides catch-all).
         source: "/_next/static/:path*",
         headers: [

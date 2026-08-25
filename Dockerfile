@@ -42,6 +42,9 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY scripts/app-entrypoint.sh ./app-entrypoint.sh
-RUN chmod +x ./app-entrypoint.sh
+COPY --from=builder /app/scripts/fetch-exchange-rates.ts ./scripts/fetch-exchange-rates.ts
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+RUN chmod +x ./app-entrypoint.sh \
+  && test -x node_modules/.bin/tsx
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./app-entrypoint.sh"]

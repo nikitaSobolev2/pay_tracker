@@ -1,8 +1,19 @@
 import { randomUUID } from "node:crypto";
-
-import { Client as MinioClient } from "minio";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { dirname, resolve, sep } from "node:path";
 
 import { AppServiceError } from "@/lib/errors";
+import {
+  DEFAULT_STORAGE_DIR,
+  EVENT_IMAGE_PREFIX,
+  EXTENSION_BY_CONTENT_TYPE,
+  TICKET_EXTENSION_BY_CONTENT_TYPE,
+  TRAVEL_IMAGE_PREFIX,
+  contentTypeForFileName,
+  isPublicObjectKey,
+  isSafeObjectKey,
+  isTravelTicketKey,
+} from "@/lib/storage-keys";
 import { ApiErrorCode } from "@/types/api";
 
 export type UploadInput = {
@@ -13,29 +24,10 @@ export type UploadInput = {
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const MAX_TICKET_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
-const TICKET_EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
-  ...EXTENSION_BY_CONTENT_TYPE,
-  "application/pdf": "pdf",
-  "text/plain": "txt",
-  "application/msword": "doc",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    "docx",
-  "application/vnd.ms-excel": "xls",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-};
-
-const EVENT_IMAGE_PREFIX = "events";
-const TRAVEL_IMAGE_PREFIX = "travels";
-
-let client: MinioClient | null = null;
-let bucketReady: Promise<void> | null = null;
+export {
+  EXTENSION_BY_CONTENT_TYPE,
+  TICKET_EXTENSION_BY_CONTENT_TYPE,
+} from "@/lib/storage-keys";
 
 export function isSupportedImageType(contentType: string): boolean {
   return contentType in EXTENSION_BY_CONTENT_TYPE;
@@ -55,7 +47,7 @@ export function isOwnedEventImageUrl(url: string): boolean {
   }
 }
 
-/** Stores the cover and returns the public URL served from the files subdomain. */
+/** Stores the cover and returns the public URL served from /files. */
 export async function uploadEventCover(input: UploadInput): Promise<string> {
   return uploadEventImage(input, "covers");
 }
@@ -91,13 +83,9 @@ export async function uploadTravelCover(input: UploadInput): Promise<string> {
       "Unsupported image format",
     );
   }
-
   const key = `${TRAVEL_IMAGE_PREFIX}/covers/${randomUUID()}.${extension}`;
-  await ensureBucket();
-  await getClient().putObject(readBucket(), key, input.body, input.body.length, {
-    "Content-Type": input.contentType,
-  });
-  return `${readPublicBaseUrl()}/${key}`;
+  await writeObject(key, input.body);
+  return publicUrlForKey(key);
 }
 
 export type TravelTicketUploadResult = {
@@ -132,31 +120,34 @@ function isOwnedTravelTicketUrl(url: string): boolean {
   }
 }
 
-export type TravelTicketFile = {
+export type StoredFile = {
   readonly body: Buffer;
   readonly contentType: string;
 };
 
+/** Reads a public cover or attachment so `/files/...` can stream it. */
+export async function downloadPublicObject(key: string): Promise<StoredFile> {
+  if (!isPublicObjectKey(key)) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  }
+  return readStoredFile(key);
+}
+
 /** Reads a stored ticket file so the proxy route can serve it same-origin. */
 export async function downloadTravelTicket(
   fileName: string,
-): Promise<TravelTicketFile> {
+): Promise<StoredFile> {
   if (!TICKET_FILE_NAME_PATTERN.test(fileName)) {
     throw new AppServiceError(ApiErrorCode.NotFound, "Ticket file not found");
   }
   const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${fileName}`;
-  const bucket = readBucket();
-  const minio = getClient();
+  if (!isTravelTicketKey(key)) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "Ticket file not found");
+  }
   try {
-    const stat = await minio.statObject(bucket, key);
-    const stream = await minio.getObject(bucket, key);
-    const body = await readStreamToBuffer(stream);
-    const contentType =
-      (stat.metaData?.["content-type"] as string | undefined) ??
-      "application/octet-stream";
-    return { body, contentType };
+    return await readStoredFile(key);
   } catch (error) {
-    if (isMissingObjectError(error)) {
+    if (isAppNotFound(error)) {
       throw new AppServiceError(ApiErrorCode.NotFound, "Ticket file not found");
     }
     throw error;
@@ -173,33 +164,7 @@ export async function deleteTravelTicketObject(fileUrl: string): Promise<void> {
     return;
   }
   const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${fileName}`;
-  try {
-    await getClient().removeObject(readBucket(), key);
-  } catch (error) {
-    if (isMissingObjectError(error)) {
-      return;
-    }
-    throw error;
-  }
-}
-
-function isMissingObjectError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error != null &&
-    "code" in error &&
-    (error as { code?: string }).code === "NoSuchKey"
-  );
-}
-
-async function readStreamToBuffer(
-  stream: NodeJS.ReadableStream,
-): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
+  await deleteObject(key);
 }
 
 /** Stores a travel ticket file and returns the public URL. */
@@ -213,14 +178,10 @@ export async function uploadTravelTicket(
       "Unsupported ticket file format",
     );
   }
-
   const key = `${TRAVEL_IMAGE_PREFIX}/tickets/${randomUUID()}.${extension}`;
-  await ensureBucket();
-  await getClient().putObject(readBucket(), key, input.body, input.body.length, {
-    "Content-Type": input.contentType,
-  });
+  await writeObject(key, input.body);
   return {
-    url: `${readPublicBaseUrl()}/${key}`,
+    url: publicUrlForKey(key),
     contentType: input.contentType,
   };
 }
@@ -236,83 +197,109 @@ async function uploadEventImage(
       "Unsupported image format",
     );
   }
-
   const key = `${EVENT_IMAGE_PREFIX}/${folder}/${randomUUID()}.${extension}`;
-  await ensureBucket();
-  await getClient().putObject(readBucket(), key, input.body, input.body.length, {
-    "Content-Type": input.contentType,
-  });
-  return `${readPublicBaseUrl()}/${key}`;
+  await writeObject(key, input.body);
+  return publicUrlForKey(key);
 }
 
-/** Creates the bucket with anonymous read once per process, so URLs work without signing. */
-export async function ensureBucket(): Promise<void> {
-  bucketReady ??= createBucketIfMissing();
+async function writeObject(key: string, body: Buffer): Promise<void> {
+  const fullPath = resolveObjectPath(key);
+  await mkdir(dirname(fullPath), { recursive: true });
+  await writeFile(fullPath, body);
+}
+
+async function readStoredFile(key: string): Promise<StoredFile> {
+  const fullPath = resolveObjectPath(key);
   try {
-    await bucketReady;
+    const body = await readFile(fullPath);
+    return {
+      body,
+      contentType: contentTypeForFileName(key.split("/").pop() ?? ""),
+    };
   } catch (error) {
-    bucketReady = null;
+    if (isNodeNotFound(error)) {
+      throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+    }
     throw error;
   }
 }
 
-async function createBucketIfMissing(): Promise<void> {
-  const bucket = readBucket();
-  const minio = getClient();
-  if (!(await minio.bucketExists(bucket))) {
-    await minio.makeBucket(bucket);
+async function deleteObject(key: string): Promise<void> {
+  const fullPath = resolveObjectPath(key);
+  try {
+    await unlink(fullPath);
+  } catch (error) {
+    if (isNodeNotFound(error)) {
+      return;
+    }
+    throw error;
   }
-  await minio.setBucketPolicy(bucket, JSON.stringify(publicReadPolicy(bucket)));
 }
 
-function publicReadPolicy(bucket: string) {
-  return {
-    Version: "2012-10-17",
-    Statement: [
-      {
-        Effect: "Allow",
-        Principal: { AWS: ["*"] },
-        Action: ["s3:GetObject"],
-        Resource: [
-          `arn:aws:s3:::${bucket}/${EVENT_IMAGE_PREFIX}/*`,
-          `arn:aws:s3:::${bucket}/${TRAVEL_IMAGE_PREFIX}/*`,
-        ],
-      },
-    ],
-  };
+function resolveObjectPath(key: string): string {
+  if (!isSafeObjectKey(key)) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  }
+  const root = resolve(readStorageDir());
+  const fullPath = resolve(root, key);
+  if (fullPath !== root && !fullPath.startsWith(`${root}${sep}`)) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  }
+  return fullPath;
 }
 
-function getClient(): MinioClient {
-  client ??= createClient();
-  return client;
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
-function createClient(): MinioClient {
-  const endpoint = new URL(requireEnv("S3_ENDPOINT"));
-  return new MinioClient({
-    endPoint: endpoint.hostname,
-    port: Number(endpoint.port || (endpoint.protocol === "https:" ? 443 : 80)),
-    useSSL: endpoint.protocol === "https:",
-    accessKey: requireEnv("S3_ACCESS_KEY"),
-    secretKey: requireEnv("S3_SECRET_KEY"),
-  });
+function readStorageDir(): string {
+  const configured = process.env.STORAGE_DIR;
+  if (configured) {
+    return stripTrailingSlashes(configured);
+  }
+  return DEFAULT_STORAGE_DIR;
 }
 
-function readBucket(): string {
-  return requireEnv("S3_BUCKET");
+function publicUrlForKey(key: string): string {
+  return `${readPublicBaseUrl()}/${key}`;
 }
 
 function readPublicBaseUrl(): string {
-  return requireEnv("S3_PUBLIC_URL").replace(/\/+$/, "");
+  const explicit = process.env.S3_PUBLIC_URL;
+  if (explicit && !isLegacyMinioPublicUrl(explicit)) {
+    return stripTrailingSlashes(explicit);
+  }
+  const appUrl = process.env.BETTER_AUTH_URL;
+  if (appUrl) {
+    return `${stripTrailingSlashes(appUrl)}/files`;
+  }
+  throw new AppServiceError(
+    ApiErrorCode.Internal,
+    "File storage is not configured: S3_PUBLIC_URL is missing",
+  );
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new AppServiceError(
-      ApiErrorCode.Internal,
-      `File storage is not configured: ${name} is missing`,
-    );
+function isLegacyMinioPublicUrl(url: string): boolean {
+  try {
+    return new URL(url).port === "9000";
+  } catch {
+    return false;
   }
-  return value;
+}
+
+function isNodeNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error != null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ENOENT"
+  );
+}
+
+function isAppNotFound(error: unknown): boolean {
+  return error instanceof AppServiceError && error.code === ApiErrorCode.NotFound;
 }

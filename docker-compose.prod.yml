@@ -1,10 +1,20 @@
 # Production stack for Ubuntu deploy (used by scripts/deploy-ubuntu.sh).
 # Postgres is not published to the host. App listens on APP_HOST:APP_PORT.
+# pull_policy: missing — on-server `up --build` must not contact GHCR.
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 512m
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - max_connections=50
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-paytracker}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -21,25 +31,9 @@ services:
       timeout: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}
-    volumes:
-      - minio_data:/data
-    ports:
-      # Loopback only: nginx serves the files subdomain over TLS.
-      - "${MINIO_HOST:-127.0.0.1}:${MINIO_PORT:-9000}:9000"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   app:
+    image: ghcr.io/nikitasobolev2/pay_tracker:${PAYTRACKER_IMAGE_TAG:-latest}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile
@@ -48,6 +42,7 @@ services:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
         NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY:-}
     restart: unless-stopped
+    mem_limit: 768m
     ports:
       # Loopback by default: nginx terminates TLS and proxies to 127.0.0.1.
       # Publishing on 0.0.0.0 would expose the app directly, bypassing TLS.
@@ -65,53 +60,21 @@ services:
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-PayTracker}
       NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY:-}
       YANDEX_GEOCODER_API_KEY: ${YANDEX_GEOCODER_API_KEY:-}
-      S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_BUCKET: ${S3_BUCKET:-paytracker}
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:?Set S3_PUBLIC_URL in .env}
+      YANDEX_GEOCODER_REFERER: ${YANDEX_GEOCODER_REFERER:-}
+      FX_BACKFILL_DAYS: ${FX_BACKFILL_DAYS:-40}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-fs}
+      STORAGE_DIR: /data/files
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
       AI_BASE_URL: ${AI_BASE_URL:-https://api.artemox.com/v1}
-      AI_API_KEY: ${AI_API_KEY:?Set AI_API_KEY in .env}
+      AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL_ID: ${AI_MODEL_ID:-gpt-5-nano}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-120000}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-
-  fx-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-paytracker}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paytracker}
-      DEFAULT_CURRENCIES: ${DEFAULT_CURRENCIES:-RUB,USD,EUR}
-      FX_API_BASE_URL: ${FX_API_BASE_URL:-https://api.frankfurter.dev}
-      FX_PROVIDER: ${FX_PROVIDER:-frankfurter}
-      FX_BACKFILL_DAYS: ${FX_BACKFILL_DAYS:-40}
-      FX_FETCH_CRON: ${FX_FETCH_CRON:-0 2 * * *}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  backup:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-paytracker}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paytracker}
-      BACKUP_DIR: /backups
-      BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./backups:/backups
-      - ./scripts/backup-entrypoint.sh:/backup-entrypoint.sh:ro
-    entrypoint: ["/bin/sh", "/backup-entrypoint.sh"]
+      - files_data:/data/files
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
-  minio_data:
+  files_data:

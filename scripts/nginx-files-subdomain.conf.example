@@ -1,0 +1,10 @@
+# Optional reference only — do not paste this by hand.
+#
+# Use this when the database already has cover URLs on a files.* host
+# (e.g. https://files.pay-tracker.site/paytracker/events/...). After MinIO
+# is gone, the app serves those objects at /files/... on the app container.
+#
+#   sudo ./scripts/setup-nginx.sh files
+#
+# Fresh installs with S3_PUBLIC_URL=https://your.domain/files do not need
+# a files subdomain.

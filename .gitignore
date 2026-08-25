@@ -32,6 +32,8 @@ yarn-error.log*
 # env files
 .env
 .env*.local
+.env.bak
+.env.bak.*
 
 # vercel
 .vercel
@@ -47,6 +49,7 @@ next-env.d.ts
 # backups
 /backups/
 /data/
+.data/
 
 # PWA (generated workbox only — hand-written public/sw.js is tracked)
 **/public/workbox-*.js

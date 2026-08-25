@@ -14,6 +14,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${ROOT}/docker-compose.prod.yml"
 ENV_FILE="${ROOT}/.env"
+# shellcheck source=scripts/lib-prod-stack.sh
+. "${ROOT}/scripts/lib-prod-stack.sh"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 
 RED=$'\033[0;31m'
@@ -70,6 +72,12 @@ docker_daemon_running() {
   docker info >/dev/null 2>&1
 }
 
+docker_permission_denied() {
+  local err=""
+  err="$(docker info 2>&1)" || true
+  [[ "${err}" == *"permission denied"* ]]
+}
+
 start_docker_daemon() {
   if docker_daemon_running; then
     return 0
@@ -110,12 +118,14 @@ report_docker_status() {
 }
 
 refresh_compose_cmd() {
+  local project
+  project="$(prod_project_name)"
   if compose_plugin_present; then
-    COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+    COMPOSE=(docker compose -p "${project}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
   elif compose_standalone_present; then
-    COMPOSE=(docker-compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+    COMPOSE=(docker-compose -p "${project}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
   else
-    COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+    COMPOSE=(docker compose -p "${project}" --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
   fi
 }
 
@@ -215,6 +225,269 @@ env_get() {
   printf '%s' "${line#*=}"
 }
 
+chmod_deploy_scripts() {
+  chmod +x \
+    "${ROOT}/scripts/deploy-ubuntu.sh" \
+    "${ROOT}/scripts/app-entrypoint.sh" \
+    "${ROOT}/scripts/light-redeploy.sh" \
+    "${ROOT}/scripts/export-data.sh" \
+    "${ROOT}/scripts/import-data.sh" \
+    "${ROOT}/scripts/run-fx-fetch.sh" \
+    "${ROOT}/scripts/run-sql-backup.sh" \
+    "${ROOT}/scripts/copy-minio-data-to-files.sh" \
+    "${ROOT}/scripts/setup-nginx.sh" \
+    2>/dev/null || true
+}
+
+append_env_if_missing() {
+  local key="$1"
+  local value="$2"
+  if ! grep -qE "^${key}=" "${ENV_FILE}"; then
+    printf '%s=%s\n' "${key}" "${value}" >>"${ENV_FILE}"
+  fi
+}
+
+ensure_env_defaults() {
+  [[ -f "${ENV_FILE}" ]] || return 0
+  local auth_url project
+  auth_url="$(env_get BETTER_AUTH_URL)"
+  auth_url="${auth_url%/}"
+  append_env_if_missing STORAGE_BACKEND fs
+  append_env_if_missing STORAGE_DIR /data/files
+  if ! grep -qE '^S3_PUBLIC_URL=' "${ENV_FILE}"; then
+    if [[ -n "${auth_url}" ]]; then
+      printf 'S3_PUBLIC_URL=%s/files\n' "${auth_url}" >>"${ENV_FILE}"
+    fi
+  fi
+  project="$(prod_project_name)"
+  if prod_is_project_name "${project}"; then
+    append_env_if_missing COMPOSE_PROJECT_NAME "${project}"
+  fi
+}
+
+copy_minio_if_needed() {
+  local script="${ROOT}/scripts/copy-minio-data-to-files.sh"
+  [[ -x "${script}" || -f "${script}" ]] || return 0
+  chmod +x "${script}" || true
+  info "Checking for leftover MinIO objects..."
+  if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    if sudo -u "${SUDO_USER}" -H docker info >/dev/null 2>&1; then
+      sudo -u "${SUDO_USER}" -H "${script}" || warn "MinIO file copy skipped."
+      return 0
+    fi
+  fi
+  "${script}" || warn "MinIO file copy skipped."
+}
+
+is_valid_cron_schedule() {
+  local schedule="${1:-}"
+  case "${schedule}" in
+    @reboot|@hourly|@daily|@weekly|@monthly|@yearly|@annually) return 0 ;;
+  esac
+  local field_count
+  field_count="$(printf '%s' "${schedule}" | awk '{print NF}')"
+  [[ "${field_count}" -eq 5 ]] || return 1
+  [[ "${schedule}" =~ ^[0-9*/,\ -]+$ ]]
+}
+
+install_host_jobs() {
+  prod_ensure_backup_dir
+  chmod_deploy_scripts
+  local user fx_sched bak_sched tmp current_user
+  current_user="$(id -un)"
+  user="${current_user}"
+  if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    user="${SUDO_USER}"
+  fi
+  fx_sched="$(env_get FX_FETCH_CRON)"
+  fx_sched="${fx_sched:-0 2 * * *}"
+  if ! is_valid_cron_schedule "${fx_sched}"; then
+    warn "Ignoring invalid FX_FETCH_CRON; using 0 2 * * *"
+    fx_sched="0 2 * * *"
+  fi
+  bak_sched="$(env_get BACKUP_CRON)"
+  bak_sched="${bak_sched:-0 3 * * *}"
+  if ! is_valid_cron_schedule "${bak_sched}"; then
+    warn "Ignoring invalid BACKUP_CRON; using 0 3 * * *"
+    bak_sched="0 3 * * *"
+  fi
+
+  if ! command -v crontab >/dev/null 2>&1; then
+    warn "crontab not found. Install the cron package, then re-run deploy so FX/SQL jobs are installed."
+    return 0
+  fi
+
+  tmp="$(mktemp)"
+  if [[ "${EUID}" -eq 0 && "${user}" != "${current_user}" ]]; then
+    crontab -u "${user}" -l 2>/dev/null | grep -v 'scripts/run-fx-fetch.sh' | grep -v 'scripts/run-sql-backup.sh' | grep -v '^PATH=' >"${tmp}" || true
+  else
+    crontab -l 2>/dev/null | grep -v 'scripts/run-fx-fetch.sh' | grep -v 'scripts/run-sql-backup.sh' | grep -v '^PATH=' >"${tmp}" || true
+  fi
+  {
+    printf 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n'
+    cat "${tmp}"
+    printf '%s cd %q && %q >> %q 2>&1\n' \
+      "${fx_sched}" "${ROOT}" "${ROOT}/scripts/run-fx-fetch.sh" "${ROOT}/backups/fx-cron.log"
+    printf '%s cd %q && %q >> %q 2>&1\n' \
+      "${bak_sched}" "${ROOT}" "${ROOT}/scripts/run-sql-backup.sh" "${ROOT}/backups/sql-cron.log"
+  } >"${tmp}.out"
+  mv "${tmp}.out" "${tmp}"
+
+  if [[ "${EUID}" -eq 0 && "${user}" != "${current_user}" ]]; then
+    crontab -u "${user}" "${tmp}" || warn "Could not install crontab for ${user}."
+  else
+    crontab "${tmp}" || warn "Could not install crontab (FX/SQL jobs)."
+  fi
+  rm -f "${tmp}"
+  if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    chown "${SUDO_USER}:${SUDO_USER}" "${ROOT}/backups" || true
+  fi
+  chmod 700 "${ROOT}/backups" || true
+  ok "Host cron: FX (${fx_sched}) and SQL backup (${bak_sched}) for ${user}."
+}
+
+run_fx_once() {
+  wait_for_app || true
+  info "Fetching FX rates..."
+  chmod +x "${ROOT}/scripts/run-fx-fetch.sh" || true
+  local n=0
+  while [[ "${n}" -lt 8 ]]; do
+    if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]] \
+      && sudo -u "${SUDO_USER}" -H docker info >/dev/null 2>&1; then
+      if sudo -u "${SUDO_USER}" -H "${ROOT}/scripts/run-fx-fetch.sh"; then
+        ok "FX fetch complete."
+        return 0
+      fi
+    elif "${ROOT}/scripts/run-fx-fetch.sh"; then
+      ok "FX fetch complete."
+      return 0
+    fi
+    n=$((n + 1))
+    sleep 3
+  done
+  warn "FX fetch did not succeed (will retry on cron)."
+}
+
+wait_for_app() {
+  local host port url n
+  host="$(env_get APP_HOST)"
+  host="${host:-127.0.0.1}"
+  if [[ "${host}" == "0.0.0.0" ]]; then
+    host="127.0.0.1"
+  fi
+  port="$(env_get APP_PORT)"
+  port="${port:-3000}"
+  url="http://${host}:${port}/api/health"
+  info "Waiting for app at ${url}..."
+  n=0
+  while [[ "${n}" -lt 60 ]]; do
+    if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 5 "${url}" >/dev/null 2>&1; then
+      ok "App is up."
+      return 0
+    fi
+    if command -v wget >/dev/null 2>&1 && wget -q -T 5 -O /dev/null "${url}"; then
+      ok "App is up."
+      return 0
+    fi
+    n=$((n + 1))
+    sleep 2
+  done
+  warn "App did not respond at ${url} yet."
+  return 1
+}
+
+wait_for_postgres() {
+  local user db n
+  user="$(env_get POSTGRES_USER)"
+  db="$(env_get POSTGRES_DB)"
+  user="${user:-paytracker}"
+  db="${db:-paytracker}"
+  n=0
+  while [[ "${n}" -lt 30 ]]; do
+    if compose exec -T postgres pg_isready -U "${user}" -d "${db}" >/dev/null 2>&1; then
+      return 0
+    fi
+    n=$((n + 1))
+    sleep 2
+  done
+  warn "Postgres did not become ready."
+  return 1
+}
+
+# Official Postgres image ignores POSTGRES_PASSWORD after the volume is initialized.
+# Keep the role in sync with .env when configure rotates the password.
+sync_postgres_role_password() {
+  local user pass escaped
+  user="$(env_get POSTGRES_USER)"
+  pass="$(env_get POSTGRES_PASSWORD)"
+  user="${user:-paytracker}"
+  [[ -n "${pass}" ]] || return 0
+  prod_is_sql_ident "${user}" || {
+    warn "POSTGRES_USER is not a simple identifier; skip password sync."
+    return 0
+  }
+  wait_for_postgres || return 0
+  escaped="${pass//\'/\'\'}"
+  # stdin so the password is not visible in `ps` as a psql -c argument.
+  if compose exec -T postgres psql -U "${user}" -d postgres -v ON_ERROR_STOP=1 >/dev/null <<SQL
+ALTER ROLE ${user} WITH PASSWORD '${escaped}';
+SQL
+  then
+    ok "Postgres role password matches .env."
+  else
+    warn "Could not sync Postgres role password (first boot is OK)."
+  fi
+}
+
+ensure_swapfile() {
+  [[ -f /proc/meminfo ]] || return 0
+  local mem_kb
+  mem_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
+  if [[ "${mem_kb}" -ge 3600000 ]]; then
+    ok "RAM >= 4 GB — not creating a swap file."
+    return 0
+  fi
+  if swapon --show 2>/dev/null | grep -q '/'; then
+    ok "Swap already enabled."
+    return 0
+  fi
+  info "Creating 2 GB swap file (host RAM is under 3.5 GB)..."
+  if [[ -f /swapfile ]]; then
+    swapon /swapfile || true
+    return 0
+  fi
+  if command -v fallocate >/dev/null 2>&1; then
+    fallocate -l 2G /swapfile
+  else
+    dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+  fi
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+  if ! grep -q '^/swapfile ' /etc/fstab; then
+    printf '/swapfile none swap sw 0 0\n' >>/etc/fstab
+  fi
+  sysctl -w vm.swappiness=10 >/dev/null || true
+  if [[ -f /etc/sysctl.conf ]] && ! grep -q '^vm.swappiness=' /etc/sysctl.conf; then
+    printf 'vm.swappiness=10\n' >>/etc/sysctl.conf
+  fi
+  ok "Swap file enabled."
+}
+
+git_pull_if_repo() {
+  if [[ -d "${ROOT}/.git" ]]; then
+    info "Pulling latest git changes..."
+    if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+      run_as_deploy_user git -C "${ROOT}" pull --ff-only
+    else
+      git -C "${ROOT}" pull --ff-only
+    fi
+  else
+    warn "Not a git checkout; using current tree."
+  fi
+  chmod_deploy_scripts
+}
+
 cmd_help() {
   cat <<EOF
 ${BOLD}PayTracker Ubuntu 22 production deploy${RESET}
@@ -222,9 +495,12 @@ ${BOLD}PayTracker Ubuntu 22 production deploy${RESET}
 ${CYAN}Commands${RESET}
   install     Detect preinstalled Docker, or install Engine + Compose if missing
   configure   Interactive .env setup (secrets, URL, port, currencies)
-  deploy      Build images and start the full stack (migrate on boot)
+  deploy      Build images on this machine and start the stack (migrate on boot)
   update      git pull (if repo) + rebuild & restart
-  redeploy    Same as update (git pull + redeploy)
+  redeploy    Same as update (git pull + build on the server)
+  light       git pull + pull GHCR image + restart (no build on the server)
+  export      Zip Postgres + uploaded files into ./backups
+  import      Restore from an export zip (destructive)
   up          Start existing containers
   down        Stop containers
   status      Container status + recent health
@@ -232,13 +508,17 @@ ${CYAN}Commands${RESET}
   menu        Interactive menu (default)
   help        Show this help
 
+${CYAN}This month (4 GB VPS)${RESET}
+  ./scripts/deploy-ubuntu.sh redeploy
+
+${CYAN}Later (2 GB + GHCR)${RESET}
+  GHCR package must be Public, then: ./scripts/light-redeploy.sh
+  First-time without an image: $0 deploy
+
 ${CYAN}Typical first run${RESET}
   sudo ./scripts/deploy-ubuntu.sh install   # skips Docker if already present
   ./scripts/deploy-ubuntu.sh configure
   ./scripts/deploy-ubuntu.sh deploy
-
-${CYAN}After code changes${RESET}
-  ./scripts/deploy-ubuntu.sh redeploy
 
 ${CYAN}Files${RESET}
   Compose: ${COMPOSE_FILE}
@@ -305,7 +585,7 @@ cmd_install() {
   export DEBIAN_FRONTEND=noninteractive
   info "Ensuring host packages (ca-certificates, curl, openssl)..."
   apt-get update -y
-  apt-get install -y ca-certificates curl gnupg lsb-release openssl
+  apt-get install -y ca-certificates curl gnupg lsb-release openssl python3 cron
 
   local docker_was_preinstalled=0
   if docker_bin_present; then
@@ -351,9 +631,17 @@ cmd_install() {
   fi
 
   mkdir -p "${ROOT}/backups"
+  chmod_deploy_scripts
   if [[ -n "${deploy_user}" && "${deploy_user}" != "root" ]]; then
     chown -R "${deploy_user}:${deploy_user}" "${ROOT}/backups" || true
   fi
+  chmod 700 "${ROOT}/backups" || true
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl enable --now cron >/dev/null 2>&1 || systemctl enable --now crond >/dev/null 2>&1 || true
+  fi
+
+  ensure_swapfile
 
   ok "Install complete."
 }
@@ -368,6 +656,9 @@ cmd_configure() {
   local existing_url existing_port existing_secret existing_pg_pass
   local existing_currencies existing_currency existing_tz existing_app_name
   local existing_host existing_pg_user existing_pg_db
+  local existing_s3_url existing_ai_key existing_ai_base existing_ai_model
+  local existing_ai_timeout existing_yandex_js existing_yandex_geo existing_yandex_referer
+  local existing_fx_cron existing_bak_cron existing_image_tag existing_project
   existing_url="$(env_get BETTER_AUTH_URL)"
   existing_port="$(env_get APP_PORT)"
   existing_host="$(env_get APP_HOST)"
@@ -379,14 +670,31 @@ cmd_configure() {
   existing_currency="$(env_get DEFAULT_CURRENCY)"
   existing_tz="$(env_get DEFAULT_TIMEZONE)"
   existing_app_name="$(env_get NEXT_PUBLIC_APP_NAME)"
+  existing_s3_url="$(env_get S3_PUBLIC_URL)"
+  existing_ai_key="$(env_get AI_API_KEY)"
+  existing_ai_base="$(env_get AI_BASE_URL)"
+  existing_ai_model="$(env_get AI_MODEL_ID)"
+  existing_ai_timeout="$(env_get AI_TIMEOUT_MS)"
+  existing_yandex_js="$(env_get NEXT_PUBLIC_YANDEX_MAPS_API_KEY)"
+  existing_yandex_geo="$(env_get YANDEX_GEOCODER_API_KEY)"
+  existing_yandex_referer="$(env_get YANDEX_GEOCODER_REFERER)"
+  existing_fx_cron="$(env_get FX_FETCH_CRON)"
+  existing_bak_cron="$(env_get BACKUP_CRON)"
+  existing_image_tag="$(env_get PAYTRACKER_IMAGE_TAG)"
+  existing_project="$(env_get COMPOSE_PROJECT_NAME)"
+  if [[ -z "${existing_project}" ]]; then
+    existing_project="$(prod_project_name)"
+  fi
 
   local auth_url app_port app_host app_name currencies currency timezone
-  local auth_secret pg_password pg_user pg_db
+  local auth_secret pg_password pg_user pg_db public_files_url
 
   auth_url="$(prompt "Public app URL (https://your.domain)" "${existing_url:-http://$(hostname -I 2>/dev/null | awk '{print $1}'):3000}")"
   [[ -n "${auth_url}" ]] || die "BETTER_AUTH_URL is required."
+  public_files_url="$(prompt "Public files URL (keep files.* if the DB already has those links)" "${existing_s3_url:-${auth_url%/}/files}")"
+  [[ -n "${public_files_url}" ]] || public_files_url="${auth_url%/}/files"
 
-  app_host="$(prompt "Bind host (0.0.0.0 = all interfaces)" "${existing_host:-0.0.0.0}")"
+  app_host="$(prompt "Bind host (127.0.0.1 = nginx only; 0.0.0.0 = public)" "${existing_host:-127.0.0.1}")"
   app_port="$(prompt "Host port" "${existing_port:-3000}")"
   app_name="$(prompt "App display name" "${existing_app_name:-PayTracker}")"
   currencies="$(prompt "Currencies (comma-separated)" "${existing_currencies:-RUB,USD,EUR}")"
@@ -394,6 +702,8 @@ cmd_configure() {
   timezone="$(prompt "Default timezone" "${existing_tz:-UTC}")"
   pg_user="$(prompt "Postgres user" "${existing_pg_user:-paytracker}")"
   pg_db="$(prompt "Postgres database" "${existing_pg_db:-paytracker}")"
+  prod_is_sql_ident "${pg_user}" || die "Postgres user must be letters, digits, and underscore."
+  prod_is_sql_ident "${pg_db}" || die "Postgres database must be letters, digits, and underscore."
 
   if [[ -n "${existing_secret}" ]]; then
     auth_secret="$(prompt_secret "BETTER_AUTH_SECRET" "${existing_secret}")"
@@ -416,6 +726,7 @@ cmd_configure() {
 
   if [[ -f "${ENV_FILE}" ]]; then
     cp "${ENV_FILE}" "${ENV_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+    chmod 600 "${ENV_FILE}.bak."* 2>/dev/null || true
     warn "Previous .env backed up."
   fi
 
@@ -441,13 +752,25 @@ NEXT_PUBLIC_APP_NAME=${app_name}
 FX_PROVIDER=frankfurter
 FX_API_BASE_URL=https://api.frankfurter.dev
 FX_BACKFILL_DAYS=40
-FX_FETCH_CRON=0 2 * * *
+FX_FETCH_CRON=${existing_fx_cron:-0 2 * * *}
 BACKUP_DIR=/backups
-BACKUP_CRON=0 3 * * *
+BACKUP_CRON=${existing_bak_cron:-0 3 * * *}
+STORAGE_BACKEND=fs
+STORAGE_DIR=/data/files
+S3_PUBLIC_URL=${public_files_url}
+NEXT_PUBLIC_YANDEX_MAPS_API_KEY=${existing_yandex_js}
+YANDEX_GEOCODER_API_KEY=${existing_yandex_geo}
+YANDEX_GEOCODER_REFERER=${existing_yandex_referer}
+AI_BASE_URL=${existing_ai_base:-https://api.artemox.com/v1}
+AI_API_KEY=${existing_ai_key}
+AI_MODEL_ID=${existing_ai_model:-gpt-5-nano}
+AI_TIMEOUT_MS=${existing_ai_timeout:-120000}
+PAYTRACKER_IMAGE_TAG=${existing_image_tag:-latest}
+COMPOSE_PROJECT_NAME=${existing_project}
 EOF
 
   chmod 600 "${ENV_FILE}" || true
-  mkdir -p "${ROOT}/backups"
+  prod_ensure_backup_dir
   if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
     chown "${SUDO_USER}:${SUDO_USER}" "${ENV_FILE}" "${ROOT}/backups" || true
   fi
@@ -463,6 +786,9 @@ ensure_docker() {
     die "Docker Compose not found. Run: sudo $0 install"
   fi
   if ! docker_daemon_running; then
+    if docker_permission_denied; then
+      die "Cannot talk to Docker (permission denied). After install, log out and back in — or run: newgrp docker"
+    fi
     if [[ "${EUID}" -eq 0 ]] && start_docker_daemon; then
       ok "Started Docker daemon."
     else
@@ -479,11 +805,17 @@ cmd_deploy() {
   ensure_docker
   [[ -f "${ENV_FILE}" ]] || die "Missing .env. Run: $0 configure"
   cd "${ROOT}"
-  mkdir -p "${ROOT}/backups"
+  prod_ensure_backup_dir
+  chmod_deploy_scripts
+  ensure_env_defaults
+  copy_minio_if_needed
 
   info "Building and starting production stack..."
-  compose up -d --build
+  compose up -d --build --remove-orphans
   ok "Stack is up."
+  sync_postgres_role_password
+  install_host_jobs
+  run_fx_once
   log ""
   compose ps
   log ""
@@ -495,30 +827,52 @@ cmd_deploy() {
   info "Status: $0 status"
 }
 
+cmd_light() {
+  ensure_docker
+  [[ -f "${ENV_FILE}" ]] || die "Missing .env. Run: $0 configure"
+  cd "${ROOT}"
+  git_pull_if_repo
+  prod_ensure_backup_dir
+  chmod_deploy_scripts
+  ensure_env_defaults
+  copy_minio_if_needed
+
+  info "Pulling GHCR image (no build on this machine)..."
+  if ! compose pull app; then
+    die "Could not pull ghcr.io/nikitasobolev2/pay_tracker. Publish the package as Public, set GitHub Actions variables, then retry — or first-time build with: $0 deploy"
+  fi
+  compose up -d --no-build --remove-orphans
+  ok "Stack is up from GHCR."
+  sync_postgres_role_password
+  install_host_jobs
+  run_fx_once
+  log ""
+  compose ps
+}
+
+cmd_export() {
+  ensure_docker
+  chmod +x "${ROOT}/scripts/export-data.sh" || true
+  "${ROOT}/scripts/export-data.sh" "$@"
+}
+
+cmd_import() {
+  ensure_docker
+  chmod +x "${ROOT}/scripts/import-data.sh" || true
+  "${ROOT}/scripts/import-data.sh" "$@"
+}
+
 cmd_update() {
   ensure_docker
   cd "${ROOT}"
-  if [[ -d "${ROOT}/.git" ]]; then
-    info "Pulling latest git changes..."
-    if [[ "${EUID}" -eq 0 && -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
-      run_as_deploy_user git -C "${ROOT}" pull --ff-only
-    else
-      git -C "${ROOT}" pull --ff-only
-    fi
-  else
-    warn "Not a git checkout; rebuilding current tree only."
-  fi
-  # Git checkouts often drop the executable bit on Windows-authored scripts.
-  chmod +x "${ROOT}/scripts/deploy-ubuntu.sh" \
-    "${ROOT}/scripts/app-entrypoint.sh" \
-    "${ROOT}/scripts/backup-entrypoint.sh" \
-    "${ROOT}/scripts/fx-worker-entrypoint.sh" 2>/dev/null || true
+  git_pull_if_repo
   cmd_deploy
 }
 
 cmd_up() {
   ensure_docker
   compose up -d
+  sync_postgres_role_password
   ok "Started."
   compose ps
 }
@@ -526,7 +880,7 @@ cmd_up() {
 cmd_down() {
   ensure_docker
   compose down
-  ok "Stopped."
+  ok "Stopped. Named volumes (postgres + files) were kept — data was not deleted."
 }
 
 cmd_status() {
@@ -549,13 +903,16 @@ print_menu() {
 ${BOLD}PayTracker deploy${RESET}  ${CYAN}(Ubuntu 22)${RESET}
   1) Install / verify Docker (skip if preinstalled)
   2) Configure .env
-  3) Deploy / rebuild
+  3) Deploy / rebuild (on this machine)
   4) Redeploy (git pull + rebuild)
-  5) Start
-  6) Stop
-  7) Status
-  8) Logs (app)
-  9) Help
+  5) Light redeploy (git pull + GHCR, no build)
+  6) Start
+  7) Stop
+  8) Status
+  9) Logs (app)
+  e) Export data zip
+  i) Import data zip
+  h) Help
   0) Exit
 
 EOF
@@ -565,17 +922,32 @@ cmd_menu() {
   while true; do
     print_menu
     local choice=""
-    read -r -p "Select [0-9]: " choice || true
+    read -r -p "Select: " choice || true
     case "${choice}" in
       1) cmd_install ;;
       2) cmd_configure ;;
       3) cmd_deploy ;;
       4) cmd_update ;;
-      5) cmd_up ;;
-      6) cmd_down ;;
-      7) cmd_status ;;
-      8) cmd_logs app ;;
-      9) cmd_help ;;
+      5) cmd_light ;;
+      6) cmd_up ;;
+      7) cmd_down ;;
+      8) cmd_status ;;
+      9) cmd_logs app ;;
+      e|E)
+        local zip_path=""
+        read -r -p "Zip path (empty = default under ./backups): " zip_path || true
+        if [[ -n "${zip_path}" ]]; then
+          cmd_export "${zip_path}"
+        else
+          cmd_export
+        fi
+        ;;
+      i|I)
+        local import_path=""
+        read -r -p "Zip to import: " import_path || true
+        cmd_import "${import_path}"
+        ;;
+      h|H|help) cmd_help ;;
       0|q|Q) ok "Bye."; exit 0 ;;
       *) warn "Unknown option: ${choice}" ;;
     esac
@@ -593,6 +965,9 @@ main() {
     configure|config) cmd_configure ;;
     deploy) cmd_deploy ;;
     update|redeploy|pull) cmd_update ;;
+    light) cmd_light ;;
+    export) cmd_export "$@" ;;
+    import) cmd_import "$@" ;;
     up|start) cmd_up ;;
     down|stop) cmd_down ;;
     status|ps) cmd_status ;;

@@ -61,6 +61,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (
     pathname.startsWith("/api") ||
+    pathname.startsWith("/files") ||
     pathname.startsWith("/_next") ||
     pathname.includes(".")
   ) {
@@ -103,5 +104,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*).*)"],
+  matcher: ["/((?!_next|files|.*\\..*).*)"],
 };
