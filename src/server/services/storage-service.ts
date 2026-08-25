@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
 import { AppServiceError } from "@/lib/errors";
+import { extractEmbeddedObject } from "@/lib/minio-inline-object";
 import {
   DEFAULT_STORAGE_DIR,
   EVENT_IMAGE_PREFIX,
@@ -209,28 +210,53 @@ async function writeObject(key: string, body: Buffer): Promise<void> {
 }
 
 async function readStoredFile(key: string): Promise<StoredFile> {
-  const fullPath = resolveObjectPath(key);
-  try {
-    const body = await readObjectBytes(fullPath);
-    return {
-      body,
-      contentType: contentTypeForFileName(key.split("/").pop() ?? ""),
-    };
-  } catch (error) {
-    if (isNodeNotFound(error)) {
-      throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  for (const candidate of objectPathCandidates(key)) {
+    try {
+      const body = await readObjectBytes(resolveObjectPath(candidate));
+      return {
+        body,
+        contentType: contentTypeForFileName(key.split("/").pop() ?? ""),
+      };
+    } catch (error) {
+      if (isNodeNotFound(error) || isAppNotFound(error)) {
+        continue;
+      }
+      throw error;
     }
-    throw error;
   }
+  throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
 }
 
-/** MinIO XL stores each object as a directory with part.1, not a flat file. */
+function objectPathCandidates(key: string): string[] {
+  if (key.startsWith("paytracker/")) {
+    return [key];
+  }
+  return [key, `paytracker/${key}`];
+}
+
+/** MinIO XL stores each object as a directory with part.1 or inlined xl.meta. */
 async function readObjectBytes(fullPath: string): Promise<Buffer> {
   const info = await stat(fullPath);
   if (info.isDirectory()) {
-    return readFile(join(fullPath, "part.1"));
+    return readMinioDirectoryObject(fullPath);
   }
   return readFile(fullPath);
+}
+
+async function readMinioDirectoryObject(objectDir: string): Promise<Buffer> {
+  try {
+    return await readFile(join(objectDir, "part.1"));
+  } catch (error) {
+    if (!isNodeNotFound(error)) {
+      throw error;
+    }
+  }
+  const xlMeta = await readFile(join(objectDir, "xl.meta"));
+  const embedded = extractEmbeddedObject(xlMeta);
+  if (!embedded) {
+    throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  }
+  return embedded;
 }
 
 async function deleteObject(key: string): Promise<void> {

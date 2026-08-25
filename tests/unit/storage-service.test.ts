@@ -58,6 +58,26 @@ describe("filesystem storage", () => {
     assert.equal(stored.body.toString(), "cover-from-minio");
   });
 
+  it("reads a PNG inlined in xl.meta when part.1 is missing", async () => {
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("cover"),
+      Buffer.from("IEND"),
+      Buffer.from([0, 0, 0, 0]),
+    ]);
+    const key =
+      "travels/covers/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png";
+    const objectDir = path.join(storageDir, key);
+    await mkdir(objectDir, { recursive: true });
+    await writeFile(
+      path.join(objectDir, "xl.meta"),
+      Buffer.concat([Buffer.from("hdr"), png]),
+    );
+    const stored = await downloadPublicObject(key);
+    assert.equal(stored.contentType, "image/png");
+    assert.equal(Buffer.compare(stored.body, png), 0);
+  });
+
   it("rejects ticket keys on the public download path", async () => {
     const uploaded = await uploadTravelTicket({
       body: Buffer.from("%PDF-ticket"),

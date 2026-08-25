@@ -57,18 +57,5 @@ fi
 echo "Flattening MinIO XL object directories on ${files_vol}"
 docker run --rm \
   -v "${files_vol}:/to" \
-  alpine:3.20 sh -c '
-    set -e
-    for tree in /to/events /to/travels; do
-      [ -d "$tree" ] || continue
-      find "$tree" -type f -name part.1 | while IFS= read -r part; do
-        dir=$(dirname "$part")
-        tmp="${dir}.flat"
-        cp "$part" "$tmp"
-        rm -rf "$dir"
-        mv "$tmp" "$dir"
-        echo "Flattened $dir"
-      done
-    done
-    echo "MinIO flatten complete"
-  '
+  -v "${ROOT}/scripts/flatten-minio-xl.py:/flatten.py:ro" \
+  alpine:3.20 sh -c 'apk add --no-cache python3 >/dev/null && python3 /flatten.py'
