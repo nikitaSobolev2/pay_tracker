@@ -3,7 +3,10 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join, resolve, sep } from "node:path";
 
 import { AppServiceError } from "@/lib/errors";
-import { extractEmbeddedObject } from "@/lib/minio-inline-object";
+import {
+  isStandaloneMedia,
+  recoverMinioObject,
+} from "@/lib/minio-inline-object";
 import {
   DEFAULT_STORAGE_DIR,
   EVENT_IMAGE_PREFIX,
@@ -240,44 +243,56 @@ async function readObjectBytes(fullPath: string): Promise<Buffer> {
   if (info.isDirectory()) {
     return readMinioDirectoryObject(fullPath);
   }
-  return readFile(fullPath);
+  return recoverMinioObject(await readFile(fullPath));
 }
 
 async function readMinioDirectoryObject(objectDir: string): Promise<Buffer> {
+  const payloads = await listMinioDirectoryPayloads(objectDir);
+  for (const payload of payloads) {
+    const recovered = recoverMinioObject(payload);
+    if (isStandaloneMedia(recovered)) {
+      return recovered;
+    }
+  }
+  const first = payloads.find((payload) => payload.length > 0);
+  if (first) {
+    return recoverMinioObject(first);
+  }
+  throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+}
+
+async function listMinioDirectoryPayloads(objectDir: string): Promise<Buffer[]> {
+  const payloads: Buffer[] = [];
   const directPart = await readExistingFile(join(objectDir, "part.1"));
   if (directPart) {
-    return directPart;
+    payloads.push(directPart);
   }
 
   const entries = await readdir(objectDir, { withFileTypes: true });
   for (const entry of entries) {
-    if (entry.name === "xl.meta" || entry.name.startsWith(".")) {
+    if (
+      entry.name === "xl.meta" ||
+      entry.name === "part.1" ||
+      entry.name.startsWith(".")
+    ) {
       continue;
     }
     const childPath = join(objectDir, entry.name);
     if (entry.isDirectory()) {
       const nestedPart = await readExistingFile(join(childPath, "part.1"));
       if (nestedPart) {
-        return nestedPart;
+        payloads.push(nestedPart);
       }
       continue;
     }
-    const body = await readFile(childPath);
-    const embedded = extractEmbeddedObject(body);
-    if (embedded) {
-      return embedded;
-    }
-    if (body.length > 0) {
-      return body;
-    }
+    payloads.push(await readFile(childPath));
   }
 
   const xlMeta = await readExistingFile(join(objectDir, "xl.meta"));
-  const fromMeta = xlMeta ? extractEmbeddedObject(xlMeta) : undefined;
-  if (fromMeta) {
-    return fromMeta;
+  if (xlMeta) {
+    payloads.push(xlMeta);
   }
-  throw new AppServiceError(ApiErrorCode.NotFound, "File not found");
+  return payloads;
 }
 
 async function readExistingFile(fullPath: string): Promise<Buffer | undefined> {

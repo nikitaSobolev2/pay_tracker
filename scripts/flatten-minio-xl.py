@@ -11,6 +11,7 @@ PNG = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 IEND = b"IEND"
 JPEG_SOI = bytes([0xFF, 0xD8, 0xFF])
 JPEG_EOI = bytes([0xFF, 0xD9])
+BITROT_HASH_BYTES = 32
 ROOTS = [
     Path("/to/events"),
     Path("/to/travels"),
@@ -18,6 +19,14 @@ ROOTS = [
     Path("/to/paytracker/travels"),
 ]
 OBJECT_DIR_NAME = re.compile(r"^[0-9a-f-]{36}\.[a-z0-9]{1,8}$", re.I)
+
+
+def looks_like_media(data: bytes) -> bool:
+    if data.startswith(PNG) or data.startswith(JPEG_SOI) or data.startswith(b"%PDF"):
+        return True
+    if data.startswith(b"GIF8"):
+        return True
+    return data.startswith(b"RIFF") and data[8:12] == b"WEBP"
 
 
 def extract_payload(data: bytes) -> bytes | None:
@@ -28,7 +37,7 @@ def extract_payload(data: bytes) -> bytes | None:
             return data[start : marker + 8]
     start = data.find(JPEG_SOI)
     if start >= 0:
-        end = data.rfind(JPEG_EOI)
+        end = data.find(JPEG_EOI, start + len(JPEG_SOI))
         if end > start:
             return data[start : end + 2]
     start = data.find(b"%PDF")
@@ -36,6 +45,17 @@ def extract_payload(data: bytes) -> bytes | None:
         end = data.rfind(b"%%EOF")
         if end > start:
             return data[start : end + 5]
+    return None
+
+
+def recover_payload(data: bytes) -> bytes | None:
+    if looks_like_media(data):
+        return data
+    extracted = extract_payload(data)
+    if extracted:
+        return extracted
+    if len(data) > BITROT_HASH_BYTES and looks_like_media(data[BITROT_HASH_BYTES:]):
+        return data[BITROT_HASH_BYTES:]
     return None
 
 
@@ -51,7 +71,9 @@ def flatten_part_files() -> None:
         if not root.is_dir():
             continue
         for part in list(root.rglob("part.1")):
-            replace_dir_with_bytes(object_directory(part.parent), part.read_bytes())
+            payload = recover_payload(part.read_bytes())
+            if payload:
+                replace_dir_with_bytes(object_directory(part.parent), payload)
 
 
 def flatten_orphan_payload_files() -> None:
@@ -66,8 +88,11 @@ def flatten_orphan_payload_files() -> None:
                 for child in directory.iterdir()
                 if child.is_file() and child.name != "xl.meta"
             ]
-            if len(payloads) == 1:
-                replace_dir_with_bytes(directory, payloads[0].read_bytes())
+            if len(payloads) != 1:
+                continue
+            payload = recover_payload(payloads[0].read_bytes())
+            if payload:
+                replace_dir_with_bytes(directory, payload)
 
 
 def flatten_xl_meta() -> None:
@@ -75,9 +100,23 @@ def flatten_xl_meta() -> None:
         if not root.is_dir():
             continue
         for meta in list(root.rglob("xl.meta")):
-            payload = extract_payload(meta.read_bytes())
+            payload = recover_payload(meta.read_bytes())
             if payload:
                 replace_dir_with_bytes(meta.parent, payload)
+
+
+def flatten_hash_prefixed_files() -> None:
+    for root in ROOTS:
+        if not root.is_dir():
+            continue
+        for path in list(root.rglob("*")):
+            if not path.is_file() or not OBJECT_DIR_NAME.match(path.name):
+                continue
+            data = path.read_bytes()
+            payload = recover_payload(data)
+            if payload and payload != data:
+                path.write_bytes(payload)
+                print(f"Recovered {path}")
 
 
 def replace_dir_with_bytes(directory: Path, payload: bytes) -> None:
@@ -111,6 +150,7 @@ def main() -> None:
     flatten_part_files()
     flatten_orphan_payload_files()
     flatten_xl_meta()
+    flatten_hash_prefixed_files()
     hoist_bucket_prefix()
     print("MinIO flatten complete")
 

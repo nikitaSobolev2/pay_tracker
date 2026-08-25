@@ -74,6 +74,44 @@ describe("filesystem storage", () => {
     assert.equal(stored.body.toString(), "nested-cover");
   });
 
+  it("reads a nested MinIO part.1 that starts with a bitrot hash", async () => {
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("nested"),
+      Buffer.from("IEND"),
+      Buffer.from([0, 0, 0, 0]),
+    ]);
+    const key =
+      "travels/covers/eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee.png";
+    const objectDir = path.join(storageDir, key);
+    await mkdir(path.join(objectDir, "data-uuid"), { recursive: true });
+    await writeFile(path.join(objectDir, "xl.meta"), "minio-meta");
+    await writeFile(
+      path.join(objectDir, "data-uuid", "part.1"),
+      Buffer.concat([Buffer.alloc(32, 0xcd), png]),
+    );
+    const stored = await downloadPublicObject(key);
+    assert.equal(Buffer.compare(stored.body, png), 0);
+  });
+
+  it("strips a MinIO bitrot prefix from a flattened cover file", async () => {
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("cover"),
+      Buffer.from("IEND"),
+      Buffer.from([0, 0, 0, 0]),
+    ]);
+    const key =
+      "travels/covers/dddddddd-dddd-dddd-dddd-dddddddddddd.png";
+    await mkdir(path.join(storageDir, "travels/covers"), { recursive: true });
+    await writeFile(
+      path.join(storageDir, key),
+      Buffer.concat([Buffer.alloc(32, 0xab), png]),
+    );
+    const stored = await downloadPublicObject(key);
+    assert.equal(Buffer.compare(stored.body, png), 0);
+  });
+
   it("reads a leftover file inside a MinIO object directory", async () => {
     const key =
       "travels/covers/cccccccc-cccc-cccc-cccc-cccccccccccc.jpg";

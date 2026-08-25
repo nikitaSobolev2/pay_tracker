@@ -9,10 +9,11 @@ const PDF_SIGNATURE = Buffer.from("%PDF");
 const PDF_EOF = Buffer.from("%%EOF");
 const RIFF = Buffer.from("RIFF");
 const WEBP = Buffer.from("WEBP");
+const BITROT_HASH_BYTES = 32;
 
 /**
- * MinIO XL often inlines small objects inside xl.meta instead of part.1.
- * Recover the original file by locating its magic bytes.
+ * MinIO XL inlines small objects in xl.meta and prefixes part.1 with a
+ * HighwayHash. Recover the original file by locating its magic bytes.
  */
 export function extractEmbeddedObject(data: Buffer): Buffer | undefined {
   return (
@@ -22,6 +23,46 @@ export function extractEmbeddedObject(data: Buffer): Buffer | undefined {
     extractGif(data) ??
     extractPdf(data)
   );
+}
+
+/** True when `data` already starts as a file we can hand to a browser. */
+export function isStandaloneMedia(data: Buffer): boolean {
+  if (startsWith(data, PNG_SIGNATURE) || startsWith(data, JPEG_SOI)) {
+    return true;
+  }
+  if (startsWith(data, GIF_SIGNATURE) || startsWith(data, PDF_SIGNATURE)) {
+    return true;
+  }
+  return (
+    data.length >= 12 &&
+    startsWith(data, RIFF) &&
+    data.subarray(8, 12).equals(WEBP)
+  );
+}
+
+function startsWith(data: Buffer, signature: Buffer): boolean {
+  return (
+    data.length >= signature.length &&
+    data.subarray(0, signature.length).equals(signature)
+  );
+}
+
+/** Prefer a real file; otherwise peel MinIO wrappers. */
+export function recoverMinioObject(data: Buffer): Buffer {
+  if (isStandaloneMedia(data)) {
+    return data;
+  }
+  const embedded = extractEmbeddedObject(data);
+  if (embedded) {
+    return embedded;
+  }
+  if (data.length > BITROT_HASH_BYTES) {
+    const withoutHash = data.subarray(BITROT_HASH_BYTES);
+    if (isStandaloneMedia(withoutHash)) {
+      return withoutHash;
+    }
+  }
+  return data;
 }
 
 function extractPng(data: Buffer): Buffer | undefined {
@@ -41,11 +82,11 @@ function extractJpeg(data: Buffer): Buffer | undefined {
   if (start < 0) {
     return undefined;
   }
-  const end = data.lastIndexOf(JPEG_EOI);
-  if (end <= start) {
+  const end = data.indexOf(JPEG_EOI, start + JPEG_SOI.length);
+  if (end < 0) {
     return undefined;
   }
-  return data.subarray(start, end + 2);
+  return data.subarray(start, end + JPEG_EOI.length);
 }
 
 function extractWebp(data: Buffer): Buffer | undefined {

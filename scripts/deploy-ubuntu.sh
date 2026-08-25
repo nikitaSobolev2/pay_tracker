@@ -290,6 +290,28 @@ is_valid_cron_schedule() {
   [[ "${schedule}" =~ ^[0-9*/,\ -]+$ ]]
 }
 
+ensure_cron_installed() {
+  if command -v crontab >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ "${EUID}" -ne 0 ]]; then
+    warn "crontab not found. Run: sudo apt-get install -y cron"
+    return 1
+  fi
+  info "Installing cron..."
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -y
+  apt-get install -y cron
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl enable --now cron >/dev/null 2>&1 || systemctl enable --now crond >/dev/null 2>&1 || true
+  fi
+  if ! command -v crontab >/dev/null 2>&1; then
+    warn "cron installed but crontab is still missing."
+    return 1
+  fi
+  return 0
+}
+
 install_host_jobs() {
   prod_ensure_backup_dir
   chmod_deploy_scripts
@@ -312,8 +334,7 @@ install_host_jobs() {
     bak_sched="0 3 * * *"
   fi
 
-  if ! command -v crontab >/dev/null 2>&1; then
-    warn "crontab not found. Install the cron package, then re-run deploy so FX/SQL jobs are installed."
+  if ! ensure_cron_installed; then
     return 0
   fi
 
@@ -873,6 +894,7 @@ cmd_up() {
   ensure_docker
   compose up -d
   sync_postgres_role_password
+  install_host_jobs
   ok "Started."
   compose ps
 }

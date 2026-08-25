@@ -14,7 +14,7 @@ export async function GET(_request: Request, context: RouteContext) {
       headers: {
         "Content-Type": file.contentType,
         "Content-Length": String(file.body.length),
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=0, must-revalidate",
       },
     });
   } catch (error) {
