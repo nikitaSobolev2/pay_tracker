@@ -419,11 +419,12 @@ export function TransactionCalculatorDialog({
       (cut) =>
         cut.target.kind === "person" && cut.target.counterpartyId === person.id,
     );
-    const totals = applyTransfersToCutNet(
-      personCutTotals(personCuts, person.id),
-      workspace.transfers,
-      person.id,
-    );
+    const totals = applyTransfersToCutNet({
+      totals: personCutTotals(personCuts, person.id),
+      transfers: workspace.transfers,
+      partyId: person.id,
+      workspaceId: session.activeWorkspaceId,
+    });
     const kind = netDebtKind(totals.net);
     if (kind === "zero") {
       return;
@@ -648,6 +649,7 @@ export function TransactionCalculatorDialog({
                           }
                           onDeleteTransfer={deleteTransfer}
                           onAddToDebt={personDebtHandler(column, addToDebt)}
+                          workspaceId={session.activeWorkspaceId}
                         />
                       )}
                     </CalculatorPeopleBento>

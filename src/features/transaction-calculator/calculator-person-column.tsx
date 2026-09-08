@@ -64,6 +64,7 @@ type CalculatorPersonColumnProps = {
   readonly onEditTransfer: (transfer: CalculatorTransfer) => void;
   readonly onDeleteTransfer: (transferId: string) => void;
   readonly onAddToDebt?: () => void;
+  readonly workspaceId: string;
 };
 
 export function CalculatorPersonColumn({
@@ -87,10 +88,11 @@ export function CalculatorPersonColumn({
   onEditTransfer,
   onDeleteTransfer,
   onAddToDebt,
+  workspaceId,
 }: CalculatorPersonColumnProps) {
   const partyId = partyIdForTarget(target);
   const hover = useCalculatorDropHover(collapseIdForTarget(target));
-  const totals = columnTotals(target, cuts, transfers, partyId);
+  const totals = columnTotals(target, cuts, transfers, workspaceId);
   const netKind = netDebtKind(totals.net);
   const currency =
     cuts[0]?.displayCurrency ??
@@ -174,13 +176,19 @@ function columnTotals(
   target: CutTarget,
   cuts: readonly CalculatorCut[],
   transfers: readonly CalculatorTransfer[],
-  partyId: string,
+  workspaceId: string,
 ): PersonCutTotals {
+  const partyId = partyIdForTarget(target);
   const cutTotals =
     target.kind === "me"
       ? meCutTotals(cuts)
       : personCutTotals(cuts, target.counterpartyId);
-  return applyTransfersToCutNet(cutTotals, transfers, partyId);
+  return applyTransfersToCutNet({
+    totals: cutTotals,
+    transfers,
+    partyId,
+    workspaceId,
+  });
 }
 
 function handleColumnDrop(

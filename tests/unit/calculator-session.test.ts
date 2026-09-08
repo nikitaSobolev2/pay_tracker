@@ -544,20 +544,52 @@ describe("isCalculatorTargetCollapsed", () => {
 });
 
 describe("applyTransfersToCutNet", () => {
+  const transfer = {
+    id: "t1",
+    payerId: "p1",
+    payeeId: ME_PARTY_ID,
+    displayAmount: "400",
+    displayCurrency: "RUB",
+  };
+  const base = { spending: "1000.0000", earning: "0.0000", net: "1000.0000" };
+
   it("reduces what the payer owes after they pay someone", () => {
-    const totals = applyTransfersToCutNet(
-      { spending: "1000.0000", earning: "0.0000", net: "1000.0000" },
-      [
-        {
-          id: "t1",
-          payerId: "p1",
-          payeeId: "p2",
-          displayAmount: "400",
-          displayCurrency: "RUB",
-        },
-      ],
-      "p1",
-    );
+    const totals = applyTransfersToCutNet({
+      totals: base,
+      transfers: [transfer],
+      partyId: "p1",
+      workspaceId: ME_PARTY_ID,
+    });
+    assert.equal(totals.net, "600.0000");
+  });
+
+  it("reduces Me net when someone pays Me", () => {
+    const totals = applyTransfersToCutNet({
+      totals: base,
+      transfers: [transfer],
+      partyId: ME_PARTY_ID,
+      workspaceId: ME_PARTY_ID,
+    });
+    assert.equal(totals.net, "600.0000");
+  });
+
+  it("increases Me net when Me pays someone", () => {
+    const totals = applyTransfersToCutNet({
+      totals: base,
+      transfers: [{ ...transfer, payerId: ME_PARTY_ID, payeeId: "p1" }],
+      partyId: ME_PARTY_ID,
+      workspaceId: ME_PARTY_ID,
+    });
+    assert.equal(totals.net, "1400.0000");
+  });
+
+  it("reduces the active person's net when they are paid", () => {
+    const totals = applyTransfersToCutNet({
+      totals: base,
+      transfers: [{ ...transfer, payerId: ME_PARTY_ID, payeeId: "p1" }],
+      partyId: "p1",
+      workspaceId: "p1",
+    });
     assert.equal(totals.net, "600.0000");
   });
 });

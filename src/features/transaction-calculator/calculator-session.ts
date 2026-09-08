@@ -691,11 +691,36 @@ export function parsePositiveAmount(requested: string): string | null {
   }
 }
 
+type TransferNetInput = {
+  readonly totals: PersonCutTotals;
+  readonly transfers: readonly CalculatorTransfer[];
+  readonly partyId: string;
+  readonly workspaceId: string;
+};
+
 export function applyTransfersToCutNet(
-  totals: PersonCutTotals,
+  input: TransferNetInput,
+): PersonCutTotals {
+  const { paid, received } = transferTotalsForParty(
+    input.transfers,
+    input.partyId,
+  );
+  const net = toDecimal(input.totals.net);
+  const nextNet =
+    input.partyId === input.workspaceId
+      ? net.plus(paid).minus(received)
+      : net.minus(paid).plus(received);
+  return {
+    spending: input.totals.spending,
+    earning: input.totals.earning,
+    net: nextNet.toFixed(4),
+  };
+}
+
+function transferTotalsForParty(
   transfers: readonly CalculatorTransfer[],
   partyId: string,
-): PersonCutTotals {
+): { readonly paid: Decimal; readonly received: Decimal } {
   let paid = toDecimal(0);
   let received = toDecimal(0);
   for (const transfer of transfers) {
@@ -707,11 +732,7 @@ export function applyTransfersToCutNet(
       received = received.plus(amount);
     }
   }
-  return {
-    spending: totals.spending,
-    earning: totals.earning,
-    net: toDecimal(totals.net).minus(paid).plus(received).toFixed(4),
-  };
+  return { paid, received };
 }
 
 export function transfersForParty(
