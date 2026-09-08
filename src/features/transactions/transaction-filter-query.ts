@@ -23,6 +23,7 @@ const FILTER_PARAM_KEYS = [
   "categoryIds",
   "counterpartyIds",
   "hideUncategorized",
+  "travelId",
 ] as const;
 
 const CALENDAR_RANGES = new Set<string>([
@@ -48,6 +49,7 @@ export function filtersFromSearchParams(
     kinds: parseKinds(params.get("kinds")),
     categoryIds: parseCsv(params.get("categoryIds")),
     counterpartyIds: parseCsv(params.get("counterpartyIds")),
+    travelId: parseTravelId(params.get("travelId")),
     hideUncategorized: params.get("hideUncategorized") === "true",
   };
 }
@@ -72,6 +74,9 @@ export function writeFiltersToSearchParams(
   if (filters.counterpartyIds.length > 0) {
     params.set("counterpartyIds", filters.counterpartyIds.join(","));
   }
+  if (filters.travelId) {
+    params.set("travelId", filters.travelId);
+  }
   if (filters.hideUncategorized) {
     params.set("hideUncategorized", "true");
   }
@@ -86,6 +91,7 @@ export function filterStatesEqual(
     sameIdList(left.kinds, right.kinds) &&
     sameIdList(left.categoryIds, right.categoryIds) &&
     sameIdList(left.counterpartyIds, right.counterpartyIds) &&
+    left.travelId === right.travelId &&
     left.hideUncategorized === right.hideUncategorized
   );
 }
@@ -153,6 +159,14 @@ function parseCsv(raw: string | null): string[] {
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
+}
+
+function parseTravelId(raw: string | null): string | null {
+  const value = raw?.trim();
+  if (!value) {
+    return null;
+  }
+  return value;
 }
 
 function parseKinds(raw: string | null): TransactionKindValue[] {

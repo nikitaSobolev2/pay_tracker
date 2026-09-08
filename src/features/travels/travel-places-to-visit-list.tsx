@@ -44,18 +44,20 @@ import {
 } from "@/stores/travel-cache.store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import { cn } from "@/lib/utils";
 import type { TravelPlaceToVisitDto } from "@/server/services/travel-service.types";
 
 import {
   TravelSectionEmpty,
-  TravelSectionHeader,
+  CollapsibleTravelSection,
 } from "./travel-section-card";
 
 type TravelPlacesToVisitListProps = {
   readonly travelId: string;
   readonly items: readonly TravelPlaceToVisitDto[];
   readonly onChanged: () => Promise<void>;
+  readonly variant?: "editable" | "visitedOnly";
 };
 
 type PlaceFormValues = {
@@ -68,6 +70,7 @@ export function TravelPlacesToVisitList({
   travelId,
   items,
   onChanged,
+  variant = "editable",
 }: TravelPlacesToVisitListProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
@@ -126,34 +129,43 @@ export function TravelPlacesToVisitList({
     setDeleting(false);
   }
 
+  const visitedOnly = variant === "visitedOnly";
+  const visibleItems = visitedOnly
+    ? items.filter((item) => item.isChecked)
+    : items;
+
   return (
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
-        <TravelSectionHeader
-          title={t("placesToVisit")}
-          count={
-            items.length > 0
-              ? `${items.filter((item) => item.isChecked).length}/${items.length}`
-              : undefined
-          }
+        <CollapsibleTravelSection
+          scope={travelPageBlockScope(travelId)}
+          blockId={visitedOnly ? "visitedPlaces" : "places"}
+          title={visitedOnly ? t("visitedPlaces") : t("placesToVisit")}
+          count={placesCountLabel(items, visibleItems, visitedOnly)}
           action={
-            <Button type="button" variant="outline" onClick={openCreate}>
-              <Plus className="size-4" />
-              {t("placeAdd")}
-            </Button>
+            visitedOnly ? undefined : (
+              <Button type="button" variant="outline" onClick={openCreate}>
+                <Plus className="size-4" />
+                {t("placeAdd")}
+              </Button>
+            )
           }
-        />
+        >
         <CardContent className="space-y-3 p-3 pt-3 sm:p-4">
-          {items.length === 0 ? (
-            <TravelSectionEmpty icon={MapPin} text={t("placesEmpty")} />
+          {visibleItems.length === 0 ? (
+            <TravelSectionEmpty
+              icon={MapPin}
+              text={visitedOnly ? t("visitedPlacesEmpty") : t("placesEmpty")}
+            />
           ) : (
-            <ObjectActionList swipe={isMobile}>
-              {items.map((item) => (
+            <ObjectActionList swipe={isMobile && !visitedOnly}>
+              {visibleItems.map((item) => (
                 <PlaceRow
                   key={item.id}
-                  swipe={isMobile}
+                  swipe={isMobile && !visitedOnly}
                   item={item}
                   toggling={togglingId === item.id}
+                  readOnly={visitedOnly}
                   onToggle={() => void toggleChecked(item)}
                   onEdit={() => openEdit(item)}
                   onDelete={() => setDeleteTarget(item)}
@@ -162,54 +174,73 @@ export function TravelPlacesToVisitList({
             </ObjectActionList>
           )}
         </CardContent>
+        </CollapsibleTravelSection>
       </Card>
 
-      <PlaceFormDialog
-        open={dialogOpen}
-        travelId={travelId}
-        item={editing}
-        onOpenChange={setDialogOpen}
-        onSaved={async () => {
-          setDialogOpen(false);
-          setEditing(null);
-          await onChanged();
-        }}
-      />
+      {visitedOnly ? null : (
+        <>
+          <PlaceFormDialog
+            open={dialogOpen}
+            travelId={travelId}
+            item={editing}
+            onOpenChange={setDialogOpen}
+            onSaved={async () => {
+              setDialogOpen(false);
+              setEditing(null);
+              await onChanged();
+            }}
+          />
 
-      <AlertDialog
-        open={deleteTarget != null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteTarget(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("placeDeleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("placeDeleteConfirm", { title: deleteTarget?.title ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>
-              {tCommon("cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deleting}
-              onClick={(event) => {
-                event.preventDefault();
-                void handleDelete();
-              }}
-            >
-              {t("placeDelete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog
+            open={deleteTarget != null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDeleteTarget(null);
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("placeDeleteTitle")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("placeDeleteConfirm", { title: deleteTarget?.title ?? "" })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>
+                  {tCommon("cancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={deleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void handleDelete();
+                  }}
+                >
+                  {t("placeDelete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </>
   );
+}
+
+function placesCountLabel(
+  items: readonly TravelPlaceToVisitDto[],
+  visibleItems: readonly TravelPlaceToVisitDto[],
+  visitedOnly: boolean,
+): string | undefined {
+  if (visitedOnly) {
+    return visibleItems.length > 0 ? String(visibleItems.length) : undefined;
+  }
+  if (items.length === 0) {
+    return undefined;
+  }
+  return `${items.filter((item) => item.isChecked).length}/${items.length}`;
 }
 
 function PlaceRow({
@@ -219,6 +250,7 @@ function PlaceRow({
   onEdit,
   onDelete,
   swipe = false,
+  readOnly = false,
   ...swipeProps
 }: {
   readonly item: TravelPlaceToVisitDto;
@@ -227,24 +259,25 @@ function PlaceRow({
   readonly onEdit: () => void;
   readonly onDelete: () => void;
   readonly swipe?: boolean;
+  readonly readOnly?: boolean;
 } & ObjectSwipeInjectedProps) {
   const t = useTranslations("travels");
   const tCommon = useTranslations("common");
   const card = (
-    <ObjectCard faded={item.isChecked}>
+    <ObjectCard faded={!readOnly && item.isChecked}>
       <PlaceStampRail>
         <Checkbox
           className="size-5"
           checked={item.isChecked}
-          disabled={toggling}
-          onCheckedChange={onToggle}
+          disabled={toggling || readOnly}
+          onCheckedChange={readOnly ? undefined : onToggle}
           aria-label={t("placeToggleChecked")}
         />
       </PlaceStampRail>
       <ObjectCardBody>
         <ObjectCardCopy
           title={item.title}
-          struck={item.isChecked}
+          struck={!readOnly && item.isChecked}
           meta={
             <>
               {item.address ? (
@@ -268,28 +301,30 @@ function PlaceRow({
             </>
           }
         />
-        <RowOverflowMenu
-          className="hidden md:flex"
-          actions={[
-            {
-              id: "edit",
-              label: tCommon("edit"),
-              icon: Pencil,
-              onSelect: onEdit,
-            },
-            {
-              id: "delete",
-              label: tCommon("delete"),
-              icon: Trash2,
-              onSelect: onDelete,
-              destructive: true,
-            },
-          ]}
-        />
+        {readOnly ? null : (
+          <RowOverflowMenu
+            className="hidden md:flex"
+            actions={[
+              {
+                id: "edit",
+                label: tCommon("edit"),
+                icon: Pencil,
+                onSelect: onEdit,
+              },
+              {
+                id: "delete",
+                label: tCommon("delete"),
+                icon: Trash2,
+                onSelect: onDelete,
+                destructive: true,
+              },
+            ]}
+          />
+        )}
       </ObjectCardBody>
     </ObjectCard>
   );
-  if (!swipe) {
+  if (!swipe || readOnly) {
     return card;
   }
   return (

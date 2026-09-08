@@ -7,8 +7,7 @@ import { toast } from "sonner";
 
 import { PersonAvatar } from "@/components/person-avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BENTO_LABEL_CLASS } from "@/lib/bento";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -33,9 +32,11 @@ import {
   EventPollStatus,
 } from "@/types/enums";
 
+import { EventCollapsibleCardHeader } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 import { EventLocationPollCreateDialog } from "./event-location-poll-create-dialog";
 import { EventLocationPollOptionFormDialog } from "./event-location-poll-option-form";
+import { useEventPageBlockHidden } from "./use-event-page-block-hidden";
 
 export function EventLocationPollCard({
   className,
@@ -54,6 +55,7 @@ export function EventLocationPollCard({
   const [pickIds, setPickIds] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { hidden, toggle } = useEventPageBlockHidden("locationPoll");
 
   useEffect(() => {
     if (isOwner && poll?.needsOwnerPick) {
@@ -68,11 +70,25 @@ export function EventLocationPollCard({
 
   if (!poll) {
     return (
-      <Card className={cn("flex min-h-96 w-full flex-col", className)}>
-        <CardHeader>
-          <CardTitle className={BENTO_LABEL_CLASS}>{t("locationPollTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-1 flex-col items-center justify-center space-y-3 text-center">
+      <Card
+        className={cn(
+          "flex w-full flex-col",
+          className,
+          hidden ? "h-auto min-h-0 self-start" : "min-h-96",
+        )}
+      >
+        <EventCollapsibleCardHeader
+          title={t("locationPollTitle")}
+          expanded={!hidden}
+          onToggle={toggle}
+        />
+        <CardContent
+          className={
+            hidden
+              ? "hidden"
+              : "flex flex-1 flex-col items-center justify-center space-y-3 text-center"
+          }
+        >
           <p className="text-sm text-muted-foreground">
             {t("locationUndefined")}
           </p>
@@ -184,57 +200,73 @@ export function EventLocationPollCard({
   return (
     <>
       <div className={cn("poll-rainbow-frame w-full", className)}>
-        <Card className="flex min-h-96 w-full flex-col ring-0">
-          <CardHeader className="relative space-y-1 text-center">
-            <CardTitle className="text-2xl font-semibold tracking-tight lg:px-16 sm:text-3xl">
-              {activePoll.title}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {activePoll.status === EventPollStatus.Finished
-                ? t("pollFinished")
-                : activePoll.selectionMode === EventPollSelectionMode.Multiple
-                  ? t("pollMultiple")
-                  : t("pollSingle")}
-            </p>
-            {isOwner ? (
-              <div className="absolute top-0 right-4 hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  disabled={busy}
-                  onClick={() => setEditOpen(true)}
-                >
-                  <Pencil className="size-3.5" />
-                  {t("editPoll")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-destructive hover:text-destructive"
-                  disabled={busy}
-                  onClick={() => void removePoll()}
-                >
-                  <Trash2 className="size-3.5" />
-                  {t("deletePoll")}
-                </Button>
-                {pollIsOpen ? (
+        <Card
+          className={cn(
+            "flex w-full flex-col ring-0",
+            hidden ? "h-auto min-h-0 self-start" : "min-h-96",
+          )}
+        >
+          <EventCollapsibleCardHeader
+            title={t("locationPollTitle")}
+            expanded={!hidden}
+            onToggle={toggle}
+            action={
+              isOwner ? (
+                <div className="hidden flex-wrap items-center justify-end gap-1.5 lg:flex">
                   <Button
                     type="button"
                     size="sm"
+                    variant="outline"
+                    className="gap-1.5"
                     disabled={busy}
-                    onClick={() => void finish()}
+                    onClick={() => setEditOpen(true)}
                   >
-                    {t("finishPoll")}
+                    <Pencil className="size-3.5" />
+                    {t("editPoll")}
                   </Button>
-                ) : null}
-              </div>
-            ) : null}
-          </CardHeader>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                    disabled={busy}
+                    onClick={() => void removePoll()}
+                  >
+                    <Trash2 className="size-3.5" />
+                    {t("deletePoll")}
+                  </Button>
+                  {pollIsOpen ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void finish()}
+                    >
+                      {t("finishPoll")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null
+            }
+          />
+          {hidden ? null : (
+            <div className="space-y-1 px-(--card-spacing) text-center">
+              <CardTitle className="text-2xl font-semibold tracking-tight lg:px-16 sm:text-3xl">
+                {activePoll.title}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {pollStatusLabel(t, activePoll.status, activePoll.selectionMode)}
+              </p>
+            </div>
+          )}
 
-          <CardContent className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+          <CardContent
+            className={
+              hidden
+                ? "hidden"
+                : "grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3"
+            }
+          >
             <div className="flex min-h-0 flex-col space-y-3 lg:col-span-2">
               <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                 {activePoll.options.map((option) => (
@@ -280,7 +312,7 @@ export function EventLocationPollCard({
             />
           </CardContent>
 
-          {isOwner ? (
+          {hidden || !isOwner ? null : (
             <div className="flex flex-col gap-2 px-4 pb-4 lg:hidden">
               <Button
                 type="button"
@@ -313,7 +345,7 @@ export function EventLocationPollCard({
                 </Button>
               ) : null}
             </div>
-          ) : null}
+          )}
         </Card>
       </div>
 
@@ -373,6 +405,20 @@ export function EventLocationPollCard({
       </Dialog>
     </>
   );
+}
+
+function pollStatusLabel(
+  t: (key: "pollFinished" | "pollMultiple" | "pollSingle") => string,
+  status: EventPollStatus,
+  selectionMode: EventPollSelectionMode,
+): string {
+  if (status === EventPollStatus.Finished) {
+    return t("pollFinished");
+  }
+  if (selectionMode === EventPollSelectionMode.Multiple) {
+    return t("pollMultiple");
+  }
+  return t("pollSingle");
 }
 
 function PollSidePanel({

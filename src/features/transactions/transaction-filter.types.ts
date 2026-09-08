@@ -22,6 +22,7 @@ export type TransactionFilterState = {
   kinds: TransactionKind[];
   categoryIds: string[];
   counterpartyIds: string[];
+  travelId: string | null;
   /** When true, exclude transactions with no categories from list + charts. */
   hideUncategorized: boolean;
 };
@@ -31,6 +32,7 @@ export const DEFAULT_TRANSACTION_FILTERS: TransactionFilterState = {
   kinds: [],
   categoryIds: [],
   counterpartyIds: [],
+  travelId: null,
   hideUncategorized: false,
 };
 
@@ -114,6 +116,7 @@ export function filtersAreDefault(filters: TransactionFilterState): boolean {
     filters.kinds.length === 0 &&
     filters.categoryIds.length === 0 &&
     filters.counterpartyIds.length === 0 &&
+    filters.travelId == null &&
     !filters.hideUncategorized
   );
 }

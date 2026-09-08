@@ -2,11 +2,11 @@
 
 import { useTranslations } from "next-intl";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BENTO_LABEL_CLASS } from "@/lib/bento";
+import { CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { EventLinkType } from "@/types/enums";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 import { EventLocationLinks } from "./event-links";
 import { EventMapLazy } from "./event-map-lazy";
@@ -34,10 +34,11 @@ export function EventMapCard({
   );
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("location")}</CardTitle>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="map"
+      title={t("location")}
+      className={cn("overflow-hidden", className)}
+    >
       <CardContent className="flex h-full flex-col gap-3">
         <p className="text-sm text-muted-foreground">
           {event.address || t("addressEmpty")}
@@ -62,6 +63,6 @@ export function EventMapCard({
           )
         ) : null}
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }

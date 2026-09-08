@@ -2,10 +2,17 @@
 
 import { useTranslations } from "next-intl";
 
-import { formatChartMoney, toDecimal } from "@/lib/money";
+import { HideablePageBlock } from "@/components/hideable-page-block";
+import { formatChartMoney } from "@/lib/money";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 
-import { TravelGoalProgressCard, TravelMoneyCard } from "./travel-money-cards";
+import { TravelExpenseChartsForTravel } from "./travel-expense-charts";
+import {
+  TravelGoalProgressCard,
+  TravelMoneyCard,
+  TravelPlanVsActualCard,
+} from "./travel-money-cards";
 import { TravelRealSpendingsList } from "./travel-real-spendings-list";
 
 export function TravelInProgressSection({
@@ -16,52 +23,53 @@ export function TravelInProgressSection({
   readonly onRefresh: () => Promise<void>;
 }) {
   const t = useTranslations("travels");
-
-  const planned = toDecimal(travel.summary.plannedTotal);
-  const actual = toDecimal(travel.summary.actualTotal);
-  const delta = actual.minus(planned);
+  const blockScope = travelPageBlockScope(travel.id);
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <TravelMoneyCard
-          title={t("plannedTotal")}
-          amount={travel.summary.plannedTotal}
-          currency={travel.currency}
-        />
-        <TravelMoneyCard
-          title={t("actualTotal")}
-          amount={travel.summary.actualTotal}
-          currency={travel.currency}
-        />
-        <TravelMoneyCard
-          title={t("plannedVsActual")}
-          amount={delta.abs().toString()}
-          currency={travel.currency}
-          hint={
-            delta.gte(0)
-              ? t("deltaOver", {
-                  amount: formatChartMoney(delta.toString(), travel.currency),
-                })
-              : t("deltaUnder", {
-                  amount: formatChartMoney(
-                    delta.abs().toString(),
-                    travel.currency,
-                  ),
-                })
-          }
-        />
-        <TravelGoalProgressCard
-          travelId={travel.id}
-          plannedTotal={travel.summary.plannedTotal}
-          actualTotal={travel.summary.actualTotal}
-          goal={travel.summary.maxSpendingGoal}
-          currency={travel.currency}
-          useActual
-          onRefresh={onRefresh}
-        />
-      </div>
+      <HideablePageBlock
+        scope={blockScope}
+        blockId="overview"
+        title={t("overview")}
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <TravelPlanVsActualCard
+            planned={travel.summary.plannedTotal}
+            actual={travel.summary.actualTotal}
+            currency={travel.currency}
+          />
+          <TravelMoneyCard
+            title={t("actualTotal")}
+            amount={travel.summary.actualTotal}
+            currency={travel.currency}
+            amountClassName="text-rose-400"
+            details={[
+              {
+                label: t("avgActualPerDay"),
+                value: formatChartMoney(
+                  travel.summary.avgActualPerDay,
+                  travel.currency,
+                ),
+                valueClassName: "text-rose-400",
+              },
+            ]}
+          />
+          <TravelGoalProgressCard
+            travelId={travel.id}
+            plannedTotal={travel.summary.plannedTotal}
+            actualTotal={travel.summary.actualTotal}
+            goal={travel.summary.maxSpendingGoal}
+            currency={travel.currency}
+            useActual
+            onRefresh={onRefresh}
+          />
+        </div>
+      </HideablePageBlock>
 
+      <TravelExpenseChartsForTravel
+        travelId={travel.id}
+        currency={travel.currency}
+      />
       <TravelRealSpendingsList travelId={travel.id} />
     </div>
   );

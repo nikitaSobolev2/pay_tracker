@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
+import { CardContent } from "@/components/ui/card";
+import { BENTO_CARD_CLASS } from "@/lib/bento";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 
 export function EventPaidProgressCard({
@@ -21,10 +22,11 @@ export function EventPaidProgressCard({
   const collectedPercent = moneyPercent(progress.collected, progress.expected);
 
   return (
-    <Card className={cn(BENTO_CARD_CLASS, className)}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("paidProgressTitle")}</CardTitle>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="paid"
+      title={t("paidProgressTitle")}
+      className={cn(BENTO_CARD_CLASS, className)}
+    >
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-3xl font-semibold tabular-nums">
           {t("paidProgressCount", {
@@ -60,7 +62,7 @@ export function EventPaidProgressCard({
           </div>
         </div>
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }
 

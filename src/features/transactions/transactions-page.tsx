@@ -145,6 +145,7 @@ export function TransactionsPage() {
       counterpartyIds: filters.counterpartyIds.length
         ? filters.counterpartyIds
         : undefined,
+      travelId: filters.travelId ?? undefined,
       hideUncategorized: filters.hideUncategorized ? true : undefined,
       sortBy: tableSort?.sortBy,
       sortDir: tableSort?.sortDir,
@@ -190,6 +191,7 @@ export function TransactionsPage() {
         ? filters.counterpartyIds
         : undefined,
       hideUncategorized: filters.hideUncategorized ? true : undefined,
+      travelId: filters.travelId ?? undefined,
     }),
     [pageType, filters],
   );

@@ -74,7 +74,6 @@ export async function createTransaction(
   const validated = await validateTransactionWrite(input);
   const travelId = await resolveTravelIdForWrite({
     userId: input.userId,
-    type: validated.type,
     travelId: input.travelId,
   });
   const money = await resolveCanonicalMoney(
@@ -274,7 +273,6 @@ export async function updateTransaction(
   });
   const travelId = await resolveTravelIdForWrite({
     userId: input.userId,
-    type: validated.type,
     travelId:
       input.travelId === undefined ? existing.travelId : input.travelId,
   });
@@ -857,12 +855,8 @@ async function mapTransactionDto(
 
 async function resolveTravelIdForWrite(input: {
   readonly userId: string;
-  readonly type: TransactionType;
   readonly travelId?: string | null;
 }): Promise<string | null> {
-  if (input.type === TransactionType.Earning) {
-    return null;
-  }
   if (input.travelId == null || input.travelId === "") {
     return null;
   }

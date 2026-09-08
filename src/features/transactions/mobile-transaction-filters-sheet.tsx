@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { IosCalendar } from "@/features/transactions/ios-calendar";
+import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -419,6 +420,18 @@ export function MobileTransactionFiltersSheet({
               </Select>
             </FilterSection>
 
+            <FilterSection title={t("filterTravel")}>
+              <TravelSuggestPicker
+                layout="filter"
+                value={draft.travelId}
+                onChange={(travelId) =>
+                  setDraft((current) => ({ ...current, travelId }))
+                }
+                className="w-full"
+                triggerClassName="h-12 max-w-none min-w-0 w-full rounded-xl text-base font-normal"
+              />
+            </FilterSection>
+
             {counterparties.length > 0 ? (
               <FilterSection title={t("counterparties")}>
                 <div className="max-h-64 space-y-2 overflow-y-auto">
@@ -492,7 +505,9 @@ export function MobileTransactionFiltersSheet({
       <Dialog open={rangePickerOpen} onOpenChange={setRangePickerOpen}>
         <DialogContent
           showCloseButton={false}
-          className="top-0 left-0 z-60 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0"
+          overlayStyle={{ zIndex: 1400 }}
+          style={{ zIndex: 1400 }}
+          className="top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0"
         >
           <DialogHeader className="shrink-0 border-b border-border/60 px-4 pt-4 pb-3">
             <DialogTitle className="text-xl font-semibold tracking-tight">

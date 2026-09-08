@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
+import { HideablePageBlock } from "@/components/hideable-page-block";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,6 +20,7 @@ import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
 import { prefetchTicketFilesForOffline } from "@/lib/offline/travel-ticket-prefetch";
 import { fetchTravel } from "@/lib/api/travels";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import { useActiveTravelStore } from "@/stores/active-travel.store";
 import {
@@ -44,6 +46,10 @@ import { TravelTicketsList } from "./travel-tickets-list";
 import { useTravelScheduleLabel } from "./use-travel-schedule-label";
 
 const TRAVEL_CACHE_STORAGE_KEY = "paytracker-travel-cache";
+
+function isFinishedTravel(phase: TravelPhase): boolean {
+  return phase === TravelPhase.Finished || phase === TravelPhase.Failed;
+}
 
 /** Sync read so offline cold load can render before zustand persist finishes. */
 function readTravelFromStorage(travelId: string): TravelDetailDto | null {
@@ -348,6 +354,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       travel.housingEntrance ||
       travel.housingApartment,
   );
+  const blockScope = travelPageBlockScope(travel.id);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 pb-10">
@@ -426,24 +433,36 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         </Button>
         </div>
 
-        <TravelClocksCard
-          placeCity={travel.placeCity}
-          placeCountry={travel.placeCountry}
-          placeLabel={travel.placeLabel}
-          housingLatitude={travel.housingLatitude}
-          housingLongitude={travel.housingLongitude}
-        />
+        <HideablePageBlock
+          scope={blockScope}
+          blockId="clocks"
+          title={t("clocksTitle")}
+        >
+          <TravelClocksCard
+            placeCity={travel.placeCity}
+            placeCountry={travel.placeCountry}
+            placeLabel={travel.placeLabel}
+            housingLatitude={travel.housingLatitude}
+            housingLongitude={travel.housingLongitude}
+          />
+        </HideablePageBlock>
 
         {showHousingMap ? (
-          <TravelHousingMapCard
-            address={travel.housingAddress}
-            latitude={travel.housingLatitude}
-            longitude={travel.housingLongitude}
-            floor={travel.housingFloor}
-            entrance={travel.housingEntrance}
-            apartment={travel.housingApartment}
-            mapEnabled={!editOpen}
-          />
+          <HideablePageBlock
+            scope={blockScope}
+            blockId="housing"
+            title={t("housingAddress")}
+          >
+            <TravelHousingMapCard
+              address={travel.housingAddress}
+              latitude={travel.housingLatitude}
+              longitude={travel.housingLongitude}
+              floor={travel.housingFloor}
+              entrance={travel.housingEntrance}
+              apartment={travel.housingApartment}
+              mapEnabled={!editOpen}
+            />
+          </HideablePageBlock>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -491,8 +510,7 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
       {travel.phase === TravelPhase.InProgress ? (
         <TravelInProgressSection travel={travel} onRefresh={refresh} />
       ) : null}
-      {travel.phase === TravelPhase.Finished ||
-      travel.phase === TravelPhase.Failed ? (
+      {isFinishedTravel(travel.phase) ? (
         <TravelFinishedSection travel={travel} />
       ) : null}
 
@@ -501,18 +519,31 @@ export function TravelPage({ travelId }: { readonly travelId: string }) {
         items={travel.tickets}
         onChanged={refresh}
       />
-      <TravelPlacesToVisitList
-        travelId={travel.id}
-        items={travel.placesToVisit}
-        onChanged={refresh}
-      />
-      <TravelThingsToGrabList
-        travelId={travel.id}
-        items={travel.thingsToGrab}
-        onChanged={refresh}
-      />
+      {isFinishedTravel(travel.phase) ? null : (
+        <>
+          <TravelPlacesToVisitList
+            travelId={travel.id}
+            items={travel.placesToVisit}
+            onChanged={refresh}
+          />
+          <TravelThingsToGrabList
+            travelId={travel.id}
+            items={travel.thingsToGrab}
+            onChanged={refresh}
+          />
+        </>
+      )}
 
       <TravelActivityHeatmap travel={travel} />
+
+      {isFinishedTravel(travel.phase) ? (
+        <TravelPlacesToVisitList
+          travelId={travel.id}
+          items={travel.placesToVisit}
+          onChanged={refresh}
+          variant="visitedOnly"
+        />
+      ) : null}
 
       <TravelFormDialog
         open={editOpen}

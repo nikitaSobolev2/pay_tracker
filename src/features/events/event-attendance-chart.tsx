@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
+import { CardContent } from "@/components/ui/card";
+import { BENTO_CARD_CLASS } from "@/lib/bento";
 import { cn } from "@/lib/utils";
 import { EventAttendanceStatus } from "@/types/enums";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 
 export function EventAttendanceCard({
@@ -27,10 +28,11 @@ export function EventAttendanceCard({
   const uncertainPercent = maxCount > 0 ? (uncertainCount / maxCount) * 100 : 0;
 
   return (
-    <Card className={cn(BENTO_CARD_CLASS, className)}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("attendanceTitle")}</CardTitle>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="attendance"
+      title={t("attendanceTitle")}
+      className={cn(BENTO_CARD_CLASS, className)}
+    >
       <CardContent className="flex flex-1 flex-col gap-3">
         <div>
           <p className="text-3xl font-semibold tabular-nums">{certainCount}</p>
@@ -90,6 +92,6 @@ export function EventAttendanceCard({
           <p className="mt-auto text-sm text-muted-foreground">{t("attendeesEmpty")}</p>
         )}
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }

@@ -507,8 +507,7 @@ export function TransactionFormModal() {
           ? form.counterpartyName.trim()
           : null,
         categoryIds: form.categoryIds,
-        travelId:
-          transactionType === TransactionType.Spending ? form.travelId : null,
+        travelId: form.travelId,
       };
 
       if (payload.travelId) {
@@ -946,14 +945,12 @@ export function TransactionFormModal() {
                 />
               </FormField>
 
-              {transactionType === TransactionType.Spending ? (
-                <TravelSuggestPicker
-                  value={form.travelId}
-                  onChange={(travelId) =>
-                    setForm((prev) => ({ ...prev, travelId }))
-                  }
-                />
-              ) : null}
+              <TravelSuggestPicker
+                value={form.travelId}
+                onChange={(travelId) =>
+                  setForm((prev) => ({ ...prev, travelId }))
+                }
+              />
             </>
           )}
         </ResponsiveDialogBody>

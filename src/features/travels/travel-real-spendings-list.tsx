@@ -11,18 +11,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TransactionMobileList } from "@/features/transactions/transaction-mobile-list";
 import { listTransactions } from "@/lib/api/transactions";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import { useTravelCacheStore } from "@/stores/travel-cache.store";
 import { useUiStore } from "@/stores/ui.store";
 import {
   DateRangeType,
   TransactionFormMode,
-  TransactionType,
 } from "@/types/enums";
 import type { TransactionDto } from "@/types/transaction";
 
 import {
   TravelSectionEmpty,
-  TravelSectionHeader,
+  CollapsibleTravelSection,
 } from "./travel-section-card";
 
 type TravelRealSpendingsListProps = {
@@ -57,7 +57,6 @@ export function TravelRealSpendingsList({
     }
     try {
       const result = await listTransactions({
-        type: TransactionType.Spending,
         travelId,
         dateRangeType: DateRangeType.AllTime,
         pageSize: 100,
@@ -107,34 +106,51 @@ export function TravelRealSpendingsList({
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-none">
-      <TravelSectionHeader
-        title={t("realSpendings")}
+      <CollapsibleTravelSection
+        scope={travelPageBlockScope(travelId)}
+        blockId="transactions"
+        title={t("travelTransactions")}
         count={items.length > 0 ? String(items.length) : undefined}
         action={
           showAddButton ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                openTransactionModal(TransactionFormMode.Spending, {
-                  travelId,
-                })
-              }
-            >
-              <Plus className="size-4" />
-              {t("addSpending")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  openTransactionModal(TransactionFormMode.Spending, {
+                    travelId,
+                  })
+                }
+              >
+                <Plus className="size-4" />
+                {t("addSpending")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  openTransactionModal(TransactionFormMode.Earning, {
+                    travelId,
+                  })
+                }
+              >
+                <Plus className="size-4" />
+                {t("addEarning")}
+              </Button>
+            </div>
           ) : undefined
         }
-      />
+      >
       <CardContent className="p-3 sm:p-4">
         <RealSpendingsContent
           loading={loading}
           items={items}
-          emptyText={t("spendingEmptyCategory")}
+          emptyText={t("realTransactionsEmpty")}
           onEdit={(tx) => openEditTransactionModal(tx)}
         />
       </CardContent>
+      </CollapsibleTravelSection>
     </Card>
   );
 }

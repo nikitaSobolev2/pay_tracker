@@ -54,6 +54,7 @@ type ActivityHeatmapCardProps = {
    * row = calendar-style (Mon–Sun across each week row). Travel page only.
    */
   readonly weekFlow?: "column" | "row";
+  readonly collapse?: { readonly scope: string; readonly blockId: string };
 };
 
 export function ActivityHeatmapCard({
@@ -66,6 +67,7 @@ export function ActivityHeatmapCard({
   disableShare = false,
   drilldownLayout = "below",
   weekFlow = "column",
+  collapse,
 }: ActivityHeatmapCardProps) {
   const t = useTranslations("charts");
   const tHome = useTranslations("home");
@@ -196,6 +198,7 @@ export function ActivityHeatmapCard({
         <StatCard
           title={title}
           description={description ?? t("activityHint")}
+          collapse={collapse}
           sharePayload={
             disableShare || loading || !data
               ? null

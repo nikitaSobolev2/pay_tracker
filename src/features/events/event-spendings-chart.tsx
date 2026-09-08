@@ -7,7 +7,7 @@ import { Cell, Pie, PieChart } from "recharts";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
@@ -15,12 +15,13 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
-import { BENTO_CARD_CLASS, BENTO_LABEL_CLASS } from "@/lib/bento";
+import { BENTO_CARD_CLASS } from "@/lib/bento";
 import { updateEvent } from "@/lib/api/events";
 import { formatChartMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { EventAuthorRole, EventSpendingCategory } from "@/types/enums";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 import {
   CATEGORY_COLORS,
@@ -53,10 +54,11 @@ export function EventTotalCard({ className }: { readonly className?: string }) {
   });
 
   return (
-    <Card className={cn(BENTO_CARD_CLASS, className)}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("totalTitle")}</CardTitle>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="total"
+      title={t("totalTitle")}
+      className={cn(BENTO_CARD_CLASS, className)}
+    >
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-3xl font-semibold tabular-nums">
           {formatChartMoney(event.summary.total, event.currency)}
@@ -140,7 +142,7 @@ export function EventTotalCard({ className }: { readonly className?: string }) {
           <p className="text-sm text-muted-foreground">{t("spendingsEmpty")}</p>
         )}
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }
 
@@ -187,38 +189,42 @@ export function EventPerPersonCard({
     void saveManual(trimmed);
   }
 
-  return (
-    <Card className={cn(BENTO_CARD_CLASS, className)}>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("perPersonTitle")}</CardTitle>
-        {isOwner && !editing ? (
-          <div className="flex items-center gap-1">
-            {isManual ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                disabled={saving}
-                onClick={() => void saveManual(null)}
-              >
-                {t("perPersonClear")}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={t("perPersonEdit")}
-              disabled={saving}
-              onClick={startEdit}
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-          </div>
+  const editAction =
+    isOwner && !editing ? (
+      <div className="flex items-center gap-1">
+        {isManual ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            disabled={saving}
+            onClick={() => void saveManual(null)}
+          >
+            {t("perPersonClear")}
+          </Button>
         ) : null}
-      </CardHeader>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label={t("perPersonEdit")}
+          disabled={saving}
+          onClick={startEdit}
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+      </div>
+    ) : null;
+
+  return (
+    <EventCollapsibleCard
+      blockId="perPerson"
+      title={t("perPersonTitle")}
+      action={editAction}
+      className={cn(BENTO_CARD_CLASS, className)}
+    >
       <CardContent className="flex flex-1 flex-col gap-2">
         {editing ? (
           <div className="flex items-center gap-2">
@@ -292,7 +298,7 @@ export function EventPerPersonCard({
           </p>
         )}
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }
 

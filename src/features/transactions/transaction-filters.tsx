@@ -54,6 +54,7 @@ import {
   useFilterCategories,
   useFilterCounterparties,
 } from "@/features/transactions/use-transaction-filter-data";
+import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   categoryBarClass,
@@ -469,6 +470,12 @@ export function TransactionFilters({
                 ))}
               </SelectContent>
             </Select>
+
+            <TravelSuggestPicker
+              layout="filter"
+              value={value.travelId}
+              onChange={(travelId) => onChange({ ...value, travelId })}
+            />
 
             {counterparties.length > 0 ? (
               <FilterMenuChip

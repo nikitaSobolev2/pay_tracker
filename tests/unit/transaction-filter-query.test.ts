@@ -32,6 +32,7 @@ describe("filtersFromSearchParams", () => {
     assert.deepEqual(filters.categoryIds, ["c1", "c2"]);
     assert.deepEqual(filters.counterpartyIds, ["p1"]);
     assert.equal(filters.hideUncategorized, true);
+    assert.equal(filters.travelId, null);
   });
 
   it("keeps only the first kind when multiple are present", () => {
@@ -69,6 +70,11 @@ describe("filtersFromSearchParams", () => {
       n: 14,
     });
   });
+
+  it("parses travelId", () => {
+    const params = new URLSearchParams({ travelId: "tr-9" });
+    assert.equal(filtersFromSearchParams(params).travelId, "tr-9");
+  });
 });
 
 describe("writeFiltersToSearchParams", () => {
@@ -80,6 +86,7 @@ describe("writeFiltersToSearchParams", () => {
     assert.equal(params.get("dateRangeType"), null);
     assert.equal(params.get("categoryIds"), null);
     assert.equal(params.get("hideUncategorized"), null);
+    assert.equal(params.get("travelId"), null);
   });
 
   it("round-trips non-default filters", () => {
@@ -92,6 +99,7 @@ describe("writeFiltersToSearchParams", () => {
       kinds: [TransactionKind.Debt],
       categoryIds: ["cat-1"],
       counterpartyIds: ["cp-1"],
+      travelId: "tr-9",
       hideUncategorized: true,
     };
     const params = new URLSearchParams();

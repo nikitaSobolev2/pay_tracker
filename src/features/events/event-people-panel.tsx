@@ -15,13 +15,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   ObjectCard,
@@ -46,13 +40,13 @@ import {
 } from "@/lib/api/events";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import type {
   EventAttendeeDto,
   EventPaymentDto,
 } from "@/server/services/event-service.types";
 import { EventAttendanceStatus, EventAuthorRole } from "@/types/enums";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 
 /** Single People card: attendees, payments per person, collected + unpaid summary. */
@@ -109,15 +103,14 @@ export function EventPeoplePanel({
   }
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("attendeesTitle")}</CardTitle>
-        <CardAction>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {event.attendees.length}
-          </span>
-        </CardAction>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="people"
+      title={t("attendeesTitle")}
+      count={
+        event.attendees.length > 0 ? String(event.attendees.length) : undefined
+      }
+      className={className}
+    >
       <CardContent className="space-y-4">
         {event.attendees.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("attendeesEmpty")}</p>
@@ -215,7 +208,7 @@ export function EventPeoplePanel({
           ) : null}
         </div>
       </CardContent>
-    </Card>
+    </EventCollapsibleCard>
   );
 }
 

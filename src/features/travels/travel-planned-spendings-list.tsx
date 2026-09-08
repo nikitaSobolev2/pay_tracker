@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import { formatChartMoney, toIntegerAmountString } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type {
@@ -58,7 +59,7 @@ import {
 } from "@/stores/travel-cache.store";
 import { TravelPlannedCategory } from "@/types/enums";
 
-import { TravelSectionHeader } from "./travel-section-card";
+import { CollapsibleTravelSection } from "./travel-section-card";
 import {
   CATEGORY_ICONS,
   CATEGORY_LABEL_KEYS,
@@ -176,7 +177,11 @@ export function TravelPlannedSpendingsList({
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-none">
-      <TravelSectionHeader title={t("spendings")} />
+      <CollapsibleTravelSection
+        scope={travelPageBlockScope(travelId)}
+        blockId="plannedSpendings"
+        title={t("spendings")}
+      >
       <CardContent className="space-y-3 pt-3">
         {groups.map((group) => {
           const Icon = CATEGORY_ICONS[group.category];
@@ -391,6 +396,7 @@ export function TravelPlannedSpendingsList({
           }}
         />
       </CardContent>
+      </CollapsibleTravelSection>
     </Card>
   );
 }

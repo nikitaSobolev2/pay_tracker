@@ -22,12 +22,7 @@ import { toast } from "sonner";
 
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +39,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { normalizeAmountRaw } from "@/lib/amount-input";
-import { BENTO_LABEL_CLASS } from "@/lib/bento";
 import {
   Table,
   TableBody,
@@ -66,6 +60,7 @@ import { cn } from "@/lib/utils";
 import type { EventSpendingDto } from "@/server/services/event-service.types";
 import type { EventSpendingCategory } from "@/types/enums";
 
+import { EventCollapsibleCard } from "./event-collapsible-card";
 import { useEventContext } from "./event-context";
 import {
   CATEGORY_ALT_SURFACE_CLASS,
@@ -270,10 +265,14 @@ export function EventSpendingsList({
   );
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className={BENTO_LABEL_CLASS}>{t("spendingsTitle")}</CardTitle>
-      </CardHeader>
+    <EventCollapsibleCard
+      blockId="spendings"
+      title={t("spendingsTitle")}
+      count={
+        event.spendings.length > 0 ? String(event.spendings.length) : undefined
+      }
+      className={className}
+    >
       <CardContent className="space-y-4">
         {spendingsBody}
 
@@ -292,7 +291,7 @@ export function EventSpendingsList({
         onOpenChange={setDialogOpen}
         onSubmit={submit}
       />
-    </Card>
+    </EventCollapsibleCard>
   );
 }
 

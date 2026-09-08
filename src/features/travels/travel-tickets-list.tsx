@@ -32,6 +32,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { storeFileForOffline } from "@/lib/offline/travel-offline-files";
 import { isNetworkError } from "@/lib/offline/travel-offline-execute";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import {
   analyzeTravelTicketFile,
   createTravelTicket,
@@ -47,7 +48,7 @@ import type { TravelTicketDto } from "@/server/services/travel-service.types";
 
 import {
   TravelSectionEmpty,
-  TravelSectionHeader,
+  CollapsibleTravelSection,
 } from "./travel-section-card";
 import { TravelTicketAiReviewDialog } from "./travel-ticket-ai-review-dialog";
 import { TravelTicketPass } from "./travel-ticket-pass";
@@ -204,7 +205,9 @@ export function TravelTicketsList({
   return (
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
-        <TravelSectionHeader
+        <CollapsibleTravelSection
+          scope={travelPageBlockScope(travelId)}
+          blockId="tickets"
           title={t("tickets")}
           count={items.length > 0 ? String(items.length) : undefined}
           action={
@@ -222,7 +225,7 @@ export function TravelTicketsList({
                   : t("ticketAdd")}
             </Button>
           }
-        />
+        >
         <CardContent className="space-y-3 p-3 sm:p-4">
           <input
             ref={fileInputRef}
@@ -250,6 +253,7 @@ export function TravelTicketsList({
             </ObjectActionList>
           )}
         </CardContent>
+        </CollapsibleTravelSection>
       </Card>
 
       <TravelTicketPreviewDialog

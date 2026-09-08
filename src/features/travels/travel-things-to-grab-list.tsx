@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { enqueueTravelOp } from "@/lib/offline/travel-offline-sync";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import type { TravelThingToGrabDto } from "@/server/services/travel-service.types";
 import {
   makeLocalEntityId,
@@ -48,7 +49,7 @@ import {
 
 import {
   TravelSectionEmpty,
-  TravelSectionHeader,
+  CollapsibleTravelSection,
 } from "./travel-section-card";
 
 type TravelThingsToGrabListProps = {
@@ -127,7 +128,9 @@ export function TravelThingsToGrabList({
   return (
     <>
       <Card className="border-border/60 bg-card/90 shadow-none">
-        <TravelSectionHeader
+        <CollapsibleTravelSection
+          scope={travelPageBlockScope(travelId)}
+          blockId="grab"
           title={t("thingsToGrab")}
           count={
             items.length > 0
@@ -140,7 +143,7 @@ export function TravelThingsToGrabList({
               {t("grabAdd")}
             </Button>
           }
-        />
+        >
         <CardContent className="space-y-3 p-3 pt-3 sm:p-4">
           {items.length === 0 ? (
             <TravelSectionEmpty icon={Backpack} text={t("grabsEmpty")} />
@@ -160,6 +163,7 @@ export function TravelThingsToGrabList({
             </ObjectActionList>
           )}
         </CardContent>
+        </CollapsibleTravelSection>
       </Card>
 
       <GrabFormDialog

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
+import { travelPageBlockScope } from "@/lib/page-block-visibility";
 import type { TravelDetailDto } from "@/server/services/travel-service.types";
 import { TransactionType } from "@/types/enums";
 
@@ -32,6 +33,10 @@ export function TravelActivityHeatmap({
       disableShare
       weekFlow="row"
       drilldownLayout="below"
+      collapse={{
+        scope: travelPageBlockScope(travel.id),
+        blockId: "heatmap",
+      }}
     />
   );
 }

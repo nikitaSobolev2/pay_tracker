@@ -77,10 +77,7 @@ export const useFastTransactionQueueStore = create<FastQueueStore>()(
             occurredAt: item.occurredAt,
             kind: TransactionKind.Default,
             categoryIds: [],
-            travelId:
-              item.type === TransactionType.Spending
-                ? (item.travelId ?? null)
-                : null,
+            travelId: item.travelId ?? null,
             idempotencyKey: item.idempotencyKey,
           });
           get().updateItem(localId, {
@@ -132,10 +129,8 @@ export function enqueueFastTransaction(input: {
   travelId?: string | null;
 }) {
   const activeTravelId =
-    input.type === TransactionType.Spending
-      ? (input.travelId ??
-        travelIdForFastEnter(useActiveTravelStore.getState().travel))
-      : null;
+    input.travelId ??
+    travelIdForFastEnter(useActiveTravelStore.getState().travel);
   const store = useFastTransactionQueueStore.getState();
   store.enqueue({ ...input, travelId: activeTravelId });
   scheduleFastQueueFlush();

@@ -48,6 +48,7 @@ export function cloneFilterState(
     kinds: [...state.kinds],
     categoryIds: [...state.categoryIds],
     counterpartyIds: [...state.counterpartyIds],
+    travelId: state.travelId,
     hideUncategorized: state.hideUncategorized,
   };
 }
