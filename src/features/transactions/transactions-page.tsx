@@ -17,7 +17,6 @@ import {
 } from "date-fns";
 
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
-import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
 import { heatmapWeekFlowForPreset } from "@/features/charts/heatmap-week-flow";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
@@ -310,7 +309,7 @@ export function TransactionsPage() {
       backAction: restorableDatePreset
         ? {
             onClick: restoreDateFilter,
-            label: tTransaction("getBack"),
+            label: tTransaction("restorePeriod"),
           }
         : undefined,
       dayNav: {
@@ -449,6 +448,10 @@ export function TransactionsPage() {
           }}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
+          onRestorePeriod={
+            restorableDatePreset ? restoreDateFilter : undefined
+          }
+          restorePeriodLabel={tTransaction("restorePeriod")}
         />
       </div>
 
@@ -633,18 +636,6 @@ export function TransactionsPage() {
         onDateClick={goToDay}
       />
       <div ref={sentinelRef} className="h-6 w-full" aria-hidden={!hasMore} />
-
-      {restorableDatePreset ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center max-md:hidden">
-          <Button
-            type="button"
-            className="pointer-events-auto rounded-full px-6 shadow-lg"
-            onClick={restoreDateFilter}
-          >
-            {tTransaction("getBack")}
-          </Button>
-        </div>
-      ) : null}
     </div>
   );
 }

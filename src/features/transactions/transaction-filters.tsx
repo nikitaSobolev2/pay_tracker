@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { enUS, ru } from "date-fns/locale";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
@@ -88,6 +88,8 @@ type TransactionFiltersProps = {
   readonly onChange: (value: TransactionFilterState) => void;
   readonly typeFilter?: TransactionTypeFilter;
   readonly onTypeFilterChange?: (value: TransactionTypeFilter) => void;
+  readonly onRestorePeriod?: () => void;
+  readonly restorePeriodLabel?: string;
 };
 
 type CustomDraftMode = "rolling" | "absolute";
@@ -120,6 +122,8 @@ export function TransactionFilters({
   onChange,
   typeFilter,
   onTypeFilterChange,
+  onRestorePeriod,
+  restorePeriodLabel,
 }: TransactionFiltersProps) {
   const t = useTranslations("transaction");
   const tCommon = useTranslations("common");
@@ -306,6 +310,17 @@ export function TransactionFilters({
           onDatePresetChange={setDatePreset}
           onCustomClick={() => setCustomOpen(true)}
         />
+        {onRestorePeriod && restorePeriodLabel ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 shrink-0 gap-1.5"
+            onClick={onRestorePeriod}
+          >
+            <Undo2 className="size-4" />
+            {restorePeriodLabel}
+          </Button>
+        ) : null}
       </div>
 
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>

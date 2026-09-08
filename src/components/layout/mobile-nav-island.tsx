@@ -18,6 +18,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Undo2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -299,7 +300,7 @@ function PageChromeTrailingSlots({
           ariaLabel={chrome.backAction.label}
           onClick={chrome.backAction.onClick}
         >
-          <ArrowLeft className="size-5" />
+          <Undo2 className="size-5" />
         </IslandIconButton>
       ) : null}
       {chrome.action ? (
