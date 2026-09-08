@@ -618,16 +618,7 @@ export function TransactionCalculatorDialog({
                             })
                           }
                           onDeleteTransfer={deleteTransfer}
-                          onAddToDebt={
-                            column.canPostDebt &&
-                            column.target.kind === "person"
-                              ? () =>
-                                  void addToDebt({
-                                    id: column.target.counterpartyId,
-                                    name: column.target.name,
-                                  })
-                              : undefined
-                          }
+                          onAddToDebt={personDebtHandler(column, addToDebt)}
                         />
                       )}
                     </CalculatorPeopleBento>
@@ -732,6 +723,22 @@ type RightPaneColumn = {
   readonly target: CutTarget;
   readonly canPostDebt: boolean;
 };
+
+function personDebtHandler(
+  column: RightPaneColumn,
+  addToDebt: (person: {
+    readonly id: string;
+    readonly name: string;
+  }) => Promise<void>,
+): (() => void) | undefined {
+  if (!column.canPostDebt || column.target.kind !== "person") {
+    return undefined;
+  }
+  const { counterpartyId, name } = column.target;
+  return () => {
+    void addToDebt({ id: counterpartyId, name });
+  };
+}
 
 function rightPaneColumns(
   workspaceId: string,
