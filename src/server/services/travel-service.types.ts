@@ -111,6 +111,10 @@ export type TravelListItemDto = {
   readonly maxSpendingGoal: string | null;
   readonly plannedTotal: string;
   readonly actualTotal: string;
+  readonly firstSpendingAt: string | null;
+  readonly lastSpendingAt: string | null;
+  readonly firstTransactionAt: string | null;
+  readonly lastTransactionAt: string | null;
 };
 
 export type TravelDetailDto = TravelListItemDto & {
@@ -140,6 +144,10 @@ export type TravelSuggestItemDto = {
   readonly imageUrl: string | null;
   readonly phase: TravelPhase;
   readonly currency: string;
+  readonly firstSpendingAt: string | null;
+  readonly lastSpendingAt: string | null;
+  readonly firstTransactionAt: string | null;
+  readonly lastTransactionAt: string | null;
 };
 
 export type CreateTravelInput = {

@@ -31,11 +31,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FilterPeriodTabs } from "@/features/transactions/filter-period-tabs";
 import { IosCalendar } from "@/features/transactions/ios-calendar";
 import {
   DEFAULT_TRANSACTION_FILTERS,
   filtersAreDefault,
-  isCustomDatePreset,
   type DateFilterPreset,
   type RollingRangeUnit,
   type TransactionFilterState,
@@ -45,7 +45,6 @@ import {
   type TransactionTypeFilter,
 } from "@/features/transactions/transaction-type-switcher";
 import {
-  CALENDAR_OPTIONS,
   formatCustomPeriodLabel,
   parseDateKey,
   parseRollingCount,
@@ -54,6 +53,11 @@ import {
   useFilterCategories,
   useFilterCounterparties,
 } from "@/features/transactions/use-transaction-filter-data";
+import {
+  clampDateKeysToRange,
+  travelPickerDateKeys,
+} from "@/features/transactions/travel-filter-date-range";
+import { useTravelFilterPeriod } from "@/features/transactions/use-travel-filter-period";
 import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -61,7 +65,7 @@ import {
   categoryTypeTextClass,
 } from "@/lib/category-chart-style";
 import { cn } from "@/lib/utils";
-import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
 import type { TransactionCategoryDto } from "@/types/transaction";
 
 export type { TransactionFilterState } from "@/features/transactions/transaction-filter.types";
@@ -118,7 +122,6 @@ export function TransactionFilters({
   onTypeFilterChange,
 }: TransactionFiltersProps) {
   const t = useTranslations("transaction");
-  const tDate = useTranslations("dateRange");
   const tCommon = useTranslations("common");
   const tNav = useTranslations("nav");
   const locale = useLocale();
@@ -134,11 +137,14 @@ export function TransactionFilters({
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
 
   const isDefault = filtersAreDefault(value);
-  const isCustom = isCustomDatePreset(value.datePreset);
 
   const { categories, loading: categoriesLoading } =
     useFilterCategories(pageType);
   const counterparties = useFilterCounterparties();
+  const { travelBounds, changeTravelId: applyTravelId } = useTravelFilterPeriod(
+    value,
+    onChange,
+  );
 
   useEffect(() => {
     if (value.datePreset.kind !== "rolling") {
@@ -156,6 +162,17 @@ export function TransactionFilters({
 
   useEffect(() => {
     if (!customOpen) {
+      return;
+    }
+    if (value.travelId) {
+      if (value.datePreset.kind === "absolute") {
+        setDraftMode("absolute");
+        setDraftRolling(null);
+        setDraftRange({
+          from: parseDateKey(value.datePreset.startDate),
+          to: parseDateKey(value.datePreset.endDate),
+        });
+      }
       return;
     }
     if (value.datePreset.kind === "absolute") {
@@ -179,10 +196,17 @@ export function TransactionFilters({
     setDraftMode("rolling");
     setDraftRolling({ unit: "days", n: 7 });
     setDraftRange(undefined);
-  }, [customOpen, value.datePreset]);
+  }, [customOpen, value.datePreset, value.travelId]);
 
   function setDatePreset(datePreset: DateFilterPreset) {
     onChange({ ...value, datePreset });
+  }
+
+  function changeTravelId(travelId: string | null) {
+    if (travelId) {
+      setCustomOpen(false);
+    }
+    applyTravelId(travelId);
   }
 
   function selectRollingDraft(unit: RollingRangeUnit, raw: string) {
@@ -212,7 +236,7 @@ export function TransactionFilters({
   }
 
   function applyCustomDraft() {
-    if (draftMode === "rolling" && draftRolling) {
+    if (!value.travelId && draftMode === "rolling" && draftRolling) {
       setDatePreset({
         kind: "rolling",
         unit: draftRolling.unit,
@@ -222,21 +246,30 @@ export function TransactionFilters({
       return;
     }
     if (draftMode === "absolute" && draftRange?.from && draftRange.to) {
-      setDatePreset({
-        kind: "absolute",
+      const nextRange = {
         startDate: toDateKey(draftRange.from),
         endDate: toDateKey(draftRange.to),
+      };
+      const limit = travelPickerDateKeys(travelBounds);
+      const clamped = limit
+        ? clampDateKeysToRange(nextRange.startDate, nextRange.endDate, limit)
+        : nextRange;
+      setDatePreset({
+        kind: "absolute",
+        startDate: clamped.startDate,
+        endDate: clamped.endDate,
       });
       setCustomOpen(false);
     }
   }
 
-  const canApplyCustom =
-    (draftMode === "rolling" && draftRolling != null) ||
-    (draftMode === "absolute" &&
-      Boolean(draftRange?.from && draftRange.to));
+  const canApplyCustom = value.travelId
+    ? draftMode === "absolute" && Boolean(draftRange?.from && draftRange.to)
+    : (draftMode === "rolling" && draftRolling != null) ||
+      (draftMode === "absolute" && Boolean(draftRange?.from && draftRange.to));
 
   const customLabel = formatCustomPeriodLabel(value.datePreset, t, dateLocale);
+  const travelPickerRange = travelPickerDateKeys(travelBounds);
 
   const kindLabel =
     value.kinds.length === 0
@@ -265,47 +298,14 @@ export function TransactionFilters({
             onChange={onTypeFilterChange}
           />
         ) : null}
-        <div
-          role="tablist"
-          aria-label={t("filterPeriod")}
-          className="grid h-11 w-full min-w-0 flex-1 grid-cols-5 rounded-xl bg-muted p-0.5"
-        >
-          {CALENDAR_OPTIONS.map((option) => {
-            const active =
-              !isCustom &&
-              ((value.datePreset.kind === "calendar" &&
-                value.datePreset.range === option) ||
-                (value.datePreset.kind === "all_time" &&
-                  option === DateRangeType.AllTime));
-            return (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => {
-                  if (option === DateRangeType.AllTime) {
-                    setDatePreset({ kind: "all_time" });
-                    return;
-                  }
-                  setDatePreset({ kind: "calendar", range: option });
-                }}
-                className={periodSegmentClassName(active)}
-              >
-                <span className="truncate">{tDate(option)}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={isCustom}
-            onClick={() => setCustomOpen(true)}
-            className={periodSegmentClassName(isCustom)}
-          >
-            <span className="truncate">{customLabel}</span>
-          </button>
-        </div>
+        <FilterPeriodTabs
+          travelSelected={Boolean(value.travelId)}
+          bounds={travelBounds}
+          datePreset={value.datePreset}
+          customLabel={customLabel}
+          onDatePresetChange={setDatePreset}
+          onCustomClick={() => setCustomOpen(true)}
+        />
       </div>
 
       <Dialog open={customOpen} onOpenChange={setCustomOpen}>
@@ -322,42 +322,51 @@ export function TransactionFilters({
           </DialogHeader>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 sm:px-0 sm:py-0">
-            <div className="space-y-2">
-              <RollingRow
-                active={
-                  draftMode === "rolling" && draftRolling?.unit === "days"
-                }
-                value={days}
-                suffix={t("daysSuffix")}
-                ariaLabel={t("lastNDays", { n: days || "…" })}
-                onChange={(next) => updateRollingDraft("days", next, setDays)}
-                onSelect={() => selectRollingDraft("days", days)}
-              />
-              <RollingRow
-                active={
-                  draftMode === "rolling" && draftRolling?.unit === "months"
-                }
-                value={months}
-                suffix={t("monthsSuffix")}
-                ariaLabel={t("lastNMonths", { n: months || "…" })}
-                onChange={(next) =>
-                  updateRollingDraft("months", next, setMonths)
-                }
-                onSelect={() => selectRollingDraft("months", months)}
-              />
-              <RollingRow
-                active={
-                  draftMode === "rolling" && draftRolling?.unit === "years"
-                }
-                value={years}
-                suffix={t("yearsSuffix")}
-                ariaLabel={t("lastNYears", { n: years || "…" })}
-                onChange={(next) => updateRollingDraft("years", next, setYears)}
-                onSelect={() => selectRollingDraft("years", years)}
-              />
-            </div>
+            {value.travelId ? null : (
+              <div className="space-y-2">
+                <RollingRow
+                  active={
+                    draftMode === "rolling" && draftRolling?.unit === "days"
+                  }
+                  value={days}
+                  suffix={t("daysSuffix")}
+                  ariaLabel={t("lastNDays", { n: days || "…" })}
+                  onChange={(next) => updateRollingDraft("days", next, setDays)}
+                  onSelect={() => selectRollingDraft("days", days)}
+                />
+                <RollingRow
+                  active={
+                    draftMode === "rolling" && draftRolling?.unit === "months"
+                  }
+                  value={months}
+                  suffix={t("monthsSuffix")}
+                  ariaLabel={t("lastNMonths", { n: months || "…" })}
+                  onChange={(next) =>
+                    updateRollingDraft("months", next, setMonths)
+                  }
+                  onSelect={() => selectRollingDraft("months", months)}
+                />
+                <RollingRow
+                  active={
+                    draftMode === "rolling" && draftRolling?.unit === "years"
+                  }
+                  value={years}
+                  suffix={t("yearsSuffix")}
+                  ariaLabel={t("lastNYears", { n: years || "…" })}
+                  onChange={(next) =>
+                    updateRollingDraft("years", next, setYears)
+                  }
+                  onSelect={() => selectRollingDraft("years", years)}
+                />
+              </div>
+            )}
 
-            <div className="space-y-3 border-t border-border/50 pt-3">
+            <div
+              className={cn(
+                "space-y-3",
+                !value.travelId && "border-t border-border/50 pt-3",
+              )}
+            >
               <p className="text-sm font-medium">{t("pickDates")}</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div
@@ -392,6 +401,16 @@ export function TransactionFilters({
                 selected={draftMode === "absolute" ? draftRange : undefined}
                 onSelect={selectAbsoluteDraft}
                 defaultMonth={draftRange?.from}
+                minDate={
+                  travelPickerRange
+                    ? parseDateKey(travelPickerRange.startDate)
+                    : undefined
+                }
+                maxDate={
+                  travelPickerRange
+                    ? parseDateKey(travelPickerRange.endDate)
+                    : undefined
+                }
                 className="mx-auto max-w-md rounded-2xl border border-border/60 p-3"
               />
             </div>
@@ -474,7 +493,7 @@ export function TransactionFilters({
             <TravelSuggestPicker
               layout="filter"
               value={value.travelId}
-              onChange={(travelId) => onChange({ ...value, travelId })}
+              onChange={changeTravelId}
             />
 
             {counterparties.length > 0 ? (
@@ -563,15 +582,6 @@ export function TransactionFilters({
         ) : null}
       </div>
     </div>
-  );
-}
-
-function periodSegmentClassName(active: boolean): string {
-  return cn(
-    "inline-flex h-full min-w-0 cursor-pointer items-center justify-center rounded-lg px-1.5 text-xs font-medium transition-all sm:text-sm",
-    active
-      ? "bg-background text-foreground shadow-sm"
-      : "text-foreground/60 hover:text-foreground",
   );
 }
 

@@ -33,6 +33,19 @@ const YEARS_PER_PAGE = 16;
 const DEFAULT_YEAR_AHEAD = 5;
 const DEFAULT_MIN_YEAR = 1900;
 
+function dateKeyFromCalendarDate(date: Date): string {
+  const year = String(date.getFullYear()).padStart(4, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function monthFromDateKey(key: string): Date {
+  const year = Number(key.slice(0, 4));
+  const month = Number(key.slice(5, 7));
+  return new Date(year, month - 1, 1);
+}
+
 function defaultStartMonth(): Date {
   return new Date(DEFAULT_MIN_YEAR, 0);
 }
@@ -48,6 +61,8 @@ type IosRangeCalendarProps = {
   readonly defaultMonth?: Date;
   readonly startMonth?: Date;
   readonly endMonth?: Date;
+  readonly minDate?: Date;
+  readonly maxDate?: Date;
   readonly timezone?: string;
   readonly className?: string;
 };
@@ -59,6 +74,8 @@ type IosSingleCalendarProps = {
   readonly defaultMonth?: Date;
   readonly startMonth?: Date;
   readonly endMonth?: Date;
+  readonly minDate?: Date;
+  readonly maxDate?: Date;
   readonly timezone?: string;
   readonly className?: string;
 };
@@ -129,6 +146,8 @@ export function IosCalendar(props: IosCalendarProps) {
 
   const startMonthTime = props.startMonth?.getTime();
   const endMonthTime = props.endMonth?.getTime();
+  const minDateTime = props.minDate?.getTime();
+  const maxDateTime = props.maxDate?.getTime();
   const defaultMonthTime = props.defaultMonth?.getTime();
   const selectedMonthTime =
     props.mode === "single"
@@ -136,18 +155,43 @@ export function IosCalendar(props: IosCalendarProps) {
       : props.selected?.from?.getTime();
   const mode = props.mode ?? "range";
 
-  const startMonth = useMemo(
-    () =>
-      startMonthTime === undefined
-        ? defaultStartMonth()
-        : new Date(startMonthTime),
-    [startMonthTime],
-  );
-  const endMonth = useMemo(
-    () =>
-      endMonthTime === undefined ? defaultEndMonth() : new Date(endMonthTime),
-    [endMonthTime],
-  );
+  const minDateKey =
+    minDateTime === undefined
+      ? undefined
+      : dateKeyFromCalendarDate(new Date(minDateTime));
+  const maxDateKey =
+    maxDateTime === undefined
+      ? undefined
+      : dateKeyFromCalendarDate(new Date(maxDateTime));
+
+  const startMonth = useMemo(() => {
+    if (startMonthTime !== undefined) {
+      return new Date(startMonthTime);
+    }
+    if (minDateKey) {
+      return monthFromDateKey(minDateKey);
+    }
+    return defaultStartMonth();
+  }, [minDateKey, startMonthTime]);
+  const endMonth = useMemo(() => {
+    if (endMonthTime !== undefined) {
+      return new Date(endMonthTime);
+    }
+    if (maxDateKey) {
+      return monthFromDateKey(maxDateKey);
+    }
+    return defaultEndMonth();
+  }, [endMonthTime, maxDateKey]);
+  const disabledDays =
+    minDateKey || maxDateKey
+      ? (date: Date) => {
+          const key = dateKeyFromCalendarDate(date);
+          return Boolean(
+            (minDateKey && key < minDateKey) ||
+              (maxDateKey && key > maxDateKey),
+          );
+        }
+      : undefined;
 
   const initialMonth = useMemo(() => {
     if (defaultMonthTime !== undefined) {
@@ -248,6 +292,7 @@ export function IosCalendar(props: IosCalendarProps) {
               timeZone={timezone}
               startMonth={startMonth}
               endMonth={endMonth}
+              disabled={disabledDays}
               components={dayButtonComponents}
               className="p-0 [--cell-size:2.9rem]"
               classNames={{
@@ -274,6 +319,7 @@ export function IosCalendar(props: IosCalendarProps) {
               timeZone={timezone}
               startMonth={startMonth}
               endMonth={endMonth}
+              disabled={disabledDays}
               components={dayButtonComponents}
               className="p-0 [--cell-size:2.9rem]"
               classNames={{

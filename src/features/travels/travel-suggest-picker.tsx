@@ -49,6 +49,10 @@ function toSuggestItem(travel: TravelListItemDto): TravelSuggestItemDto {
     imageUrl: travel.imageUrl,
     phase: travel.phase,
     currency: travel.currency,
+    firstSpendingAt: travel.firstSpendingAt ?? null,
+    lastSpendingAt: travel.lastSpendingAt ?? null,
+    firstTransactionAt: travel.firstTransactionAt ?? null,
+    lastTransactionAt: travel.lastTransactionAt ?? null,
   };
 }
 

@@ -69,8 +69,16 @@ export async function listTravels(
       plannedSpendings: { select: { amount: true, category: true } },
       categoryBudgets: { select: { amount: true, category: true } },
       transactions: {
-        where: { isDeleted: false, type: TransactionType.Spending },
-        select: { amount: true, rateToRub: true, inputCurrency: true, originalAmount: true, fxRateDate: true },
+        where: { isDeleted: false },
+        select: {
+          amount: true,
+          rateToRub: true,
+          inputCurrency: true,
+          originalAmount: true,
+          fxRateDate: true,
+          occurredAt: true,
+          type: true,
+        },
       },
     },
   });
@@ -87,11 +95,19 @@ export async function listTravels(
           amount: row.amount.toString(),
         })),
       );
+      const spendings = travel.transactions.filter(
+        (row) => row.type === TransactionType.Spending,
+      );
       const actualTotal = await sumActualInCurrency(
-        travel.transactions,
+        spendings,
         travel.currency,
       );
-      return toListItem(travel, plannedTotal, actualTotal);
+      return toListItem(
+        travel,
+        plannedTotal,
+        actualTotal,
+        travelOccurredDateBounds(travel.transactions),
+      );
     }),
   );
 }
@@ -114,13 +130,15 @@ export async function getTravelDetail(
       tickets: { orderBy: { createdAt: "asc" } },
       aiReport: true,
       transactions: {
-        where: { isDeleted: false, type: TransactionType.Spending },
+        where: { isDeleted: false },
         select: {
           amount: true,
           originalAmount: true,
           inputCurrency: true,
           rateToRub: true,
           fxRateDate: true,
+          occurredAt: true,
+          type: true,
         },
       },
     },
@@ -134,9 +152,21 @@ export async function getTravelDetail(
   const placesToVisit = travel.placesToVisit.map(mapPlaceToVisit);
   const thingsToGrab = travel.thingsToGrab.map(mapThingToGrab);
   const tickets = travel.tickets.map(mapTicket);
-  const summary = await buildSummary(travel, plannedSpendings, categoryBudgets);
+  const spendings = travel.transactions.filter(
+    (row) => row.type === TransactionType.Spending,
+  );
+  const summary = await buildSummary(
+    { ...travel, transactions: spendings },
+    plannedSpendings,
+    categoryBudgets,
+  );
   return {
-    ...toListItem(travel, summary.plannedTotal, summary.actualTotal),
+    ...toListItem(
+      travel,
+      summary.plannedTotal,
+      summary.actualTotal,
+      travelOccurredDateBounds(travel.transactions),
+    ),
     placeCountry: travel.placeCountry,
     placeCity: travel.placeCity,
     housingAddress: travel.housingAddress,
@@ -337,6 +367,10 @@ export async function suggestTravels(input: {
     imageUrl: travel.imageUrl,
     phase: resolveTravelPhase(travel),
     currency: travel.currency,
+    firstSpendingAt: null,
+    lastSpendingAt: null,
+    firstTransactionAt: null,
+    lastTransactionAt: null,
   }));
 }
 
@@ -774,6 +808,12 @@ function toListItem(
   },
   plannedTotal: string,
   actualTotal: string,
+  dateBounds: {
+    readonly firstSpendingAt: string | null;
+    readonly lastSpendingAt: string | null;
+    readonly firstTransactionAt: string | null;
+    readonly lastTransactionAt: string | null;
+  },
 ): TravelListItemDto {
   return {
     id: travel.id,
@@ -792,6 +832,57 @@ function toListItem(
       : null,
     plannedTotal,
     actualTotal,
+    firstSpendingAt: dateBounds.firstSpendingAt,
+    lastSpendingAt: dateBounds.lastSpendingAt,
+    firstTransactionAt: dateBounds.firstTransactionAt,
+    lastTransactionAt: dateBounds.lastTransactionAt,
+  };
+}
+
+function travelOccurredDateBounds(
+  transactions: readonly {
+    readonly occurredAt: Date;
+    readonly type: TransactionType;
+  }[],
+): {
+  readonly firstSpendingAt: string | null;
+  readonly lastSpendingAt: string | null;
+  readonly firstTransactionAt: string | null;
+  readonly lastTransactionAt: string | null;
+} {
+  const spending = occurredIsoBounds(
+    transactions
+      .filter((row) => row.type === TransactionType.Spending)
+      .map((row) => row.occurredAt),
+  );
+  const all = occurredIsoBounds(transactions.map((row) => row.occurredAt));
+  return {
+    firstSpendingAt: spending.first,
+    lastSpendingAt: spending.last,
+    firstTransactionAt: all.first,
+    lastTransactionAt: all.last,
+  };
+}
+
+function occurredIsoBounds(
+  dates: readonly Date[],
+): { readonly first: string | null; readonly last: string | null } {
+  if (dates.length === 0) {
+    return { first: null, last: null };
+  }
+  let first = dates[0]!;
+  let last = first;
+  for (const occurredAt of dates) {
+    if (occurredAt < first) {
+      first = occurredAt;
+    }
+    if (occurredAt > last) {
+      last = occurredAt;
+    }
+  }
+  return {
+    first: first.toISOString(),
+    last: last.toISOString(),
   };
 }
 

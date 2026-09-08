@@ -7,8 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DateRange } from "react-day-picker";
 
+import { FilterPeriodTabs } from "@/features/transactions/filter-period-tabs";
 import { IosCalendar } from "@/features/transactions/ios-calendar";
-import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -40,7 +40,6 @@ import {
   type TransactionFilterState,
 } from "@/features/transactions/transaction-filter.types";
 import {
-  CALENDAR_OPTIONS,
   cloneFilterState,
   formatCustomPeriodLabel,
   parseDateKey,
@@ -51,11 +50,22 @@ import {
   useFilterCounterparties,
 } from "@/features/transactions/use-transaction-filter-data";
 import {
+  clampDateKeysToRange,
+  readTravelFilterSessionPreset,
+  travelDefaultPresetIfNeeded,
+  travelFilterDateBounds,
+  travelPickerDateKeys,
+  withTravelFilter,
+  writeTravelFilterSessionPreset,
+} from "@/features/transactions/travel-filter-date-range";
+import { TravelSuggestPicker } from "@/features/travels/travel-suggest-picker";
+import {
   categoryBarClass,
   categoryTypeTextClass,
 } from "@/lib/category-chart-style";
 import { cn } from "@/lib/utils";
-import { DateRangeType, TransactionKind, TransactionType } from "@/types/enums";
+import { TransactionKind, TransactionType } from "@/types/enums";
+import { useTransactionFormLookupStore } from "@/stores/transaction-form-lookup.store";
 import type { TransactionCategoryDto } from "@/types/transaction";
 
 type MobileTransactionFiltersSheetProps = {
@@ -85,7 +95,6 @@ export function MobileTransactionFiltersSheet({
   onChange,
 }: MobileTransactionFiltersSheetProps) {
   const t = useTranslations("transaction");
-  const tDate = useTranslations("dateRange");
   const tCommon = useTranslations("common");
   const tNav = useTranslations("nav");
   const locale = useLocale();
@@ -118,18 +127,37 @@ export function MobileTransactionFiltersSheet({
   const [pickerDraft, setPickerDraft] = useState<DateRange | undefined>();
   const wasOpenRef = useRef(false);
 
-  const isCustom = customExpanded || isCustomDatePreset(draft.datePreset);
-
   const { categories, loading: categoriesLoading } =
     useFilterCategories(pageType);
   const counterparties = useFilterCounterparties();
+  const travels = useTransactionFormLookupStore((state) => state.travels);
+  const selectedTravel = draft.travelId
+    ? (travels.find((travel) => travel.id === draft.travelId) ?? null)
+    : null;
+  const travelBounds = useMemo(
+    () => (selectedTravel ? travelFilterDateBounds(selectedTravel) : null),
+    [selectedTravel],
+  );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      const next = cloneFilterState(value);
+      let next = cloneFilterState(value);
+      if (next.travelId) {
+        const travel =
+          travels.find((item) => item.id === next.travelId) ?? null;
+        const bounds = travel ? travelFilterDateBounds(travel) : null;
+        const preset = bounds
+          ? travelDefaultPresetIfNeeded(next.datePreset, bounds)
+          : null;
+        if (preset) {
+          next = { ...next, datePreset: preset };
+        }
+      }
       setDraft(next);
       syncCustomPeriodUi(
-        next.datePreset,
+        next.travelId
+          ? { kind: "all_time" }
+          : next.datePreset,
         setCustomExpanded,
         setDraftRolling,
         setDraftRange,
@@ -139,27 +167,42 @@ export function MobileTransactionFiltersSheet({
       );
     }
     wasOpenRef.current = open;
-  }, [open, value]);
+  }, [open, travels, value]);
 
   function setDatePreset(datePreset: DateFilterPreset) {
     setDraft((current) => ({ ...current, datePreset }));
   }
 
-  function selectCalendarOption(
-    option: (typeof CALENDAR_OPTIONS)[number],
-  ) {
-    setCustomExpanded(false);
-    setDraftRolling(null);
-    setDraftRange(undefined);
-    if (option === DateRangeType.AllTime) {
-      setDatePreset({ kind: "all_time" });
-      return;
-    }
-    setDatePreset({ kind: "calendar", range: option });
+  function changeTravelId(travelId: string | null) {
+    const travel = travelId
+      ? (travels.find((item) => item.id === travelId) ?? null)
+      : null;
+    const nextBounds = travel ? travelFilterDateBounds(travel) : null;
+    const result = withTravelFilter(
+      draft,
+      travelId,
+      nextBounds,
+      readTravelFilterSessionPreset(),
+    );
+    writeTravelFilterSessionPreset(result.previousDatePreset);
+    setDraft(result.filters);
+    setCustomExpanded(
+      !travelId && isCustomDatePreset(result.filters.datePreset),
+    );
   }
 
   function openCustom() {
     setCustomExpanded(true);
+    if (draft.travelId) {
+      if (draft.datePreset.kind === "absolute") {
+        setDraftRolling(null);
+        setDraftRange({
+          from: parseDateKey(draft.datePreset.startDate),
+          to: parseDateKey(draft.datePreset.endDate),
+        });
+      }
+      return;
+    }
     if (!draftRolling && !draftRange) {
       const n = Number(days) || 7;
       setDraftRolling({ unit: "days", n });
@@ -196,12 +239,23 @@ export function MobileTransactionFiltersSheet({
     if (!pickerDraft?.from || !pickerDraft.to) {
       return;
     }
-    setDraftRange(pickerDraft);
+    const nextRange = {
+      startDate: toDateKey(pickerDraft.from),
+      endDate: toDateKey(pickerDraft.to),
+    };
+    const limit = travelPickerDateKeys(travelBounds);
+    const clamped = limit
+      ? clampDateKeysToRange(nextRange.startDate, nextRange.endDate, limit)
+      : nextRange;
+    setDraftRange({
+      from: parseDateKey(clamped.startDate),
+      to: parseDateKey(clamped.endDate),
+    });
     setDraftRolling(null);
     setDatePreset({
       kind: "absolute",
-      startDate: toDateKey(pickerDraft.from),
-      endDate: toDateKey(pickerDraft.to),
+      startDate: clamped.startDate,
+      endDate: clamped.endDate,
     });
     setRangePickerOpen(false);
   }
@@ -219,6 +273,8 @@ export function MobileTransactionFiltersSheet({
     () => formatCustomPeriodLabel(draft.datePreset, t, dateLocale),
     [draft.datePreset, t, dateLocale],
   );
+
+  const travelPickerRange = travelPickerDateKeys(travelBounds);
 
   const rangeFromLabel = draftRange?.from
     ? format(draftRange.from, "d MMM yyyy", { locale: dateLocale })
@@ -255,44 +311,32 @@ export function MobileTransactionFiltersSheet({
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4">
             <FilterSection title={t("filterPeriod")}>
-              <div
-                role="tablist"
-                className="grid h-12 w-full grid-cols-5 rounded-xl bg-muted p-0.5"
-              >
-                {CALENDAR_OPTIONS.map((option) => {
-                  const active =
-                    !isCustom &&
-                    ((draft.datePreset.kind === "calendar" &&
-                      draft.datePreset.range === option) ||
-                      (draft.datePreset.kind === "all_time" &&
-                        option === DateRangeType.AllTime));
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => selectCalendarOption(option)}
-                      className={segmentClassName(active)}
-                    >
-                      <span className="truncate text-xs leading-tight">
-                        {tDate(option)}
-                      </span>
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={isCustom}
-                  onClick={openCustom}
-                  className={segmentClassName(isCustom)}
-                >
-                  <span className="truncate text-xs leading-tight">
-                    {isCustom ? customLabel : t("customPeriod")}
-                  </span>
-                </button>
-              </div>
+              <FilterPeriodTabs
+                travelSelected={Boolean(draft.travelId)}
+                bounds={travelBounds}
+                datePreset={draft.datePreset}
+                size="mobile"
+                customLabel={
+                  customExpanded || isCustomDatePreset(draft.datePreset)
+                    ? customLabel
+                    : t("customPeriod")
+                }
+                onDatePresetChange={(preset) => {
+                  if (
+                    preset.kind === "calendar" ||
+                    preset.kind === "all_time" ||
+                    draft.travelId
+                  ) {
+                    setCustomExpanded(false);
+                    setDraftRolling(null);
+                    if (preset.kind !== "absolute") {
+                      setDraftRange(undefined);
+                    }
+                  }
+                  setDatePreset(preset);
+                }}
+                onCustomClick={openCustom}
+              />
 
               <div
                 className={cn(
@@ -302,42 +346,46 @@ export function MobileTransactionFiltersSheet({
               >
                 <div className="overflow-hidden">
                   <div className="space-y-3 pt-3">
-                    <RollingRow
-                      active={
-                        draftRolling?.unit === "days" && !draftRange
-                      }
-                      value={days}
-                      suffix={t("daysSuffix")}
-                      ariaLabel={t("lastNDays", { n: days || "…" })}
-                      onChange={(next) =>
-                        updateRollingDraft("days", next, setDays)
-                      }
-                      onSelect={() => selectRolling("days", days)}
-                    />
-                    <RollingRow
-                      active={
-                        draftRolling?.unit === "months" && !draftRange
-                      }
-                      value={months}
-                      suffix={t("monthsSuffix")}
-                      ariaLabel={t("lastNMonths", { n: months || "…" })}
-                      onChange={(next) =>
-                        updateRollingDraft("months", next, setMonths)
-                      }
-                      onSelect={() => selectRolling("months", months)}
-                    />
-                    <RollingRow
-                      active={
-                        draftRolling?.unit === "years" && !draftRange
-                      }
-                      value={years}
-                      suffix={t("yearsSuffix")}
-                      ariaLabel={t("lastNYears", { n: years || "…" })}
-                      onChange={(next) =>
-                        updateRollingDraft("years", next, setYears)
-                      }
-                      onSelect={() => selectRolling("years", years)}
-                    />
+                    {draft.travelId ? null : (
+                      <>
+                        <RollingRow
+                          active={
+                            draftRolling?.unit === "days" && !draftRange
+                          }
+                          value={days}
+                          suffix={t("daysSuffix")}
+                          ariaLabel={t("lastNDays", { n: days || "…" })}
+                          onChange={(next) =>
+                            updateRollingDraft("days", next, setDays)
+                          }
+                          onSelect={() => selectRolling("days", days)}
+                        />
+                        <RollingRow
+                          active={
+                            draftRolling?.unit === "months" && !draftRange
+                          }
+                          value={months}
+                          suffix={t("monthsSuffix")}
+                          ariaLabel={t("lastNMonths", { n: months || "…" })}
+                          onChange={(next) =>
+                            updateRollingDraft("months", next, setMonths)
+                          }
+                          onSelect={() => selectRolling("months", months)}
+                        />
+                        <RollingRow
+                          active={
+                            draftRolling?.unit === "years" && !draftRange
+                          }
+                          value={years}
+                          suffix={t("yearsSuffix")}
+                          ariaLabel={t("lastNYears", { n: years || "…" })}
+                          onChange={(next) =>
+                            updateRollingDraft("years", next, setYears)
+                          }
+                          onSelect={() => selectRolling("years", years)}
+                        />
+                      </>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
@@ -424,9 +472,7 @@ export function MobileTransactionFiltersSheet({
               <TravelSuggestPicker
                 layout="filter"
                 value={draft.travelId}
-                onChange={(travelId) =>
-                  setDraft((current) => ({ ...current, travelId }))
-                }
+                onChange={changeTravelId}
                 className="w-full"
                 triggerClassName="h-12 max-w-none min-w-0 w-full rounded-xl text-base font-normal"
               />
@@ -520,6 +566,16 @@ export function MobileTransactionFiltersSheet({
               selected={pickerDraft}
               onSelect={setPickerDraft}
               defaultMonth={pickerDraft?.from ?? draftRange?.from}
+              minDate={
+                travelPickerRange
+                  ? parseDateKey(travelPickerRange.startDate)
+                  : undefined
+              }
+              maxDate={
+                travelPickerRange
+                  ? parseDateKey(travelPickerRange.endDate)
+                  : undefined
+              }
               className="mx-auto max-w-sm rounded-2xl border border-border/60 p-3"
             />
           </div>
@@ -647,15 +703,6 @@ function CategoriesBlock({
         />
       ))}
     </div>
-  );
-}
-
-function segmentClassName(active: boolean): string {
-  return cn(
-    "inline-flex h-full min-w-0 cursor-pointer items-center justify-center rounded-lg px-1 text-sm font-medium transition-all",
-    active
-      ? "bg-background text-foreground shadow-sm"
-      : "text-foreground/60 hover:text-foreground",
   );
 }
 

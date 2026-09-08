@@ -183,6 +183,8 @@
     "categoriesSelected": "{count} categories",
     "hideUncategorized": "Hide uncategorized",
     "filterTravel": "Travel",
+    "travelPeriodSpendings": "Spendings",
+    "travelPeriodTrip": "Trip dates",
     "counterparties": "People",
     "daysSuffix": "days",
     "monthsSuffix": "months",
