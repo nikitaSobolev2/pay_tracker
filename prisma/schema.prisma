@@ -112,15 +112,16 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  sessions       Session[]
-  accounts       Account[]
-  categories     UserCategory[]
-  counterparties UserCounterparty[]
-  transactions   Transaction[]
-  loginTransfers LoginTransfer[]
-  sharedCharts   SharedChart[]
-  events         Event[]
-  travels        Travel[]
+  sessions          Session[]
+  accounts          Account[]
+  categories        UserCategory[]
+  counterparties    UserCounterparty[]
+  transactions      Transaction[]
+  loginTransfers    LoginTransfer[]
+  sharedCharts      SharedChart[]
+  events            Event[]
+  travels           Travel[]
+  calculatorBoards  CalculatorBoard[]
 }
 
 model Session {
@@ -301,6 +302,19 @@ model SharedChart {
 
   @@index([userId])
   @@index([isPublic])
+}
+
+model CalculatorBoard {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  query     Json
+  session   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model Event {

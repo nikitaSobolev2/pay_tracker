@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Printer, Scale, X } from "lucide-react";
+import { Eraser, Loader2, Plus, Printer, Save, Scale, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -21,6 +21,10 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  calculatorBoardQueryFromPage,
+  normalizeBoardTitle,
+} from "@/features/transaction-calculator/calculator-board-payload";
+import {
   CalculatorCutModal,
   type CalculatorCutDraft,
 } from "@/features/transaction-calculator/calculator-cut-modal";
@@ -36,6 +40,7 @@ import {
   applyTransfersToCutNet,
   applyPeoplePaneDrop,
   collapseIdForTarget,
+  EMPTY_CALCULATOR_SESSION,
   existingCutForTarget,
   groupBoardItemsByColumn,
   isCalculatorTargetCollapsed,
@@ -74,9 +79,13 @@ import {
   calculatorPeriodQuery,
   fetchAllCalculatorTransactions,
 } from "@/features/transaction-calculator/fetch-calculator-period";
-import { useCalculatorSession } from "@/features/transaction-calculator/use-calculator-session";
+import { useCalculatorDialogSession } from "@/features/transaction-calculator/use-calculator-dialog-session";
 import { useAppUser } from "@/hooks/use-app-user";
 import { useReadableDateTime } from "@/hooks/use-readable-date-time";
+import {
+  createCalculatorBoard,
+  updateCalculatorBoard,
+} from "@/lib/api/calculator-boards";
 import {
   listCounterparties,
   type CounterpartyDto,
@@ -94,6 +103,9 @@ type TransactionCalculatorDialogProps = {
   readonly onOpenChange: (open: boolean) => void;
   readonly queryBase: TransactionListParams;
   readonly periodLabel: string;
+  readonly mode?: "draft" | "board";
+  readonly initialSession?: CalculatorSession;
+  readonly onPersistBoard?: (session: CalculatorSession) => Promise<void>;
 };
 
 const NO_PERIOD_TRANSACTIONS: TransactionDto[] = [];
@@ -104,12 +116,28 @@ export function TransactionCalculatorDialog({
   onOpenChange,
   queryBase,
   periodLabel,
+  mode = "draft",
+  initialSession,
+  onPersistBoard,
 }: TransactionCalculatorDialogProps) {
   const t = useTranslations("calculator");
   const tCommon = useTranslations("common");
   const { user } = useAppUser();
   const formatDate = useReadableDateTime();
-  const { session, setSession } = useCalculatorSession(user?.id ?? null);
+  const isDraft = mode === "draft";
+  const {
+    session,
+    setSession,
+    linkedBoardId,
+    rememberBoardId,
+    clearDraft,
+    isDirty,
+    markClean,
+  } = useCalculatorDialogSession({
+    mode,
+    userId: user?.id ?? null,
+    initialSession,
+  });
   const workspace = activeWorkspace(session);
   const [periodTransactions, setPeriodTransactions] = useState<
     TransactionDto[]
@@ -127,6 +155,9 @@ export function TransactionCalculatorDialog({
   const [rawToDelete, setRawToDelete] = useState<string | null>(null);
   const [postingPersonId, setPostingPersonId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const requestKey = open
     ? JSON.stringify(calculatorPeriodQuery(queryBase))
@@ -471,19 +502,92 @@ export function TransactionCalculatorDialog({
     );
   }
 
+  function resetTransientUi() {
+    setCutDraft(null);
+    setTransferDraft(null);
+    setTotalsOpen(false);
+    setRawOpen(false);
+    setEditingRaw(null);
+    setRawToDelete(null);
+    setDraggingId(null);
+    setClearOpen(false);
+    setDiscardOpen(false);
+  }
+
+  function requestClose() {
+    if (!isDraft && isDirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    resetTransientUi();
+    onOpenChange(false);
+  }
+
+  function confirmDiscard() {
+    resetTransientUi();
+    onOpenChange(false);
+  }
+
+  function confirmClearAll() {
+    resetTransientUi();
+    setSession(EMPTY_CALCULATOR_SESSION);
+    clearDraft();
+  }
+
+  async function saveDraftBoard() {
+    if (!user) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const query = calculatorBoardQueryFromPage(queryBase, periodLabel);
+      const title = normalizeBoardTitle(periodLabel);
+      if (linkedBoardId) {
+        await updateCalculatorBoard(linkedBoardId, {
+          title,
+          query,
+          session,
+        });
+      } else {
+        const created = await createCalculatorBoard({
+          title,
+          query,
+          session,
+        });
+        rememberBoardId(created.board.id);
+      }
+      toast.success(t("saved"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveBoardChanges() {
+    if (!onPersistBoard) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await onPersistBoard(session);
+      markClean();
+      toast.success(t("saved"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <Dialog
         open={open}
         onOpenChange={(next) => {
           if (!next) {
-            setCutDraft(null);
-            setTransferDraft(null);
-            setTotalsOpen(false);
-            setRawOpen(false);
-            setEditingRaw(null);
-            setRawToDelete(null);
-            setDraggingId(null);
+            requestClose();
+            return;
           }
           onOpenChange(next);
         }}
@@ -502,7 +606,7 @@ export function TransactionCalculatorDialog({
                     {periodLabel}
                   </DialogDescription>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -539,20 +643,61 @@ export function TransactionCalculatorDialog({
                     <Printer />
                     <span className="hidden lg:inline">{t("print")}</span>
                   </Button>
-                  <DialogClose
-                    render={
+                  {isDraft ? (
+                    <>
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
                         className={HEADER_ACTION_CLASS}
-                        aria-label={tCommon("close")}
-                      />
-                    }
-                  >
-                    <X />
-                    <span className="hidden lg:inline">{tCommon("close")}</span>
-                  </DialogClose>
+                        aria-label={t("clearAll")}
+                        onClick={() => setClearOpen(true)}
+                      >
+                        <Eraser />
+                        <span className="hidden lg:inline">{t("clearAll")}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className={HEADER_ACTION_CLASS}
+                        aria-label={t("save")}
+                        disabled={saving}
+                        onClick={() => void saveDraftBoard()}
+                      >
+                        {saving ? <Loader2 className="animate-spin" /> : <Save />}
+                        <span className="hidden lg:inline">{t("save")}</span>
+                      </Button>
+                    </>
+                  ) : null}
+                  {isDraft ? (
+                    <DialogClose
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className={HEADER_ACTION_CLASS}
+                          aria-label={tCommon("close")}
+                        />
+                      }
+                    >
+                      <X />
+                      <span className="hidden lg:inline">{tCommon("close")}</span>
+                    </DialogClose>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className={HEADER_ACTION_CLASS}
+                      aria-label={tCommon("close")}
+                      onClick={requestClose}
+                    >
+                      <X />
+                      <span className="hidden lg:inline">{tCommon("close")}</span>
+                    </Button>
+                  )}
                 </div>
               </ResponsiveDialogHeaderInner>
             </ResponsiveDialogHeader>
@@ -665,6 +810,30 @@ export function TransactionCalculatorDialog({
             people={selectedPeople}
             rawTransactions={workspace.rawTransactions}
           />
+          {!isDraft ? (
+            <ResponsiveDialogFooter className="calculator-no-print">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-xl"
+                onClick={requestClose}
+              >
+                {tCommon("close")}
+              </Button>
+              <Button
+                type="button"
+                className="h-11 rounded-xl"
+                disabled={saving || !isDirty}
+                onClick={() => void saveBoardChanges()}
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  t("saveChanges")
+                )}
+              </Button>
+            </ResponsiveDialogFooter>
+          ) : null}
         </ResponsiveDialogContent>
       </Dialog>
       <CalculatorCutModal
@@ -744,7 +913,91 @@ export function TransactionCalculatorDialog({
           </ResponsiveDialogFooter>
         </ResponsiveDialogContent>
       </Dialog>
+      <ConfirmPrompt
+        open={clearOpen}
+        title={tCommon("confirm")}
+        description={t("clearAllConfirm")}
+        cancelLabel={tCommon("cancel")}
+        confirmLabel={t("clearAll")}
+        destructive
+        onCancel={() => setClearOpen(false)}
+        onConfirm={confirmClearAll}
+      />
+      <ConfirmPrompt
+        open={discardOpen}
+        title={tCommon("confirm")}
+        description={t("discardChanges")}
+        cancelLabel={tCommon("cancel")}
+        confirmLabel={tCommon("close")}
+        onCancel={() => setDiscardOpen(false)}
+        onConfirm={confirmDiscard}
+      />
     </>
+  );
+}
+
+function ConfirmPrompt({
+  open,
+  title,
+  description,
+  cancelLabel,
+  confirmLabel,
+  destructive = false,
+  onCancel,
+  onConfirm,
+}: {
+  readonly open: boolean;
+  readonly title: string;
+  readonly description: string;
+  readonly cancelLabel: string;
+  readonly confirmLabel: string;
+  readonly destructive?: boolean;
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          onCancel();
+        }
+      }}
+    >
+      <ResponsiveDialogContent
+        size="md"
+        showCloseButton
+        container={typeof document === "undefined" ? undefined : document.body}
+        overlayClassName="bg-black/70"
+        style={{ zIndex: 1250 }}
+        overlayStyle={{ zIndex: 1250 }}
+      >
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogHeaderInner>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </ResponsiveDialogHeaderInner>
+        </ResponsiveDialogHeader>
+        <ResponsiveDialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 rounded-xl"
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
+            type="button"
+            variant={destructive ? "destructive" : "default"}
+            className="h-11 rounded-xl"
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </Dialog>
   );
 }
 

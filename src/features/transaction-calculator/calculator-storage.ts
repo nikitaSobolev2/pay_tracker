@@ -40,7 +40,7 @@ export function parseCalculatorSession(raw: string | null): CalculatorSession {
     if (typeof parsed !== "object" || parsed == null) {
       return EMPTY_CALCULATOR_SESSION;
     }
-    if (parsed.version === STORAGE_VERSION) {
+    if (parsed.version === STORAGE_VERSION || isUnversionedV2(parsed)) {
       return parseV2Session(parsed);
     }
     if (parsed.version === LEGACY_STORAGE_VERSION) {
@@ -59,6 +59,36 @@ export function serializeCalculatorSession(session: CalculatorSession): string {
     activeWorkspaceId: session.activeWorkspaceId,
     workspaces: session.workspaces,
   });
+}
+
+export function calculatorSessionFromUnknown(value: unknown): CalculatorSession {
+  if (typeof value === "string") {
+    return parseCalculatorSession(value);
+  }
+  try {
+    return parseCalculatorSession(JSON.stringify(value));
+  } catch {
+    return EMPTY_CALCULATOR_SESSION;
+  }
+}
+
+export function calculatorSessionToJson(
+  session: CalculatorSession,
+): Record<string, unknown> {
+  return JSON.parse(serializeCalculatorSession(session)) as Record<
+    string,
+    unknown
+  >;
+}
+
+export function cloneCalculatorSession(
+  session: CalculatorSession,
+): CalculatorSession {
+  return calculatorSessionFromUnknown(calculatorSessionToJson(session));
+}
+
+function isUnversionedV2(parsed: StoredSession): boolean {
+  return parsed.version == null && parsed.workspaces != null;
 }
 
 function parseV2Session(parsed: StoredSession): CalculatorSession {

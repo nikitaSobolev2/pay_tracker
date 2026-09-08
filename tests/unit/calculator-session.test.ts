@@ -25,6 +25,7 @@ import {
   applyPeoplePaneDrop,
   peoplePaneDropTargets,
   resolveBoardColumn,
+  EMPTY_CALCULATOR_SESSION,
   type CalculatorCut,
   type CalculatorSession,
 } from "../../src/features/transaction-calculator/calculator-session";
@@ -39,6 +40,9 @@ import {
 import {
   parseCalculatorSession,
   serializeCalculatorSession,
+  calculatorSessionFromUnknown,
+  calculatorSessionToJson,
+  cloneCalculatorSession,
 } from "../../src/features/transaction-calculator/calculator-storage";
 
 const CUT: CalculatorCut = {
@@ -487,6 +491,50 @@ describe("calculator storage", () => {
     };
     const parsed = parseCalculatorSession(serializeCalculatorSession(session));
     assert.deepEqual(parsed, session);
+  });
+
+  it("round-trips a session object for database JSON", () => {
+    const session: CalculatorSession = {
+      selectedCounterpartyIds: ["p1"],
+      activeWorkspaceId: ME_PARTY_ID,
+      workspaces: {
+        [ME_PARTY_ID]: {
+          cuts: [CUT],
+          rawTransactions: [],
+          boardColumn: {},
+          expandedTargetIds: ["me"],
+          transfers: [],
+        },
+      },
+    };
+    const stored = calculatorSessionToJson(session);
+    assert.deepEqual(calculatorSessionFromUnknown(stored), session);
+  });
+
+  it("parses a live session object without a storage version", () => {
+    const session: CalculatorSession = {
+      selectedCounterpartyIds: ["p1"],
+      activeWorkspaceId: ME_PARTY_ID,
+      workspaces: {
+        [ME_PARTY_ID]: {
+          cuts: [CUT],
+          rawTransactions: [],
+          boardColumn: {},
+          expandedTargetIds: ["me"],
+          transfers: [],
+        },
+      },
+    };
+    assert.deepEqual(calculatorSessionFromUnknown(session), session);
+    const cloned = cloneCalculatorSession(session);
+    assert.deepEqual(cloned, session);
+    assert.notEqual(cloned, session);
+  });
+
+  it("clears to an empty Me workspace", () => {
+    assert.deepEqual(EMPTY_CALCULATOR_SESSION.selectedCounterpartyIds, []);
+    assert.equal(EMPTY_CALCULATOR_SESSION.activeWorkspaceId, ME_PARTY_ID);
+    assert.equal(EMPTY_CALCULATOR_SESSION.workspaces[ME_PARTY_ID]?.cuts.length, 0);
   });
 
   it("returns empty on corrupt JSON", () => {

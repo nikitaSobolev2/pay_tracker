@@ -4,6 +4,7 @@ import {
   CalendarDays,
   HandCoins,
   Home,
+  Kanban,
   List,
   Loader2,
   LogOut,
@@ -50,6 +51,7 @@ import { AppTheme } from "@/types/enums";
 const NAV_ITEMS = [
   { href: "/", key: "home", icon: Home },
   { href: "/transactions", key: "transactions", icon: List },
+  { href: "/transaction-boards", key: "transactionBoards", icon: Kanban },
   { href: "/debts", key: "debts", icon: HandCoins },
   { href: "/shared-charts", key: "sharedCharts", icon: Share2 },
   { href: "/categories", key: "categories", icon: Tags },

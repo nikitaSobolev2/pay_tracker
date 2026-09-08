@@ -5,6 +5,7 @@
   "nav": {
     "home": "Home",
     "transactions": "Transactions",
+    "transactionBoards": "Transaction boards",
     "categories": "Categories",
     "counterparties": "People",
     "events": "Events",
@@ -1056,6 +1057,23 @@
     "positions": "Balances",
     "payments": "Who pays whom",
     "isOwed": "{name} is owed {amount}",
-    "owesAmount": "{name} owes {amount}"
+    "owesAmount": "{name} owes {amount}",
+    "clearAll": "Clear all",
+    "clearAllConfirm": "Clear this calculator? Saved boards stay in Transaction boards.",
+    "save": "Save",
+    "saveChanges": "Save changes",
+    "saved": "Board saved",
+    "saveFailed": "Could not save the board",
+    "discardChanges": "Close without saving changes?"
+  },
+  "transactionBoards": {
+    "title": "Transaction boards",
+    "subtitle": "Saved calculator boards. Open one to keep editing.",
+    "empty": "No saved boards yet. Open the calculator and tap Save.",
+    "deleted": "Board deleted",
+    "deleteFailed": "Could not delete the board",
+    "loadFailed": "Could not load boards",
+    "delete": "Delete board",
+    "deleteConfirm": "Delete this saved board?"
   }
 }
