@@ -1,7 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { enUS, ru } from "date-fns/locale";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   endOfDay,
@@ -17,6 +18,7 @@ import {
 } from "date-fns";
 
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
+import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
 import { heatmapWeekFlowForPreset } from "@/features/charts/heatmap-week-flow";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
@@ -32,6 +34,7 @@ import {
   type TrendSense,
 } from "@/features/charts/money-cards/primitives";
 import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
+import { TransactionCalculatorDialog } from "@/features/transaction-calculator/transaction-calculator-dialog";
 import { MobileTransactionFiltersSheet } from "@/features/transactions/mobile-transaction-filters-sheet";
 import {
   datePresetLocalBounds,
@@ -64,6 +67,7 @@ import {
   transactionTypeToSearchParam,
   type TransactionTypeFilter,
 } from "@/features/transactions/transaction-type-switcher";
+import { formatCustomPeriodLabel } from "@/features/transactions/use-transaction-filter-data";
 import { useRouter } from "@/i18n/navigation";
 import { fetchTransactionStats } from "@/lib/api/stats";
 import { listTransactions } from "@/lib/api/transactions";
@@ -96,6 +100,10 @@ export function TransactionsPage() {
   const tCharts = useTranslations("charts");
   const tTransaction = useTranslations("transaction");
   const tNav = useTranslations("nav");
+  const tCalculator = useTranslations("calculator");
+  const tDateRange = useTranslations("dateRange");
+  const locale = useLocale();
+  const dateLocale = locale.startsWith("ru") ? ru : enUS;
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -117,6 +125,7 @@ export function TransactionsPage() {
   const [restorableDatePreset, setRestorableDatePreset] =
     useState<DateFilterPreset | null>(null);
   const [tableSort, setTableSort] = useState<TransactionTableSort>(null);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const pendingQueueItems = useTransactionOfflineQueueStore(
     (state) => state.items,
   );
@@ -157,6 +166,17 @@ export function TransactionsPage() {
       sortDir: tableSort?.sortDir,
     };
   }, [filters, pageType, tableSort]);
+
+  const calculatorPeriodLabel = useMemo(
+    () =>
+      periodLabelForCalculator(
+        filters.datePreset,
+        tDateRange,
+        tTransaction,
+        dateLocale,
+      ),
+    [dateLocale, filters.datePreset, tDateRange, tTransaction],
+  );
 
   const showVsPrevious = supportsPreviousPeriod(filters.datePreset);
   const showAvgPerDay = !isSingleDayDatePreset(filters.datePreset);
@@ -427,13 +447,27 @@ export function TransactionsPage() {
         prevLabel={tTransaction("previousDay")}
         nextLabel={tTransaction("nextDay")}
       />
-      <header>
-        <PageTitleWithBack fallbackHref="/">
+      <header className="flex items-stretch gap-2">
+        <PageTitleWithBack fallbackHref="/" className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {tNav("transactions")}
           </h1>
         </PageTitleWithBack>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-11 shrink-0 self-stretch rounded-xl px-3.5"
+          onClick={() => setCalculatorOpen(true)}
+        >
+          {tCalculator("open")}
+        </Button>
       </header>
+      <TransactionCalculatorDialog
+        open={calculatorOpen}
+        onOpenChange={setCalculatorOpen}
+        queryBase={queryBase}
+        periodLabel={calculatorPeriodLabel}
+      />
 
       <div
         ref={filtersBlockRef}
@@ -675,6 +709,21 @@ function previousDateRangeFor(
     return { startDate: toKey(startOfMonth(subMonths(end, preset.n - 1))), endDate: toKey(endOfMonth(end)) };
   }
   return { startDate: toKey(startOfYear(subYears(end, preset.n - 1))), endDate: toKey(endOfYear(end)) };
+}
+
+function periodLabelForCalculator(
+  preset: DateFilterPreset,
+  tDateRange: ReturnType<typeof useTranslations<"dateRange">>,
+  tTransaction: ReturnType<typeof useTranslations<"transaction">>,
+  dateLocale: typeof enUS,
+): string {
+  if (preset.kind === "calendar") {
+    return tDateRange(preset.range);
+  }
+  if (preset.kind === "all_time") {
+    return tDateRange("all_time");
+  }
+  return formatCustomPeriodLabel(preset, tTransaction, dateLocale);
 }
 
 function categoryChartTitle(

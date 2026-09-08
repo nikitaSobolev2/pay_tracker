@@ -571,6 +571,57 @@ body:has([data-slot="alert-dialog-overlay"][data-open]) .transaction-day-nav-rai
     height: min(90svh, 56rem);
     max-height: 92svh;
   }
+
+  .ui-dialog-popup.ui-dialog-popup--responsive[data-dialog-size="full"] {
+    top: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    transform: none;
+    border-radius: 1rem;
+  }
+}
+
+.calculator-print-report {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 1.4cm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #calculator-print-report,
+  #calculator-print-report * {
+    visibility: visible !important;
+  }
+
+  #calculator-print-report {
+    position: absolute !important;
+    inset: auto !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .calculator-no-print {
+    display: none !important;
+  }
 }
 
 /*
