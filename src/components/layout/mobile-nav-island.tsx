@@ -9,6 +9,8 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Menu,
   MessageSquare,
@@ -185,11 +187,64 @@ function useAnimatedPageChrome(chrome: MobilePageChrome | null) {
   return { renderedChrome, chromeOpen, onChromeTransitionEnd };
 }
 
+function chromeRowGridClass(options: {
+  readonly dayNav: boolean;
+  readonly hasBack: boolean;
+  readonly hasAction: boolean;
+}): string {
+  const trailing = Number(options.hasBack) + Number(options.hasAction);
+  if (options.dayNav) {
+    if (trailing === 2) {
+      return "grid-cols-[3rem_3rem_minmax(0,1fr)_3rem_3rem]";
+    }
+    if (trailing === 1) {
+      return "grid-cols-[3rem_3rem_minmax(0,1fr)_3rem]";
+    }
+    return "grid-cols-[3rem_3rem_minmax(0,1fr)]";
+  }
+  if (trailing === 2) {
+    return "grid-cols-[minmax(0,1fr)_3rem_3rem]";
+  }
+  if (trailing === 1) {
+    return "grid-cols-[minmax(0,1fr)_3rem]";
+  }
+  return "grid-cols-1";
+}
+
 function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
   const hasBack = chrome.backAction != null;
   const hasAction = chrome.action != null;
   const hasFilter =
     chrome.typeFilter != null || chrome.segmentFilter != null;
+  const dayNav = chrome.dayNav;
+
+  if (dayNav) {
+    return (
+      <div
+        className={cn(
+          "grid h-12 gap-1",
+          chromeRowGridClass({ dayNav: true, hasBack, hasAction }),
+        )}
+      >
+        <IslandIconButton
+          ariaLabel={dayNav.prevLabel}
+          onClick={dayNav.onPrev}
+        >
+          <ChevronLeft className="size-5" />
+        </IslandIconButton>
+        <IslandIconButton
+          ariaLabel={dayNav.nextLabel}
+          onClick={dayNav.onNext}
+        >
+          <ChevronRight className="size-5" />
+        </IslandIconButton>
+        <div className="flex h-12 min-w-0 items-center">
+          <PageChromeFilter chrome={chrome} />
+        </div>
+        <PageChromeTrailingSlots chrome={chrome} />
+      </div>
+    );
+  }
 
   // Events / travels / categories / debts: only a CTA → full-width labeled button.
   if (
@@ -221,62 +276,72 @@ function PageChromeRow({ chrome }: { readonly chrome: MobilePageChrome }) {
     <div
       className={cn(
         "grid h-12 gap-1",
-        hasBack && hasAction
-          ? "grid-cols-[minmax(0,1fr)_3rem_3rem]"
-          : hasBack || hasAction
-            ? "grid-cols-[minmax(0,1fr)_3rem]"
-            : "grid-cols-1",
+        chromeRowGridClass({ dayNav: false, hasBack, hasAction }),
       )}
     >
       <div className="flex h-12 min-w-0 items-center">
         <PageChromeFilter chrome={chrome} />
       </div>
+      <PageChromeTrailingSlots chrome={chrome} />
+    </div>
+  );
+}
+
+function PageChromeTrailingSlots({
+  chrome,
+}: {
+  readonly chrome: MobilePageChrome;
+}) {
+  return (
+    <>
       {chrome.backAction ? (
-        <div className={ICON_SLOT_CLASS}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={ICON_BUTTON_CLASS}
-            onClick={chrome.backAction.onClick}
-            aria-label={chrome.backAction.label}
-          >
-            <ArrowLeft className="size-5" />
-          </Button>
-        </div>
+        <IslandIconButton
+          ariaLabel={chrome.backAction.label}
+          onClick={chrome.backAction.onClick}
+        >
+          <ArrowLeft className="size-5" />
+        </IslandIconButton>
       ) : null}
       {chrome.action ? (
-        <div className={ICON_SLOT_CLASS}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(ICON_BUTTON_CLASS, "relative")}
-            onClick={chrome.action.onClick}
-            aria-label={chrome.action.label}
-          >
-            <PageChromeActionIcon action={chrome.action} />
-            {chrome.action.kind === "filters" && chrome.action.active ? (
-              <span
-                aria-hidden
-                className="absolute top-2.5 right-2.5 size-2 rounded-full bg-foreground"
-              />
-            ) : null}
-            {chrome.action.kind === "chat" && chrome.action.unreadCount > 0 ? (
-              <span
-                className={cn(
-                  "absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
-                  "bg-primary text-[10px] font-semibold leading-none text-primary-foreground",
-                )}
-              >
-                {chrome.action.unreadCount > 9
-                  ? "9+"
-                  : chrome.action.unreadCount}
-              </span>
-            ) : null}
-          </Button>
-        </div>
+        <PageChromeActionButton action={chrome.action} />
       ) : null}
+    </>
+  );
+}
+
+function PageChromeActionButton({
+  action,
+}: {
+  readonly action: MobilePageChromeAction;
+}) {
+  return (
+    <div className={ICON_SLOT_CLASS}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn(ICON_BUTTON_CLASS, "relative")}
+        onClick={action.onClick}
+        aria-label={action.label}
+      >
+        <PageChromeActionIcon action={action} />
+        {action.kind === "filters" && action.active ? (
+          <span
+            aria-hidden
+            className="absolute top-2.5 right-2.5 size-2 rounded-full bg-foreground"
+          />
+        ) : null}
+        {action.kind === "chat" && action.unreadCount > 0 ? (
+          <span
+            className={cn(
+              "absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+              "bg-primary text-[10px] font-semibold leading-none text-primary-foreground",
+            )}
+          >
+            {action.unreadCount > 9 ? "9+" : action.unreadCount}
+          </span>
+        ) : null}
+      </Button>
     </div>
   );
 }

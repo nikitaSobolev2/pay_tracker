@@ -3,7 +3,7 @@
 import { Cell, Pie, PieChart } from "recharts";
 import { ListTree, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,7 @@ type CategoryPieChartProps = {
   readonly className?: string;
   /** Hide share control (e.g. on public shared pages). */
   readonly disableShare?: boolean;
+  readonly action?: ReactNode;
 };
 
 export function CategoryPieChart({
@@ -63,6 +64,7 @@ export function CategoryPieChart({
   showTypeHints = false,
   className,
   disableShare = false,
+  action,
 }: CategoryPieChartProps) {
   const tTx = useTranslations("transaction");
   const tCharts = useTranslations("charts");
@@ -297,6 +299,7 @@ export function CategoryPieChart({
     <StatCard
       title={title}
       description={loading ? undefined : (description ?? autoDescription)}
+      action={action}
       sharePayload={
         disableShare || loading || slices.length === 0
           ? null

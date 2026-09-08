@@ -374,7 +374,8 @@
 
 /*
  * Stacking — named CSS only (Tailwind z-[…] often does not emit here).
- * Island (40) < dialog (1200) < sheet/select/popover portals (1300)
+ * Day rails (10) < sticky filters (20) < header (30) < island (40)
+ * < dialog (1200) < sheet/select/popover portals (1300)
  */
 .event-page-stack,
 .event-bento-grid {
@@ -382,12 +383,23 @@
   z-index: 1;
 }
 
+.transaction-day-nav-rails {
+  z-index: 10;
+}
+
+.transactions-sticky-filters {
+  z-index: 20;
+}
+
 .event-mobile-nav-island {
   z-index: 40;
 }
 
 body:has([data-slot="dialog-overlay"][data-open]) .event-mobile-nav-island,
-body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island {
+body:has([data-slot="sheet-overlay"][data-open]) .event-mobile-nav-island,
+body:has([data-slot="dialog-overlay"][data-open]) .transaction-day-nav-rails,
+body:has([data-slot="sheet-overlay"][data-open]) .transaction-day-nav-rails,
+body:has([data-slot="alert-dialog-overlay"][data-open]) .transaction-day-nav-rails {
   display: none !important;
 }
 

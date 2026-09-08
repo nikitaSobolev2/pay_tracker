@@ -54,6 +54,13 @@ export type MobilePageChrome = {
     readonly onClick: () => void;
     readonly label: string;
   };
+  /** Optional prev/next day controls on the first chrome row. */
+  readonly dayNav?: {
+    readonly onPrev: () => void;
+    readonly onNext: () => void;
+    readonly prevLabel: string;
+    readonly nextLabel: string;
+  };
 };
 
 type MobilePageChromeStore = {

@@ -19,6 +19,7 @@ import {
 import { PageTitleWithBack } from "@/components/layout/page-back-button";
 import { Button } from "@/components/ui/button";
 import { ActivityHeatmapCard } from "@/features/charts/activity-heatmap";
+import { heatmapWeekFlowForPreset } from "@/features/charts/heatmap-week-flow";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
 import {
   CurrencyBreakdownCard,
@@ -34,10 +35,16 @@ import {
 import { TimelineWithDrilldown } from "@/features/charts/timeline-with-drilldown";
 import { MobileTransactionFiltersSheet } from "@/features/transactions/mobile-transaction-filters-sheet";
 import {
+  datePresetLocalBounds,
+  restorablePresetAfterLeavingRange,
+  shiftTransactionDay,
+} from "@/features/transactions/shift-transaction-day";
+import {
   filterStatesEqual,
   filtersFromSearchParams,
   writeFiltersToSearchParams,
 } from "@/features/transactions/transaction-filter-query";
+import { TransactionDayNavRails } from "@/features/transactions/transaction-day-nav-rails";
 import {
   datePresetToApiParams,
   filtersAreDefault,
@@ -182,8 +189,9 @@ export function TransactionsPage() {
     }));
   }, [previousDateRange]);
 
-  const heatmapFilters = useMemo(
-    () => ({
+  const heatmapFilters = useMemo(() => {
+    const bounds = datePresetLocalBounds(filters.datePreset);
+    return {
       type: pageType,
       kinds: filters.kinds.length ? filters.kinds : undefined,
       categoryIds: filters.categoryIds.length ? filters.categoryIds : undefined,
@@ -192,9 +200,25 @@ export function TransactionsPage() {
         : undefined,
       hideUncategorized: filters.hideUncategorized ? true : undefined,
       travelId: filters.travelId ?? undefined,
-    }),
-    [pageType, filters],
-  );
+      startDate: bounds?.startDate,
+      endDate: bounds?.endDate,
+    };
+  }, [pageType, filters]);
+
+  const chartFilters = useMemo(() => {
+    const dateParams = datePresetToApiParams(filters.datePreset);
+    return {
+      ...dateParams,
+      type: pageType,
+      kinds: filters.kinds.length ? filters.kinds : undefined,
+      categoryIds: filters.categoryIds.length ? filters.categoryIds : undefined,
+      counterpartyIds: filters.counterpartyIds.length
+        ? filters.counterpartyIds
+        : undefined,
+      travelId: filters.travelId ?? undefined,
+      hideUncategorized: filters.hideUncategorized ? true : undefined,
+    };
+  }, [filters, pageType]);
 
   useEffect(() => {
     const fromUrl = filtersFromSearchParams(searchParams);
@@ -241,6 +265,36 @@ export function TransactionsPage() {
     setRestorableDatePreset(null);
   }, [restorableDatePreset]);
 
+  const goToDay = useCallback((date: string) => {
+    setFilters((current) => {
+      const restorable = restorablePresetAfterLeavingRange(current.datePreset);
+      if (restorable) {
+        setRestorableDatePreset(restorable);
+      }
+      return {
+        ...current,
+        datePreset: {
+          kind: "absolute",
+          startDate: date,
+          endDate: date,
+        },
+      };
+    });
+  }, []);
+
+  const shiftVisibleDay = useCallback((direction: "prev" | "next") => {
+    setFilters((current) => {
+      const restorable = restorablePresetAfterLeavingRange(current.datePreset);
+      if (restorable) {
+        setRestorableDatePreset(restorable);
+      }
+      return {
+        ...current,
+        datePreset: shiftTransactionDay(current.datePreset, direction),
+      };
+    });
+  }, []);
+
   useEffect(() => {
     setMobilePageChrome({
       typeFilter: {
@@ -259,6 +313,12 @@ export function TransactionsPage() {
             label: tTransaction("getBack"),
           }
         : undefined,
+      dayNav: {
+        onPrev: () => shiftVisibleDay("prev"),
+        onNext: () => shiftVisibleDay("next"),
+        prevLabel: tTransaction("previousDay"),
+        nextLabel: tTransaction("nextDay"),
+      },
     });
     return () => setMobilePageChrome(null);
   }, [
@@ -267,6 +327,7 @@ export function TransactionsPage() {
     restoreDateFilter,
     setMobilePageChrome,
     setTypeFilter,
+    shiftVisibleDay,
     tTransaction,
     typeFilter,
   ]);
@@ -361,6 +422,12 @@ export function TransactionsPage() {
 
   return (
     <div className="space-y-4">
+      <TransactionDayNavRails
+        onPrev={() => shiftVisibleDay("prev")}
+        onNext={() => shiftVisibleDay("next")}
+        prevLabel={tTransaction("previousDay")}
+        nextLabel={tTransaction("nextDay")}
+      />
       <header>
         <PageTitleWithBack fallbackHref="/">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -371,7 +438,7 @@ export function TransactionsPage() {
 
       <div
         ref={filtersBlockRef}
-        className="-mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur max-md:hidden md:sticky md:top-14 md:z-20 md:-mx-5 md:px-5"
+        className="transactions-sticky-filters -mx-3 space-y-3 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur max-md:hidden md:sticky md:top-14 md:-mx-5 md:px-5"
       >
         <TransactionFilters
           pageType={pageType}
@@ -542,8 +609,9 @@ export function TransactionsPage() {
         points={stats?.timeline ?? []}
         currency={stats?.displayCurrency ?? "RUB"}
         mode={timelineModeForFilter(typeFilter)}
-        filters={heatmapFilters}
+        filters={chartFilters}
         drilldownLayout="below"
+        onGoToDay={goToDay}
       />
 
       <ActivityHeatmapCard
@@ -551,6 +619,8 @@ export function TransactionsPage() {
         currency={stats?.displayCurrency ?? "RUB"}
         filters={heatmapFilters}
         drilldownLayout="below"
+        weekFlow={heatmapWeekFlowForPreset(filters.datePreset)}
+        onGoToDay={goToDay}
       />
 
       <TransactionTable
@@ -560,19 +630,7 @@ export function TransactionsPage() {
         onChanged={() => void reloadFirstPage()}
         sort={tableSort}
         onSortChange={setTableSort}
-        onDateClick={(date) =>
-          setFilters((current) => {
-            setRestorableDatePreset(current.datePreset);
-            return {
-              ...current,
-              datePreset: {
-                kind: "absolute",
-                startDate: date,
-                endDate: date,
-              },
-            };
-          })
-        }
+        onDateClick={goToDay}
       />
       <div ref={sentinelRef} className="h-6 w-full" aria-hidden={!hasMore} />
 

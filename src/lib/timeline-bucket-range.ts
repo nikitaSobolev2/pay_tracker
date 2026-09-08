@@ -28,3 +28,9 @@ export function timelineBucketToDateRange(bucket: string): {
   }
   return null;
 }
+
+/** Day and hour buckets resolve to a single calendar day; month/year do not. */
+export function isSingleDayTimelineBucket(bucket: string): boolean {
+  const range = timelineBucketToDateRange(bucket);
+  return range != null && range.startDate === range.endDate;
+}

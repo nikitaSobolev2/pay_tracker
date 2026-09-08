@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { resolveTimelineBucket } from "../../src/lib/timeline-bucket";
+import { isSingleDayTimelineBucket } from "../../src/lib/timeline-bucket-range";
 
 describe("resolveTimelineBucket", () => {
   it("uses hours for a single day", () => {
@@ -49,5 +50,17 @@ describe("resolveTimelineBucket", () => {
       resolveTimelineBucket({ start: null, end: null }),
       "year",
     );
+  });
+});
+
+describe("isSingleDayTimelineBucket", () => {
+  it("treats day and hour buckets as a single day", () => {
+    assert.equal(isSingleDayTimelineBucket("2026-09-08"), true);
+    assert.equal(isSingleDayTimelineBucket("2026-09-08 14:00"), true);
+  });
+
+  it("treats month and year buckets as ranges", () => {
+    assert.equal(isSingleDayTimelineBucket("2026-09"), false);
+    assert.equal(isSingleDayTimelineBucket("2026"), false);
   });
 });

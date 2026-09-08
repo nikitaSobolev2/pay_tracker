@@ -12,6 +12,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
+import { GoToDayButton } from "@/features/charts/go-to-day-button";
 import { IncomeVsSpendingsCard } from "@/features/charts/money-cards/income-vs-spendings-card";
 import { StatCard } from "@/features/charts/stat-card";
 import {
@@ -20,24 +21,21 @@ import {
 } from "@/features/charts/use-contained-horizontal-scroll";
 import { SharedChartType } from "@/features/share/shared-chart-payload";
 import { fetchPublicSharePeriod } from "@/lib/api/shares";
-import { fetchTransactionStats } from "@/lib/api/stats";
+import {
+  fetchTransactionStats,
+  type ListStatsParams,
+} from "@/lib/api/stats";
 import { formatBucketLabel } from "@/lib/chart-format";
 import { formatChartMoney } from "@/lib/money";
-import { timelineBucketToDateRange } from "@/lib/timeline-bucket-range";
+import {
+  isSingleDayTimelineBucket,
+  timelineBucketToDateRange,
+} from "@/lib/timeline-bucket-range";
 import { cn } from "@/lib/utils";
 import type {
   ListPageStats,
   TimelinePoint,
 } from "@/server/services/stats-service.types";
-import type { TransactionKind, TransactionType } from "@/types/enums";
-
-type TimelineFilters = {
-  readonly type?: TransactionType;
-  readonly kinds?: TransactionKind[];
-  readonly categoryIds?: string[];
-  readonly counterpartyIds?: string[];
-  readonly hideUncategorized?: boolean;
-};
 
 type TimelineWithDrilldownProps = {
   readonly title: string;
@@ -45,11 +43,12 @@ type TimelineWithDrilldownProps = {
   readonly points: TimelinePoint[];
   readonly currency: string;
   readonly mode?: "dual" | "spending" | "earning";
-  readonly filters?: TimelineFilters;
+  readonly filters?: ListStatsParams;
   readonly disableShare?: boolean;
   /** When set, loads bucket stats via public share API. */
   readonly shareId?: string;
   readonly drilldownLayout?: "side" | "below";
+  readonly onGoToDay?: (date: string) => void;
 };
 
 export function TimelineWithDrilldown({
@@ -62,6 +61,7 @@ export function TimelineWithDrilldown({
   disableShare = false,
   shareId,
   drilldownLayout = "below",
+  onGoToDay,
 }: TimelineWithDrilldownProps) {
   const t = useTranslations("home");
   const tCharts = useTranslations("charts");
@@ -173,6 +173,10 @@ export function TimelineWithDrilldown({
   const selectedLabel = selectedBucket
     ? formatBucketLabel(selectedBucket, locale)
     : "";
+  const goToDayDate =
+    selectedBucket && isSingleDayTimelineBucket(selectedBucket)
+      ? timelineBucketToDateRange(selectedBucket)?.startDate
+      : null;
 
   return (
     <div className={cn("flex flex-col gap-3")}>
@@ -379,6 +383,11 @@ export function TimelineWithDrilldown({
               showTypeHints
               className="h-full flex-1"
               disableShare={disableShare}
+              action={
+                onGoToDay && goToDayDate ? (
+                  <GoToDayButton date={goToDayDate} onGoToDay={onGoToDay} />
+                ) : undefined
+              }
             />
           </div>
           <div

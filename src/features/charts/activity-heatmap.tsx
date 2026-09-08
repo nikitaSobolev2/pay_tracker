@@ -17,6 +17,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CategoryPieChart } from "@/features/charts/category-pie-chart";
+import { GoToDayButton } from "@/features/charts/go-to-day-button";
+import { resolveHeatmapWeekFlow } from "@/features/charts/heatmap-week-flow";
 import { IncomeVsSpendingsCard } from "@/features/charts/money-summary-cards";
 import { StatCard } from "@/features/charts/stat-card";
 import { useContainedHorizontalScroll } from "@/features/charts/use-contained-horizontal-scroll";
@@ -51,10 +53,12 @@ type ActivityHeatmapCardProps = {
   readonly drilldownLayout?: "side" | "below";
   /**
    * column = GitHub-style (days down each week column).
-   * row = calendar-style (Mon–Sun across each week row). Travel page only.
+   * row = calendar-style (Mon–Sun across each week row).
+   * When omitted, row is used if the loaded range is under 28 days.
    */
   readonly weekFlow?: "column" | "row";
   readonly collapse?: { readonly scope: string; readonly blockId: string };
+  readonly onGoToDay?: (date: string) => void;
 };
 
 export function ActivityHeatmapCard({
@@ -66,8 +70,9 @@ export function ActivityHeatmapCard({
   shareId,
   disableShare = false,
   drilldownLayout = "below",
-  weekFlow = "column",
+  weekFlow: weekFlowProp,
   collapse,
+  onGoToDay,
 }: ActivityHeatmapCardProps) {
   const t = useTranslations("charts");
   const tHome = useTranslations("home");
@@ -83,13 +88,13 @@ export function ActivityHeatmapCard({
   const isSharedView = Boolean(sharedData || shareId);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- filter change resets and refetches */
     if (sharedData) {
       setData(sharedData);
       setLoading(false);
       return;
     }
     let cancelled = false;
-    /* eslint-disable react-hooks/set-state-in-effect -- filter change resets and refetches */
     setLoading(true);
     setSelected(null);
     setDayStats(null);
@@ -141,8 +146,15 @@ export function ActivityHeatmapCard({
   const maxEarning = Number(data?.maxEarning ?? "0");
   const maxSpending = Number(data?.maxSpending ?? "0");
   const weekCount = weeks.length;
-  const daysByRow = weekFlow === "row";
-  const scrollResetKey = `${data?.days.length ?? 0}:${weekCount}:${weekFlow}:${filterKey}`;
+  const resolvedWeekFlow = resolveHeatmapWeekFlow({
+    weekFlow: weekFlowProp,
+    dataStart: data?.start,
+    dataEnd: data?.end,
+    filterStart: filters?.startDate,
+    filterEnd: filters?.endDate,
+  });
+  const daysByRow = resolvedWeekFlow === "row";
+  const scrollResetKey = `${data?.days.length ?? 0}:${weekCount}:${resolvedWeekFlow}:${filterKey}`;
   const { scrollRef } = useContainedHorizontalScroll(scrollResetKey, {
     enablePointerDrag: false,
   });
@@ -211,7 +223,7 @@ export function ActivityHeatmapCard({
                 }
           }
           loading={loading}
-          skeleton={<HeatmapSkeleton weekFlow={weekFlow} />}
+          skeleton={<HeatmapSkeleton weekFlow={resolvedWeekFlow} />}
           className="w-full min-w-0"
         >
           {data && data.days.length > 0 ? (
@@ -322,6 +334,11 @@ export function ActivityHeatmapCard({
               showTypeHints
               className="h-full flex-1"
               disableShare={disableShare}
+              action={
+                onGoToDay ? (
+                  <GoToDayButton date={selected} onGoToDay={onGoToDay} />
+                ) : undefined
+              }
             />
           </div>
           <div
