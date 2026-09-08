@@ -11,11 +11,13 @@ export function calculatorPeriodQuery(
   queryBase: TransactionListParams,
 ): TransactionListParams {
   return {
-    dateRangeType: queryBase.dateRangeType,
-    rollingUnit: queryBase.rollingUnit,
-    rollingN: queryBase.rollingN,
-    startDate: queryBase.startDate,
-    endDate: queryBase.endDate,
+    ...calculatorDateQuery(queryBase),
+    type: queryBase.type,
+    kinds: queryBase.kinds,
+    categoryIds: queryBase.categoryIds,
+    counterpartyIds: queryBase.counterpartyIds,
+    travelId: queryBase.travelId,
+    hideUncategorized: queryBase.hideUncategorized,
   };
 }
 
@@ -23,8 +25,20 @@ export function calculatorLedgerQuery(
   queryBase: TransactionListParams,
 ): TransactionListParams {
   return {
-    ...calculatorPeriodQuery(queryBase),
+    ...calculatorDateQuery(queryBase),
     kinds: [TransactionKind.Loan, TransactionKind.Debt],
+  };
+}
+
+function calculatorDateQuery(
+  queryBase: TransactionListParams,
+): TransactionListParams {
+  return {
+    dateRangeType: queryBase.dateRangeType,
+    rollingUnit: queryBase.rollingUnit,
+    rollingN: queryBase.rollingN,
+    startDate: queryBase.startDate,
+    endDate: queryBase.endDate,
   };
 }
 
