@@ -38,18 +38,39 @@ export type CalculatorSettlement = {
   readonly payments: readonly SettlementPayment[];
 };
 
+export type CalculatorSettlementOptions = {
+  readonly includeLedgerDebts?: boolean;
+};
+
 type CurrencyPositions = Map<string, Map<string, Decimal>>;
 
 export function buildCalculatorSettlement(
   session: CalculatorSession,
   ledgerRows: readonly CalculatorLedgerRow[],
+  options: CalculatorSettlementOptions = {},
 ): CalculatorSettlement {
+  const allowed = allowedPartyIds(session.selectedCounterpartyIds);
   const positions = emptyPositions();
   for (const [workspaceId, workspace] of Object.entries(session.workspaces)) {
-    applyCutsToPositions(positions, workspaceId, workspace.cuts);
-    applyTransfersToPositions(positions, workspace.transfers);
+    if (!allowed.has(workspaceId)) {
+      continue;
+    }
+    applyCutsToPositions(
+      positions,
+      workspaceId,
+      cutsForAllowedParties(workspace.cuts, allowed),
+    );
+    applyTransfersToPositions(
+      positions,
+      transfersForAllowedParties(workspace.transfers, allowed),
+    );
   }
-  applyLedgerToPositions(positions, ledgerRows);
+  if (options.includeLedgerDebts) {
+    applyLedgerToPositions(
+      positions,
+      ledgerForAllowedParties(ledgerRows, allowed),
+    );
+  }
   return {
     positions: flattenPositions(positions),
     payments: simplifyAllCurrencies(positions),
@@ -155,6 +176,36 @@ export function simplifySettlement(
 
 export function emptyPositions(): CurrencyPositions {
   return new Map();
+}
+
+function allowedPartyIds(selectedIds: readonly string[]): Set<string> {
+  return new Set([ME_PARTY_ID, ...selectedIds]);
+}
+
+function cutsForAllowedParties(
+  cuts: readonly CalculatorCut[],
+  allowed: ReadonlySet<string>,
+): CalculatorCut[] {
+  return cuts.filter((cut) => allowed.has(partyIdForTarget(cut.target)));
+}
+
+function transfersForAllowedParties(
+  transfers: readonly CalculatorTransfer[],
+  allowed: ReadonlySet<string>,
+): CalculatorTransfer[] {
+  return transfers.filter(
+    (transfer) =>
+      allowed.has(transfer.payerId) && allowed.has(transfer.payeeId),
+  );
+}
+
+function ledgerForAllowedParties(
+  rows: readonly CalculatorLedgerRow[],
+  allowed: ReadonlySet<string>,
+): CalculatorLedgerRow[] {
+  return rows.filter(
+    (row) => row.counterpartyId != null && allowed.has(row.counterpartyId),
+  );
 }
 
 function addPosition(

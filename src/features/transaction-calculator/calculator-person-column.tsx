@@ -36,7 +36,7 @@ import {
   type PersonCutTotals,
 } from "@/features/transaction-calculator/calculator-session";
 import { CalculatorTransactionCard } from "@/features/transaction-calculator/calculator-transaction-card";
-import { formatMoney, toDecimal } from "@/lib/money";
+import { formatCeiledMoney, formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { TransactionType } from "@/types/enums";
 
@@ -116,7 +116,10 @@ export function CalculatorPersonColumn({
           ? "data-[drop-over]:border-primary data-[drop-over]:ring-2 data-[drop-over]:ring-primary"
           : "data-[drop-over]:border-primary/70 data-[drop-over]:ring-1 data-[drop-over]:ring-primary/60",
       )}
-      onDragOver={hover.onDragOver}
+      onDragOver={(event) => {
+        event.stopPropagation();
+        hover.onDragOver(event);
+      }}
       onDrop={(event) =>
         handleColumnDrop(event, {
           partyId,
@@ -142,12 +145,6 @@ export function CalculatorPersonColumn({
       {collapsed ? (
         <div className="p-2 lg:p-3">
           <TotalsBlock totals={totals} currency={currency} />
-          <NetHint
-            show={Boolean(onAddToDebt)}
-            netKind={netKind}
-            net={totals.net}
-            currency={currency}
-          />
         </div>
       ) : (
         <PersonColumnExpanded
@@ -162,9 +159,7 @@ export function CalculatorPersonColumn({
           partyName={partyName}
           totals={totals}
           currency={currency}
-          netKind={netKind}
           formatDate={formatDate}
-          showNetHint={Boolean(onAddToDebt)}
           onEditCut={onEditCut}
           onDeleteCut={onDeleteCut}
           onEditTransfer={onEditTransfer}
@@ -292,9 +287,7 @@ function PersonColumnExpanded({
   partyName,
   totals,
   currency,
-  netKind,
   formatDate,
-  showNetHint,
   onEditCut,
   onDeleteCut,
   onEditTransfer,
@@ -311,9 +304,7 @@ function PersonColumnExpanded({
   readonly partyName: (partyId: string) => string;
   readonly totals: PersonCutTotals;
   readonly currency: string;
-  readonly netKind: ReturnType<typeof netDebtKind>;
   readonly formatDate: (value: string) => string;
-  readonly showNetHint: boolean;
   readonly onEditCut: (cut: CalculatorCut) => void;
   readonly onDeleteCut: (cutId: string) => void;
   readonly onEditTransfer: (transfer: CalculatorTransfer) => void;
@@ -363,12 +354,6 @@ function PersonColumnExpanded({
       </div>
       <footer className="shrink-0 border-t border-border/50 p-3">
         <TotalsBlock totals={totals} currency={currency} />
-        <NetHint
-          show={showNetHint}
-          netKind={netKind}
-          net={totals.net}
-          currency={currency}
-        />
       </footer>
     </>
   );
@@ -435,32 +420,6 @@ function ColumnRows({
   );
 }
 
-function NetHint({
-  show,
-  netKind,
-  net,
-  currency,
-}: {
-  readonly show: boolean;
-  readonly netKind: ReturnType<typeof netDebtKind>;
-  readonly net: string;
-  readonly currency: string;
-}) {
-  const t = useTranslations("calculator");
-  if (!show || netKind === "zero") {
-    return null;
-  }
-  const amount =
-    netKind === "loan"
-      ? formatMoney(net, currency)
-      : formatMoney(toDecimal(net).abs(), currency);
-  return (
-    <p className="mt-2 text-xs text-muted-foreground">
-      {netKind === "loan" ? t("theyOwe", { amount }) : t("youOwe", { amount })}
-    </p>
-  );
-}
-
 function TotalsBlock({
   totals,
   currency,
@@ -474,18 +433,20 @@ function TotalsBlock({
       <div className="flex items-center justify-between gap-2">
         <dt className="text-muted-foreground">{t("spending")}</dt>
         <dd className="tabular-nums text-rose-400">
-          {formatMoney(totals.spending, currency)}
+          {formatCeiledMoney(totals.spending, currency)}
         </dd>
       </div>
       <div className="flex items-center justify-between gap-2">
         <dt className="text-muted-foreground">{t("earning")}</dt>
         <dd className="tabular-nums text-emerald-400">
-          {formatMoney(totals.earning, currency)}
+          {formatCeiledMoney(totals.earning, currency)}
         </dd>
       </div>
       <div className="flex items-center justify-between gap-2 font-medium">
         <dt>{t("net")}</dt>
-        <dd className="tabular-nums">{formatMoney(totals.net, currency)}</dd>
+        <dd className="tabular-nums">
+          {formatCeiledMoney(totals.net, currency)}
+        </dd>
       </div>
     </dl>
   );

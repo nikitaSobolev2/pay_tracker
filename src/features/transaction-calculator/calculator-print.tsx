@@ -5,14 +5,13 @@ import { useTranslations } from "next-intl";
 import {
   leftoverAmount,
   meCutTotals,
-  netDebtKind,
   personCutTotals,
   type CalculatorBoardItem,
   type CalculatorCut,
   type CalculatorRawTransaction,
   type PersonCutTotals,
 } from "@/features/transaction-calculator/calculator-session";
-import { formatMoney, toDecimal } from "@/lib/money";
+import { formatCeiledMoney, formatMoney, toDecimal } from "@/lib/money";
 import { TransactionType } from "@/types/enums";
 
 type PrintPerson = {
@@ -73,7 +72,6 @@ export function CalculatorPrintReport({
             cut.target.counterpartyId === person.id,
         );
         const totals = personCutTotals(personCuts, person.id);
-        const kind = netDebtKind(totals.net);
         const currency = personCuts[0]?.displayCurrency ?? "RUB";
         return (
           <section key={person.id} className="mb-6">
@@ -85,16 +83,6 @@ export function CalculatorPrintReport({
               earningLabel={tTransaction("earning")}
             />
             <Totals totals={totals} currency={currency} />
-            {kind === "loan" ? (
-              <p>{t("theyOwe", { amount: formatMoney(totals.net, currency) })}</p>
-            ) : null}
-            {kind === "debt" ? (
-              <p>
-                {t("youOwe", {
-                  amount: formatMoney(toDecimal(totals.net).abs(), currency),
-                })}
-              </p>
-            ) : null}
           </section>
         );
       })}
@@ -148,9 +136,9 @@ function Totals({
   const t = useTranslations("calculator");
   return (
     <p className="mt-2 text-sm">
-      {t("spending")}: {formatMoney(totals.spending, currency)} · {t("earning")}:{" "}
-      {formatMoney(totals.earning, currency)} · {t("net")}:{" "}
-      {formatMoney(totals.net, currency)}
+      {t("spending")}: {formatCeiledMoney(totals.spending, currency)} ·{" "}
+      {t("earning")}: {formatCeiledMoney(totals.earning, currency)} ·{" "}
+      {t("net")}: {formatCeiledMoney(totals.net, currency)}
     </p>
   );
 }

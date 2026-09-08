@@ -10,6 +10,7 @@ import {
 } from "@/features/transaction-calculator/calculator-dnd";
 import {
   leftoverAmount,
+  hasCutsForTransaction,
   type BoardColumn,
   type CalculatorBoardItem,
   type CalculatorCut,
@@ -35,6 +36,7 @@ type CalculatorSourcePaneProps = {
   readonly onDragFinish: () => void;
   readonly onEditRaw: (transactionId: string) => void;
   readonly onDeleteRaw: (transactionId: string) => void;
+  readonly onClearCuts: (transactionId: string) => void;
 };
 
 const BOARD_COLUMNS: readonly BoardColumn[] = ["default", "processing", "done"];
@@ -54,6 +56,7 @@ export function CalculatorSourcePane({
   onDragFinish,
   onEditRaw,
   onDeleteRaw,
+  onClearCuts,
 }: CalculatorSourcePaneProps) {
   const t = useTranslations("calculator");
 
@@ -115,6 +118,7 @@ export function CalculatorSourcePane({
             onDragFinish={onDragFinish}
             onEditRaw={onEditRaw}
             onDeleteRaw={onDeleteRaw}
+            onClearCuts={onClearCuts}
           />
         ))}
       </div>
@@ -156,6 +160,7 @@ function KanbanColumn({
   onDragFinish,
   onEditRaw,
   onDeleteRaw,
+  onClearCuts,
 }: {
   readonly column: BoardColumn;
   readonly title: string;
@@ -169,6 +174,7 @@ function KanbanColumn({
   readonly onDragFinish: () => void;
   readonly onEditRaw: (transactionId: string) => void;
   readonly onDeleteRaw: (transactionId: string) => void;
+  readonly onClearCuts: (transactionId: string) => void;
 }) {
   const t = useTranslations("calculator");
   const hover = useCalculatorDropHover(`column:${column}`, "transaction");
@@ -221,6 +227,11 @@ function KanbanColumn({
               onDragFinish={onDragFinish}
               onEditRaw={item.isRaw ? () => onEditRaw(item.id) : undefined}
               onDeleteRaw={item.isRaw ? () => onDeleteRaw(item.id) : undefined}
+              onClearCuts={
+                hasCutsForTransaction(cuts, item.id)
+                  ? () => onClearCuts(item.id)
+                  : undefined
+              }
             />
           ))
         )}

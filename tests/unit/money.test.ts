@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   formatChartMoney,
+  formatCeiledMoney,
   formatMoney,
   toCeilIntegerAmountString,
 } from "../../src/lib/money";
@@ -33,5 +34,16 @@ describe("toCeilIntegerAmountString", () => {
   it("ceils a fractional amount to the next whole unit", () => {
     assert.equal(toCeilIntegerAmountString("33.1"), "34");
     assert.equal(toCeilIntegerAmountString("33.0000"), "33");
+  });
+});
+
+describe("formatCeiledMoney", () => {
+  it("ceils fractional amounts to the next whole unit", () => {
+    assert.match(formatCeiledMoney("1666.67", "RUB"), /1.?667/);
+    assert.doesNotMatch(formatCeiledMoney("1666.67", "RUB"), /[.,]67/);
+  });
+
+  it("ceils a negative amount away from zero", () => {
+    assert.match(formatCeiledMoney("-1.1", "RUB"), /-.*2/);
   });
 });

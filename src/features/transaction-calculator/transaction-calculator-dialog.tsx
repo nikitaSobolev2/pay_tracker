@@ -34,6 +34,7 @@ import {
   activeWorkspace,
   allWorkspaceCuts,
   applyTransfersToCutNet,
+  applyPeoplePaneDrop,
   collapseIdForTarget,
   existingCutForTarget,
   groupBoardItemsByColumn,
@@ -58,10 +59,7 @@ import {
   type CalculatorWorkspace,
   type CutTarget,
 } from "@/features/transaction-calculator/calculator-session";
-import {
-  buildCalculatorSettlement,
-  type CalculatorLedgerRow,
-} from "@/features/transaction-calculator/calculator-settlement";
+import { type CalculatorLedgerRow } from "@/features/transaction-calculator/calculator-settlement";
 import { CalculatorSourcePane } from "@/features/transaction-calculator/calculator-source-pane";
 import {
   CalculatorTotalsModal,
@@ -204,10 +202,6 @@ export function TransactionCalculatorDialog({
     user?.defaultCurrency ?? boardItems[0]?.displayCurrency ?? "RUB";
   const draggingItem =
     boardItems.find((item) => item.id === draggingId) ?? null;
-  const settlement = useMemo(
-    () => buildCalculatorSettlement(session, ledgerRows),
-    [ledgerRows, session],
-  );
   const rightColumns = rightPaneColumns(
     session.activeWorkspaceId,
     selectedPeople,
@@ -260,6 +254,30 @@ export function TransactionCalculatorDialog({
         column,
       ),
     });
+  }
+
+  function dropOnPeoplePane(transactionId: string) {
+    const item = boardItems.find((row) => row.id === transactionId);
+    if (!item) {
+      return;
+    }
+    const result = applyPeoplePaneDrop({
+      workspace,
+      item,
+      selectedPeople,
+      activeWorkspaceId: session.activeWorkspaceId,
+      activePersonName: personName(
+        session.activeWorkspaceId,
+        counterparties,
+        session,
+      ),
+      createCutId: uuidv4,
+    });
+    if (!result.ok) {
+      toast.error(t("nothingToCut"));
+      return;
+    }
+    patchWorkspace(result.workspace);
   }
 
   function dropOnTarget(transactionId: string, target: CutTarget) {
@@ -369,6 +387,14 @@ export function TransactionCalculatorDialog({
       boardColumn: omitBoardColumn(workspace.boardColumn, transactionId),
     });
     setRawToDelete(null);
+  }
+
+  function clearTransactionCuts(transactionId: string) {
+    patchWorkspace({
+      ...workspace,
+      cuts: removeCutsForTransaction(workspace.cuts, transactionId),
+      boardColumn: omitBoardColumn(workspace.boardColumn, transactionId),
+    });
   }
 
   function requestDeleteRaw(transactionId: string) {
@@ -565,13 +591,16 @@ export function TransactionCalculatorDialog({
                         setRawOpen(true);
                       }}
                       onDeleteRaw={requestDeleteRaw}
+                      onClearCuts={clearTransactionCuts}
                     />
                   }
                   people={
-                    <CalculatorPeopleBento
-                      items={rightColumns}
-                      itemKey={(column) => column.key}
-                    >
+                  <CalculatorPeopleBento
+                    items={rightColumns}
+                    itemKey={(column) => column.key}
+                    onDropTransaction={dropOnPeoplePane}
+                    onDragFinish={() => setDraggingId(null)}
+                  >
                       {(column) => (
                         <CalculatorPersonColumn
                           title={column.title}
@@ -650,8 +679,8 @@ export function TransactionCalculatorDialog({
       />
       <CalculatorTotalsModal
         open={totalsOpen}
-        positions={settlement.positions}
-        payments={settlement.payments}
+        session={session}
+        ledgerRows={ledgerRows}
         partyName={partyLabel}
         onClose={() => setTotalsOpen(false)}
       />

@@ -58,6 +58,16 @@ export function toCeilIntegerAmountString(value: string): string {
   return toDecimal(trimmed).toDecimalPlaces(0, Decimal.ROUND_CEIL).toFixed(0);
 }
 
+export function formatCeiledMoney(
+  value: string | number | Decimal,
+  currency: string,
+): string {
+  const amount = toDecimal(value);
+  const units = toCeilIntegerAmountString(amount.abs().toFixed(4)) || "0";
+  const signed = amount.isNegative() ? `-${units}` : units;
+  return formatMoney(signed, currency, { fractionDigits: 0 });
+}
+
 export function decimalToString(value: Decimal): string {
   return value.toFixed(4);
 }

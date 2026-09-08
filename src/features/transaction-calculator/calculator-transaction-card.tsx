@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Eraser, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ type CalculatorTransactionCardProps = {
   readonly onDragFinish?: () => void;
   readonly onEditRaw?: () => void;
   readonly onDeleteRaw?: () => void;
+  readonly onClearCuts?: () => void;
 };
 
 export function CalculatorTransactionCard({
@@ -38,9 +39,9 @@ export function CalculatorTransactionCard({
   onDragFinish,
   onEditRaw,
   onDeleteRaw,
+  onClearCuts,
 }: CalculatorTransactionCardProps) {
   const t = useTranslations("calculator");
-  const tCommon = useTranslations("common");
   const tTransaction = useTranslations("transaction");
   const isSpending = item.type === TransactionType.Spending;
   const title =
@@ -73,9 +74,17 @@ export function CalculatorTransactionCard({
       )}
     >
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="line-clamp-2 min-w-0 text-sm font-medium leading-snug">
-          {title}
-        </p>
+        <div className="flex min-w-0 items-start gap-1">
+          <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-snug">
+            {title}
+          </p>
+          <CardActions
+            preview={preview}
+            onClearCuts={onClearCuts}
+            onEditRaw={onEditRaw}
+            onDeleteRaw={onDeleteRaw}
+          />
+        </div>
         <p
           className={cn(
             "text-sm font-semibold tabular-nums",
@@ -92,31 +101,68 @@ export function CalculatorTransactionCard({
           </p>
         ) : null}
         <p className="text-xs text-muted-foreground">{dateLabel}</p>
-        {item.isRaw && !preview ? (
-          <div className="flex shrink-0 items-center gap-0.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={tCommon("edit")}
-              onClick={onEditRaw}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Pencil />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={tCommon("delete")}
-              onClick={onDeleteRaw}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Trash2 />
-            </Button>
-          </div>
-        ) : null}
       </div>
     </article>
+  );
+}
+
+function CardActions({
+  preview,
+  onClearCuts,
+  onEditRaw,
+  onDeleteRaw,
+}: {
+  readonly preview: boolean;
+  readonly onClearCuts?: () => void;
+  readonly onEditRaw?: () => void;
+  readonly onDeleteRaw?: () => void;
+}) {
+  const t = useTranslations("calculator");
+  const tCommon = useTranslations("common");
+  if (preview || (!onClearCuts && !onEditRaw && !onDeleteRaw)) {
+    return null;
+  }
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      {onClearCuts ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={t("clearCuts")}
+          onClick={(event) => {
+            event.stopPropagation();
+            onClearCuts();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Eraser />
+        </Button>
+      ) : null}
+      {onEditRaw ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={tCommon("edit")}
+          onClick={onEditRaw}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Pencil />
+        </Button>
+      ) : null}
+      {onDeleteRaw ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={tCommon("delete")}
+          onClick={onDeleteRaw}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Trash2 />
+        </Button>
+      ) : null}
+    </div>
   );
 }

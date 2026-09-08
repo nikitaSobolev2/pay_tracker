@@ -1,3 +1,5 @@
+import Decimal from "decimal.js";
+
 import { toDecimal } from "@/lib/money";
 import { TransactionKind, TransactionType } from "@/types/enums";
 
@@ -137,6 +139,195 @@ export function leftoverIsPartial(
   displayAmount: string,
 ): boolean {
   return toDecimal(leftover).lt(toDecimal(displayAmount));
+}
+
+export function evenCutAmounts(total: string, count: number): string[] {
+  if (count <= 0) {
+    return [];
+  }
+  const leftover = toDecimal(total);
+  if (!leftover.isFinite() || leftover.lte(0)) {
+    return [];
+  }
+  const base = leftover
+    .dividedBy(count)
+    .toDecimalPlaces(4, Decimal.ROUND_DOWN);
+  const shares: string[] = [];
+  let allocated = toDecimal(0);
+  for (let index = 0; index < count; index += 1) {
+    if (index === count - 1) {
+      shares.push(leftover.minus(allocated).toFixed(4));
+      continue;
+    }
+    shares.push(base.toFixed(4));
+    allocated = allocated.plus(base);
+  }
+  return shares;
+}
+
+type EvenLeftoverCutsInput = {
+  readonly cuts: readonly CalculatorCut[];
+  readonly transactionId: string;
+  readonly leftover: string;
+  readonly targets: readonly CutTarget[];
+  readonly displayCurrency: string;
+  readonly sourceType: TransactionType;
+  readonly createCutId: () => string;
+};
+
+export function applyEvenLeftoverCuts(
+  input: EvenLeftoverCutsInput,
+): CalculatorCut[] {
+  const amounts = evenCutAmounts(input.leftover, input.targets.length);
+  return input.targets.reduce(
+    (cuts, target, index) =>
+      addOrGrowCut(cuts, {
+        transactionId: input.transactionId,
+        target,
+        amount: amounts[index] ?? "0",
+        displayCurrency: input.displayCurrency,
+        sourceType: input.sourceType,
+        createCutId: input.createCutId,
+      }),
+    [...input.cuts],
+  );
+}
+
+type PeoplePaneTargetsInput = {
+  readonly sourceType: TransactionType;
+  readonly selectedPeople: readonly { id: string; name: string }[];
+  readonly activeWorkspaceId: string;
+  readonly activePersonName: string;
+};
+
+export function peoplePaneDropTargets(
+  input: PeoplePaneTargetsInput,
+): CutTarget[] {
+  if (input.sourceType === TransactionType.Earning) {
+    return [
+      selfTargetForWorkspace(input.activeWorkspaceId, input.activePersonName),
+    ];
+  }
+  return spendingPaneTargets(input.selectedPeople);
+}
+
+function spendingPaneTargets(
+  people: readonly { id: string; name: string }[],
+): CutTarget[] {
+  return [
+    { kind: "me" },
+    ...people.map((person) => ({
+      kind: "person" as const,
+      counterpartyId: person.id,
+      name: person.name,
+    })),
+  ];
+}
+
+type PeoplePaneDropInput = {
+  readonly workspace: CalculatorWorkspace;
+  readonly item: Pick<
+    CalculatorBoardItem,
+    "id" | "displayAmount" | "displayCurrency" | "type"
+  >;
+  readonly selectedPeople: readonly { id: string; name: string }[];
+  readonly activeWorkspaceId: string;
+  readonly activePersonName: string;
+  readonly createCutId: () => string;
+};
+
+export type PeoplePaneDropResult =
+  | { readonly ok: true; readonly workspace: CalculatorWorkspace }
+  | { readonly ok: false; readonly reason: "nothing-to-cut" };
+
+export function applyPeoplePaneDrop(
+  input: PeoplePaneDropInput,
+): PeoplePaneDropResult {
+  const leftover = leftoverAmount(
+    input.item.displayAmount,
+    input.workspace.cuts,
+    input.item.id,
+  );
+  if (toDecimal(leftover).lte(0)) {
+    return { ok: false, reason: "nothing-to-cut" };
+  }
+  return {
+    ok: true,
+    workspace: workspaceWithPaneCuts(
+      input,
+      leftover,
+      peoplePaneDropTargets({
+        sourceType: input.item.type,
+        selectedPeople: input.selectedPeople,
+        activeWorkspaceId: input.activeWorkspaceId,
+        activePersonName: input.activePersonName,
+      }),
+    ),
+  };
+}
+
+function workspaceWithPaneCuts(
+  input: PeoplePaneDropInput,
+  leftover: string,
+  targets: readonly CutTarget[],
+): CalculatorWorkspace {
+  return {
+    ...input.workspace,
+    cuts: applyEvenLeftoverCuts({
+      cuts: input.workspace.cuts,
+      transactionId: input.item.id,
+      leftover,
+      targets,
+      displayCurrency: input.item.displayCurrency,
+      sourceType: input.item.type,
+      createCutId: input.createCutId,
+    }),
+    boardColumn: withBoardColumn(
+      input.workspace.boardColumn,
+      input.item.id,
+      "done",
+    ),
+  };
+}
+
+function addOrGrowCut(
+  cuts: CalculatorCut[],
+  part: {
+    readonly transactionId: string;
+    readonly target: CutTarget;
+    readonly amount: string;
+    readonly displayCurrency: string;
+    readonly sourceType: TransactionType;
+    readonly createCutId: () => string;
+  },
+): CalculatorCut[] {
+  if (toDecimal(part.amount).lte(0)) {
+    return cuts;
+  }
+  const existing = existingCutForTarget(
+    cuts,
+    part.transactionId,
+    part.target,
+  );
+  if (!existing) {
+    return [
+      ...cuts,
+      {
+        id: part.createCutId(),
+        transactionId: part.transactionId,
+        target: part.target,
+        displayAmount: part.amount,
+        displayCurrency: part.displayCurrency,
+        sourceType: part.sourceType,
+      },
+    ];
+  }
+  const combined = toDecimal(existing.displayAmount)
+    .plus(toDecimal(part.amount))
+    .toFixed(4);
+  return cuts.map((cut) =>
+    cut.id === existing.id ? { ...existing, displayAmount: combined } : cut,
+  );
 }
 
 export function hasCutsForTransaction(

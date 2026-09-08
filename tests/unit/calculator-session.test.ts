@@ -13,11 +13,17 @@ import {
   isCalculatorTargetCollapsed,
   leftoverAmount,
   leftoverForCutEdit,
+  removeCutsForTransaction,
   ME_PARTY_ID,
+  emptyWorkspace,
   mergeCalculatorBoardItems,
   netDebtKind,
   percentOfAmount,
   personCutTotals,
+  evenCutAmounts,
+  applyEvenLeftoverCuts,
+  applyPeoplePaneDrop,
+  peoplePaneDropTargets,
   resolveBoardColumn,
   type CalculatorCut,
   type CalculatorSession,
@@ -68,6 +74,13 @@ describe("leftoverAmount", () => {
   });
 });
 
+describe("removeCutsForTransaction", () => {
+  it("drops every cut for that transaction", () => {
+    const other: CalculatorCut = { ...CUT, id: "c2", transactionId: "tx2" };
+    assert.deepEqual(removeCutsForTransaction([CUT, other], "tx1"), [other]);
+  });
+});
+
 describe("autoBoardColumn", () => {
   it("uses default when there are no cuts", () => {
     assert.equal(autoBoardColumn("100", false), "default");
@@ -79,6 +92,192 @@ describe("autoBoardColumn", () => {
 
   it("uses done when leftover is zero", () => {
     assert.equal(autoBoardColumn("0", true), "done");
+  });
+});
+
+describe("evenCutAmounts", () => {
+  it("splits leftover evenly across two people", () => {
+    assert.deepEqual(evenCutAmounts("100", 2), ["50.0000", "50.0000"]);
+  });
+
+  it("gives remainder to the last share", () => {
+    const shares = evenCutAmounts("100", 3);
+    assert.equal(shares.length, 3);
+    const sum = shares.reduce(
+      (total, share) => total.plus(toDecimal(share)),
+      toDecimal(0),
+    );
+    assert.equal(sum.toFixed(4), "100.0000");
+    assert.equal(shares[0], shares[1]);
+  });
+
+  it("returns empty when there is nothing to split", () => {
+    assert.deepEqual(evenCutAmounts("0", 2), []);
+    assert.deepEqual(evenCutAmounts("10", 0), []);
+  });
+});
+
+describe("applyEvenLeftoverCuts", () => {
+  it("creates one cut per person", () => {
+    let nextId = 0;
+    const cuts = applyEvenLeftoverCuts({
+      cuts: [],
+      transactionId: "tx1",
+      leftover: "90",
+      targets: [
+        { kind: "person", counterpartyId: "p1", name: "Ada" },
+        { kind: "person", counterpartyId: "p2", name: "Bob" },
+      ],
+      displayCurrency: "RUB",
+      sourceType: TransactionType.Spending,
+      createCutId: () => `n${(nextId += 1)}`,
+    });
+    assert.equal(cuts.length, 2);
+    assert.equal(cuts[0]?.displayAmount, "45.0000");
+    assert.equal(cuts[1]?.displayAmount, "45.0000");
+  });
+
+  it("adds leftover onto an existing cut", () => {
+    const cuts = applyEvenLeftoverCuts({
+      cuts: [CUT],
+      transactionId: "tx1",
+      leftover: "20",
+      targets: [{ kind: "person", counterpartyId: "p1", name: "Ada" }],
+      displayCurrency: "RUB",
+      sourceType: TransactionType.Spending,
+      createCutId: () => "new",
+    });
+    assert.equal(cuts.length, 1);
+    assert.equal(cuts[0]?.displayAmount, "50.0000");
+  });
+});
+
+describe("peoplePaneDropTargets", () => {
+  const people = [
+    { id: "p1", name: "Ada" },
+    { id: "p2", name: "Bob" },
+  ];
+
+  it("splits spending across Me and every selected person", () => {
+    assert.deepEqual(
+      peoplePaneDropTargets({
+        sourceType: TransactionType.Spending,
+        selectedPeople: people,
+        activeWorkspaceId: "p1",
+        activePersonName: "Ada",
+      }),
+      [
+        { kind: "me" },
+        { kind: "person", counterpartyId: "p1", name: "Ada" },
+        { kind: "person", counterpartyId: "p2", name: "Bob" },
+      ],
+    );
+  });
+
+  it("assigns earning fully to the active person", () => {
+    assert.deepEqual(
+      peoplePaneDropTargets({
+        sourceType: TransactionType.Earning,
+        selectedPeople: people,
+        activeWorkspaceId: "p2",
+        activePersonName: "Bob",
+      }),
+      [{ kind: "person", counterpartyId: "p2", name: "Bob" }],
+    );
+  });
+
+  it("assigns earning to Me when Me is the active workspace", () => {
+    assert.deepEqual(
+      peoplePaneDropTargets({
+        sourceType: TransactionType.Earning,
+        selectedPeople: people,
+        activeWorkspaceId: ME_PARTY_ID,
+        activePersonName: "Me",
+      }),
+      [{ kind: "me" }],
+    );
+  });
+});
+
+describe("applyPeoplePaneDrop", () => {
+  const spendingItem = {
+    id: "tx1",
+    displayAmount: "90",
+    displayCurrency: "RUB",
+    type: TransactionType.Spending,
+  };
+
+  it("splits leftover among Me and selected people", () => {
+    let nextId = 0;
+    const result = applyPeoplePaneDrop({
+      workspace: emptyWorkspace(ME_PARTY_ID),
+      item: spendingItem,
+      selectedPeople: [
+        { id: "p1", name: "Ada" },
+        { id: "p2", name: "Bob" },
+      ],
+      activeWorkspaceId: ME_PARTY_ID,
+      activePersonName: "Me",
+      createCutId: () => `n${(nextId += 1)}`,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.deepEqual(
+      result.workspace.cuts.map((cut) => [
+        cut.target.kind === "me" ? "me" : cut.target.counterpartyId,
+        cut.displayAmount,
+      ]),
+      [
+        ["me", "30.0000"],
+        ["p1", "30.0000"],
+        ["p2", "30.0000"],
+      ],
+    );
+  });
+
+  it("assigns earning leftover to the active person", () => {
+    const result = applyPeoplePaneDrop({
+      workspace: emptyWorkspace("p1"),
+      item: { ...spendingItem, type: TransactionType.Earning },
+      selectedPeople: [
+        { id: "p1", name: "Ada" },
+        { id: "p2", name: "Bob" },
+      ],
+      activeWorkspaceId: "p1",
+      activePersonName: "Ada",
+      createCutId: () => "n1",
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.equal(result.workspace.cuts.length, 1);
+    assert.equal(result.workspace.cuts[0]?.displayAmount, "90.0000");
+    assert.equal(
+      result.workspace.cuts[0]?.target.kind === "person"
+        ? result.workspace.cuts[0].target.counterpartyId
+        : "",
+      "p1",
+    );
+  });
+
+  it("assigns earning leftover to Me on the Me workspace", () => {
+    const result = applyPeoplePaneDrop({
+      workspace: emptyWorkspace(ME_PARTY_ID),
+      item: { ...spendingItem, type: TransactionType.Earning },
+      selectedPeople: [{ id: "p1", name: "Ada" }],
+      activeWorkspaceId: ME_PARTY_ID,
+      activePersonName: "Me",
+      createCutId: () => "n1",
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.deepEqual(result.workspace.cuts[0]?.target, { kind: "me" });
+    assert.equal(result.workspace.cuts[0]?.displayAmount, "90.0000");
   });
 });
 
@@ -487,6 +686,65 @@ describe("calculator settlement", () => {
       { fromId: "p1", toId: "me", amount: "600.0000", currency: "RUB" },
     ]);
     assert.equal(positionSum(settlement.positions), "0.0000");
+  });
+
+  it("ignores cuts and transfers for people who are not selected", () => {
+    const settlement = buildCalculatorSettlement(
+      {
+        selectedCounterpartyIds: ["p1"],
+        activeWorkspaceId: ME_PARTY_ID,
+        workspaces: {
+          [ME_PARTY_ID]: {
+            cuts: [adaSpending, bobSpending],
+            rawTransactions: [],
+            boardColumn: {},
+            expandedTargetIds: [ME_PARTY_ID],
+            transfers: [],
+          },
+        },
+      },
+      [],
+    );
+    assert.deepEqual(positionMap(settlement.positions), {
+      me: "1000.0000",
+      p1: "-1000.0000",
+    });
+  });
+
+  it("includes period debts only when asked", () => {
+    const session: CalculatorSession = {
+      selectedCounterpartyIds: ["p1"],
+      activeWorkspaceId: ME_PARTY_ID,
+      workspaces: {
+        [ME_PARTY_ID]: {
+          cuts: [],
+          rawTransactions: [],
+          boardColumn: {},
+          expandedTargetIds: [ME_PARTY_ID],
+          transfers: [],
+        },
+      },
+    };
+    const ledger = [
+      {
+        kind: TransactionKind.Loan,
+        type: TransactionType.Spending,
+        displayAmount: "50",
+        displayCurrency: "RUB",
+        counterpartyId: "p1",
+      },
+    ];
+    assert.equal(
+      buildCalculatorSettlement(session, ledger).positions.length,
+      0,
+    );
+    const withDebts = buildCalculatorSettlement(session, ledger, {
+      includeLedgerDebts: true,
+    });
+    assert.deepEqual(positionMap(withDebts.positions), {
+      me: "50.0000",
+      p1: "-50.0000",
+    });
   });
 
   it("signs earning cuts as the workspace owing the target", () => {
